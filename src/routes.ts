@@ -1,5 +1,5 @@
 import { ESRouteType } from '@extscreen/es3-router'
-import home from './pages/home/index.vue'
+import home from './pages/test/index.vue'
 import live from './pages/live/index.vue'
 import test from './pages/m-test.vue'
 import playTest from './pages/play-test.vue'

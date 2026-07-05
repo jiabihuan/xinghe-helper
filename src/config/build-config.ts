@@ -10,10 +10,9 @@ export default {
   //是低端设备
   isLowEndDev: false,
   //ES包名
-  packageName: 'es.tv.huan.hellotv',
+  packageName: 'es.xinghe.helper',
   //域名
-  // requestBaseUrl: process.env.requestBaseUrl || 'http://cms.hmon.tv/es_single/api',
-  requestBaseUrl: 'http://mockapi.quicktv.net/api',
+  requestBaseUrl: 'http://172.245.61.121:3000',
   // requestBaseUrl: 'http://192.168.35.254:8080/api',
   //首页内容请求数量
   tabContentPageSize: 10,

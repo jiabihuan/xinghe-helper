@@ -1,7 +1,7 @@
 {
-  "name": "@quicktvui/hellotv",
-  "appName": "hellotv",
-  "version": "1.0.5",
+  "name": "xinghe-helper",
+  "appName": "星河助手",
+  "version": "1.2.0",
   "main": "./src/main.ts",
   "icon": "./src/assets/logo.png",
   "private": true,
