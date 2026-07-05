@@ -17,9 +17,6 @@ import {
   useESRuntime
 } from '@extscreen/es3-core'
 import { ESPlayerLogLevel, useESPlayerLog, useESPlayer} from '@extscreen/es3-player'
-import requestManager from './tools/request'
-import userManager from './api/user/user-manager'
-
 import BuildConfig from './config/build-config'
 import ThemeConfig from './config/theme-config'
 import launch from './tools/launch'
@@ -46,27 +43,20 @@ export default defineComponent({
     const playerManager = useESPlayer()
 
     function onESCreate() {
-      //添加网络监听
-      network.addListener(connectivityChangeListener)
       initESLog()
       initTheme()
       switchDev()
       return Promise.resolve()
-        .then(() => requestManager.init(es, develop, device, runtime, log))
-        .then(()=> userManager.init(eventBus,localStore))
-        .then(() => launch.init(router,nativeRouter,develop))
-        // .then(() => HistoryApi.init(localStore))
+        .then(() => launch.init(router, nativeRouter, develop))
         .then(() => {
-           playerManager.init({
-            debug: BuildConfig.DEBUG,
-            display: {
-              screenWidth: device.getScreenWidth(),
-              screenHeight: device.getScreenHeight()
-            },
-            device: {
-              deviceType: runtime.getRuntimeDeviceType() ?? ''
-            }
-          })
+          try {
+            network.addListener(connectivityChangeListener)
+          } catch (e) {
+            console.log('network listener error:', e)
+          }
+        })
+        .catch((e) => {
+          console.log('init error:', e)
         })
     }
 
@@ -118,11 +108,8 @@ export default defineComponent({
      */
     const connectivityChangeListener = {
       onConnectivityChange() {
-        const isNetworkConnected = network.isNetworkConnected()
-        if (!isNetworkConnected) {
-         router.push({ name: 'network' })
-        }
-      }
+        // 网络变化时不强制跳转，应用支持离线使用
+      },
     }
 
 
@@ -139,8 +126,11 @@ export default defineComponent({
     }
 
     function onESDestroy() {
-      userManager.offUserEvent()
-      network.removeListener(connectivityChangeListener)
+      try {
+        network.removeListener(connectivityChangeListener)
+      } catch (e) {
+        console.log('destroy error:', e)
+      }
     }
 
     return {

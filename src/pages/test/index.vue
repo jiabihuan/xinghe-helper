@@ -1,6 +1,6 @@
 <template>
   <div class="test-page">
-    <text class="title-text">星河助手 v1.2.0</text>
+    <text class="title-text">星河助手 v1.3.0</text>
     <text class="sub-text">测试页面 - 如果能看到这个就说明框架正常工作了</text>
     <div class="nav-tabs">
       <div 

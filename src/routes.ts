@@ -1,5 +1,7 @@
 import { ESRouteType } from '@extscreen/es3-router'
 import home from './pages/test/index.vue'
+import network from './pages/network/index.vue'
+import error from './pages/error/index.vue'
 import live from './pages/live/index.vue'
 import test from './pages/m-test.vue'
 import playTest from './pages/play-test.vue'
@@ -34,6 +36,16 @@ const routes = [
     path: '/home',
     name: 'home',
     component: home
+  },
+  {
+    path: '/network',
+    name: 'network',
+    component: network
+  },
+  {
+    path: '/error',
+    name: 'error',
+    component: error
   },
   {
     path: '/login',
