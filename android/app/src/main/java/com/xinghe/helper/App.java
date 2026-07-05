@@ -1,11 +1,11 @@
-package com.quicktvui.hellotv;
+package com.xinghe.helper;
 
 import androidx.multidex.MultiDexApplication;
 
 import com.extscreen.runtime.EsKitInitHelper;
 import com.google.gson.Gson;
-import com.quicktvui.hellotv.config.Config;
-import com.quicktvui.hellotv.config.ConfigModule;
+import com.xinghe.helper.config.Config;
+import com.xinghe.helper.config.ConfigModule;
 import com.sunrain.toolkit.utils.FileUtils;
 import com.sunrain.toolkit.utils.ToastUtils;
 

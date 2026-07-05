@@ -1,4 +1,4 @@
-package com.quicktvui.hellotv.config;
+package com.xinghe.helper.config;
 
 import androidx.annotation.Keep;
 

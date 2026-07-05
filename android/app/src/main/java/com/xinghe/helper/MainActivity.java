@@ -1,4 +1,4 @@
-package com.quicktvui.hellotv;
+package com.xinghe.helper;
 
 import android.os.Bundle;
 

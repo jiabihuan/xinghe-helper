@@ -1,8 +1,8 @@
-package com.quicktvui.hellotv.config;
+package com.xinghe.helper.config;
 
 import android.content.Context;
 
-import com.quicktvui.hellotv.App;
+import com.xinghe.helper.App;
 
 import org.json.JSONObject;
 

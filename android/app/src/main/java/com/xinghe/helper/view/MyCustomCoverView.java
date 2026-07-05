@@ -1,4 +1,4 @@
-package com.quicktvui.hellotv.view;
+package com.xinghe.helper.view;
 
 import android.content.Context;
 import android.os.Build;
@@ -10,7 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.bumptech.glide.Glide;
-import com.quicktvui.hellotv.R;
+import com.xinghe.helper.R;
 
 import java.io.Serializable;
 

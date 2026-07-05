@@ -1,8 +1,8 @@
-package com.quicktvui.hellotv;
+package com.xinghe.helper;
 
 import android.text.TextUtils;
 
-import com.quicktvui.hellotv.config.Config;
+import com.xinghe.helper.config.Config;
 import com.sunrain.toolkit.utils.ToastUtils;
 
 import eskit.sdk.core.EsData;
