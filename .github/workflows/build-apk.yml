@@ -56,12 +56,18 @@ jobs:
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: 星河助手 v1.0.0
+          tag_name: v1.1.0
+          name: 星河助手 v1.1.0
+          fail_on_unmatched_files: false
           body: |
-            # 星河助手 v1.0.0
+            # 星河助手 v1.1.0
             
             基于QuickTVUI框架开发的电视应用管理工具
+            
+            ## 更新日志
+            - 修复黑屏问题，优化UI加载
+            - 简化框架依赖，提升启动速度
+            - 优化界面设计
             
             ## 功能
             - 口令安装：输入6位口令下载应用

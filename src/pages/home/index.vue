@@ -1,19 +1,25 @@
 <template>
   <div class="home-root">
-    <qt-nav-bar
-      ref="navBar"
-      class="home-nav-bar"
-      @tab-select="onTabSelect">
-    </qt-nav-bar>
+    <div class="nav-bar">
+      <div 
+        v-for="(tab, index) in tabs" 
+        :key="index"
+        class="nav-item"
+        :class="{ 'nav-item-active': currentTab === index }"
+        @click="onTabClick(index)"
+      >
+        <text class="nav-text">{{ tab }}</text>
+      </div>
+    </div>
     
-    <div class="home-content">
-      <div v-show="currentTab === 0">
+    <div class="content-area">
+      <div v-show="currentTab === 0" class="page-container">
         <InstallPage />
       </div>
-      <div v-show="currentTab === 1">
+      <div v-show="currentTab === 1" class="page-container">
         <RemotePage />
       </div>
-      <div v-show="currentTab === 2">
+      <div v-show="currentTab === 2" class="page-container">
         <ManagerPage />
       </div>
     </div>
@@ -21,11 +27,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from "@vue/runtime-core";
-import { QTNavBarItem, QTNavBar, QTNavBarItemType, QTINavBar } from "@quicktvui/quicktvui3";
-import InstallPage from "./install/InstallPage.vue";
-import RemotePage from "./remote/RemotePage.vue";
-import ManagerPage from "./manager/ManagerPage.vue";
+import { defineComponent, ref } from 'vue'
+import InstallPage from './install/InstallPage.vue'
+import RemotePage from './remote/RemotePage.vue'
+import ManagerPage from './manager/ManagerPage.vue'
 
 export default defineComponent({
   name: 'HomePage',
@@ -35,100 +40,23 @@ export default defineComponent({
     ManagerPage
   },
   setup() {
-    const navBar = ref<QTINavBar>();
-    const currentTab = ref(0);
+    const tabs = ['口令安装', '远程推送', '应用管理']
+    const currentTab = ref(0)
 
-    onMounted(() => {
-      const tabItems: Array<QTNavBarItem> = [
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '口令安装',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        },
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '远程推送',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        },
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '应用管理',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        }
-      ];
-
-      const navBarData: QTNavBar = {
-        data: tabItems
-      };
-
-      navBar.value?.init(navBarData);
-    });
-
-    const onTabSelect = (e: { position: number }) => {
-      currentTab.value = e.position;
-    };
-
-    const onESCreate = (params: any) => {
-      const tabItems: Array<QTNavBarItem> = [
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '口令安装',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        },
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '远程推送',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        },
-        {
-          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
-          text: '应用管理',
-          titleSize: 26,
-          decoration: {
-            left: 50,
-            right: 50,
-          }
-        }
-      ];
-
-      const navBarData: QTNavBar = {
-        data: tabItems
-      };
-
-      navBar.value?.init(navBarData);
-    };
+    const onTabClick = (index: number) => {
+      currentTab.value = index
+    }
 
     return {
-      navBar,
+      tabs,
       currentTab,
-      onTabSelect,
-      onESCreate
-    };
+      onTabClick
+    }
   }
-});
+})
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .home-root {
   width: 1920px;
   height: 1080px;
@@ -137,15 +65,58 @@ export default defineComponent({
   background-color: #0a0a0f;
 }
 
-.home-nav-bar {
+.nav-bar {
   width: 1920px;
   height: 100px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   background-color: #12121f;
+  gap: 80px;
 }
 
-.home-content {
+.nav-item {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  position: relative;
+}
+
+.nav-item-active {
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    background: linear-gradient(90deg, #4a9eff, #2d7dd2);
+    border-radius: 2px;
+  }
+}
+
+.nav-text {
+  font-size: 28px;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.nav-item-active .nav-text {
+  color: #4a9eff;
+  font-weight: bold;
+}
+
+.content-area {
   flex: 1;
   width: 1920px;
   overflow: hidden;
+}
+
+.page-container {
+  width: 1920px;
+  height: 980px;
 }
 </style>
