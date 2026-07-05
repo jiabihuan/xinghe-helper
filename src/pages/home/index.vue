@@ -1,101 +1,151 @@
 <template>
-  <div class="home-root-css" ref="homeRef">
-    <waterfall-tabs ref="homeWaterTabRef">
-      <template #topView>
-        <top-view downSid="tabNavBarSid">
-          <template #topOtherBtn>
-            <div style="flex-direction: row">
-              <btn-pack-view
-                style="width: 145px; height: 60px; margin-right: 10px"
-                text="直播"
-                :focusable="true"
-                :iconLeft="true"
-                :normalIcon="icLiveBroadcast"
-                :focusIcon="icLiveBroadcastFocused"
-                @click="liveClick"
-              />
-              <div class="home-resource-root" :focusScale="ThemeConfig.placeHolderFocusScale" :focusable="true" @click="resourceClick">
-                <img class="home-resource-img" :src="resourceImg" />
-              </div>
-            </div>
-          </template>
-        </top-view>
-      </template>
-    </waterfall-tabs>
+  <div class="home-root">
+    <qt-nav-bar
+      ref="navBar"
+      class="home-nav-bar"
+      @tab-select="onTabSelect">
+    </qt-nav-bar>
+    
+    <div class="home-content">
+      <div v-show="currentTab === 0">
+        <InstallPage />
+      </div>
+      <div v-show="currentTab === 1">
+        <RemotePage />
+      </div>
+      <div v-show="currentTab === 2">
+        <ManagerPage />
+      </div>
+    </div>
   </div>
 </template>
 
-<script setup lang="ts" name="index">
-import { ESKeyEvent } from '@extscreen/es3-core'
-import { ref } from 'vue'
-import TopView from '../../components/top-view.vue'
-import launch from '../../tools/launch'
-import { TopResource } from './adapter/exit/home-exit-imp'
-import btnPackView from '../../components/btn-pack-view.vue'
-import icLiveBroadcast from '../../assets/live/ic_live_broadcast.png'
-import icLiveBroadcastFocused from '../../assets/live/ic_live_broadcast_focused.png'
-import homeManager from './api'
-import WaterfallTabs from './components/waterfall-tabs.vue'
-import ThemeConfig from '../../config/theme-config'
+<script lang="ts">
+import { defineComponent, ref, onMounted } from "@vue/runtime-core";
+import { QTNavBarItem, QTNavBar, QTNavBarItemType, QTINavBar } from "@quicktvui/quicktvui3";
+import InstallPage from "./install/InstallPage.vue";
+import RemotePage from "./remote/RemotePage.vue";
+import ManagerPage from "./manager/ManagerPage.vue";
 
-const homeWaterTabRef = ref()
-let resourceImg = ref('')
-let topResource: TopResource
+export default defineComponent({
+  name: 'HomePage',
+  components: {
+    InstallPage,
+    RemotePage,
+    ManagerPage
+  },
+  setup() {
+    const navBar = ref<QTINavBar>();
+    const currentTab = ref(0);
 
-const onESCreate = (params) => {
-  homeWaterTabRef.value?.onESCreate(params)
-  homeManager.getHomeResource().then((res: TopResource) => {
-    if (res && res.url) {
-      topResource = res
-      resourceImg.value = res.url
-    }
-  })
-}
-const onESPause = () => {
-  homeWaterTabRef.value?.onESPause()
-}
-const onESStop = () => {
-  homeWaterTabRef.value?.onESStop()
-}
-const onESResume = () => {
-  homeWaterTabRef.value?.onESResume()
-}
-const onESDestroy = () => {
-  homeWaterTabRef.value?.onESDestroy()
-}
-const onKeyDown = (keyEvent: ESKeyEvent) => {
-  homeWaterTabRef.value?.onKeyDown(keyEvent)
-}
-const onKeyUp = (keyEvent: ESKeyEvent) => {
-  homeWaterTabRef.value?.onKeyUp(keyEvent)
-}
-const onBackPressed = () => {
-  if (homeWaterTabRef.value?.onBackPressed()) {
-    return true
+    onMounted(() => {
+      const tabItems: Array<QTNavBarItem> = [
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '口令安装',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        },
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '远程推送',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        },
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '应用管理',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        }
+      ];
+
+      const navBarData: QTNavBar = {
+        data: tabItems
+      };
+
+      navBar.value?.init(navBarData);
+    });
+
+    const onTabSelect = (e: { position: number }) => {
+      currentTab.value = e.position;
+    };
+
+    const onESCreate = (params: any) => {
+      const tabItems: Array<QTNavBarItem> = [
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '口令安装',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        },
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '远程推送',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        },
+        {
+          type: QTNavBarItemType.QT_NAV_BAR_ITEM_TYPE_TEXT,
+          text: '应用管理',
+          titleSize: 26,
+          decoration: {
+            left: 50,
+            right: 50,
+          }
+        }
+      ];
+
+      const navBarData: QTNavBar = {
+        data: tabItems
+      };
+
+      navBar.value?.init(navBarData);
+    };
+
+    return {
+      navBar,
+      currentTab,
+      onTabSelect,
+      onESCreate
+    };
   }
-  launch.launchExitDialog()
-}
-
-const liveClick = () => {
-  launch.launchLive()
-}
-
-const resourceClick = () => {
-  if (topResource.jumpParams) {
-    launch.launch(topResource.jumpParams)
-  }
-}
-
-defineExpose({
-  onESCreate,
-  onESPause,
-  onESStop,
-  onESResume,
-  onESDestroy,
-  onKeyDown,
-  onKeyUp,
-  onBackPressed
-})
+});
 </script>
 
-<style lang="scss" src="./scss/home.scss"></style>
+<style scoped>
+.home-root {
+  width: 1920px;
+  height: 1080px;
+  display: flex;
+  flex-direction: column;
+  background-color: #0a0a0f;
+}
+
+.home-nav-bar {
+  width: 1920px;
+  height: 100px;
+  background-color: #12121f;
+}
+
+.home-content {
+  flex: 1;
+  width: 1920px;
+  overflow: hidden;
+}
+</style>

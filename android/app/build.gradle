@@ -4,8 +4,8 @@ plugins {
 
 ext {
     // ----- APK相关配置 ----- //
-    APP_PACKAGE = 'com.quicktvui.hellotv'   // APK包名
-    APP_NAME = 'HelloTV'                    // 桌面显示名称
+    APP_PACKAGE = 'com.xinghe.helper'   // APK包名
+    APP_NAME = '星河助手'                    // 桌面显示名称
     APP_VERSION_CODE = 1                    // APK版本code(整数,最小为1，覆盖安装需要 >= 上次的code)
     APP_VERSION_NAME = '1.0.0'              // APK版本名称
 
@@ -19,12 +19,12 @@ ext {
     // 3 从url加载(适合url不变，只更新rpk包)
     // 4 从指定源服务器加载
 
-    RPK_PACKAGE = "es.hellotv"              // rpk包名(会按照这个包名进行本地版本管理)
+    RPK_PACKAGE = "es.xinghe.helper"              // rpk包名(会按照这个包名进行本地版本管理)
 
     // LOAD_MODULE修改后，只更改对应加载方式的配置即可
 
     // 方式1:
-    RPK_FILE_NAME = "hello.rpk"             // 自动生成的rpk文件名
+    RPK_FILE_NAME = "xinghe.rpk"             // 自动生成的rpk文件名
 
     // 方式2:
     RPK_FILE_PATH = "data/data/$APP_PACKAGE/files/hello.rpk"

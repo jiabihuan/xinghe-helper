@@ -1,156 +1,59 @@
 <template>
-  <div class='app-root-css' :gradientBackground="{colors:bgGradientColor,orientation: 4}">
+  <div class="app-root">
     <es-router-view></es-router-view>
   </div>
 </template>
 
-<script lang='ts'>
-import { useESNativeRouter, useESRouter } from '@extscreen/es3-router'
-import { defineComponent } from 'vue'
-import { Native } from '@extscreen/es3-vue'
-import {
-  ESLogLevel,
-  useES,
-  useESDevelop,
-  useESDevice, useESEventBus, useESLocalStorage,
-  useESLog, useESNetwork,
-  useESRuntime
-} from '@extscreen/es3-core'
-import { ESPlayerLogLevel, useESPlayerLog, useESPlayer} from '@extscreen/es3-player'
-import requestManager from './tools/request'
-import userManager from './api/user/user-manager'
-
+<script lang="ts">
+import { defineComponent } from '@vue/runtime-core'
+import { useESDevice, useESLog, useESNetwork, ESLogLevel } from '@extscreen/es3-core'
+import { useESPlayer } from '@extscreen/es3-player'
 import BuildConfig from './config/build-config'
-import ThemeConfig from './config/theme-config'
-import launch from './tools/launch'
 
 export default defineComponent({
   name: 'App',
-  emits: [],
   setup() {
-    //全局渐进背景色
-    const bgGradientColor = ThemeConfig.bgGradientColor
-
-    const router = useESRouter()
-    const nativeRouter = useESNativeRouter()
-    const network = useESNetwork()
-    const eventBus = useESEventBus()
-    const localStore = useESLocalStorage()
     const log = useESLog()
-    const playerLog = useESPlayerLog()
-
-    const es = useES()
-    const develop = useESDevelop()
     const device = useESDevice()
-    const runtime = useESRuntime()
+    const network = useESNetwork()
     const playerManager = useESPlayer()
 
     function onESCreate() {
-      //添加网络监听
-      network.addListener(connectivityChangeListener)
-      initESLog()
-      initTheme()
-      switchDev()
+      if (BuildConfig.debug) {
+        log.setMinimumLoggingLevel(ESLogLevel.DEBUG)
+      } else {
+        log.setMinimumLoggingLevel(ESLogLevel.WARN)
+      }
+      
       return Promise.resolve()
-        .then(() => requestManager.init(es, develop, device, runtime, log))
-        .then(()=> userManager.init(eventBus,localStore))
-        .then(() => launch.init(router,nativeRouter,develop))
-        // .then(() => HistoryApi.init(localStore))
         .then(() => {
-           playerManager.init({
-            debug: BuildConfig.DEBUG,
+          playerManager.init({
+            debug: BuildConfig.debug,
             display: {
               screenWidth: device.getScreenWidth(),
               screenHeight: device.getScreenHeight()
             },
             device: {
-              deviceType: runtime.getRuntimeDeviceType() ?? ''
+              deviceType: ''
             }
           })
         })
     }
 
-    /**
-     * 初始化整体样式
-     */
-    function initTheme() {
-      //淡入淡出启用
-      Native.callNative('FastListModule', 'setFadeEnabled', true)
-      //淡入淡出持续时间
-      Native.callNative('FastListModule', 'setFadeDuration', 500)
-      if (ThemeConfig.focusBorderCornerEnable) {
-        //设置默认焦点边框圆角
-        Native.callNative('FocusModule', 'setDefaultFocusBorderCorner', ThemeConfig.focusBorderCorner)
-      }
-      if (ThemeConfig.focusBorderColorEnable) {
-        //设置默认焦点颜色
-        Native.callNative('FocusModule', 'setDefaultFocusBorderColor', ThemeConfig.focusBorderColor)
-      }
-      if (ThemeConfig.focusBorderWidthEnable) {
-        //设置外边框宽度
-        Native.callNative('FocusModule', 'setDefaultFocusBorderWidth', ThemeConfig.focusBorderWidth)
-      }
-      if (ThemeConfig.focusBorderInsetEnable) {
-        //设置焦点边框向内移动距离
-        Native.callNative('FocusModule', 'setFocusBorderInsetValue', ThemeConfig.focusBorderInsetValue)
-      }
-      //设置焦点框是否有内里黑色边框
-      Native.callNative('FocusModule', 'setDefaultFocusInnerBorderEnable', ThemeConfig.focusInnerBorderEnable)
-      //设置焦点放大倍数
-      Native.callNative('FocusModule', 'setDefaultPlaceholderFocusScale', ThemeConfig.placeHolderFocusScale);
-    }
-
-    /**
-     * 设置日志级别控制
-     */
-    function initESLog() {
-      if (BuildConfig.DEBUG) { //调试
-        log.setMinimumLoggingLevel(ESLogLevel.DEBUG)
-        playerLog.setMinimumLoggingLevel(ESPlayerLogLevel.DEBUG)
-      } else { // 生产
-        log.setMinimumLoggingLevel(ESLogLevel.WARN)
-        playerLog.setMinimumLoggingLevel(ESPlayerLogLevel.WARN)
-      }
-    }
-
-    /**
-     * 网络监听
-     */
-    const connectivityChangeListener = {
-      onConnectivityChange() {
-        const isNetworkConnected = network.isNetworkConnected()
-        if (!isNetworkConnected) {
-         router.push({ name: 'network' })
-        }
-      }
-    }
-
-
-    /**
-     * 低端机判断
-     */
-    const switchDev = () => {
-      let devTotalMemory = device.getDeviceTotalMemory()
-      let devAndroidLevel = Number(device.getAndroidAPILevel())
-      //内存小于1G 或者 Android版本小于 6.0的走低端机逻辑
-      if (devTotalMemory <= 1024 || devAndroidLevel < 23) {
-        BuildConfig.isLowEndDev = true
-      }
-    }
-
-    function onESDestroy() {
-      userManager.offUserEvent()
-      network.removeListener(connectivityChangeListener)
-    }
-
     return {
-      bgGradientColor,
-      onESCreate,
-      onESDestroy
+      onESCreate
     }
   }
 })
 </script>
 
-<style src='./app.scss'>
+<style scoped>
+.app-root {
+  width: 1920px;
+  height: 1080px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #0a0a0f;
+}
 </style>
