@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         mavenLocal()
+        maven { url 'https://nexus.extscreen.com/repository/maven-public/' }
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -9,13 +10,13 @@ pluginManagement {
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         maven { url 'https://maven.aliyun.com/repository/jcenter' }
-        maven { url 'https://nexus.extscreen.com/repository/maven-public/' }
     }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenLocal()
+        maven { url 'https://nexus.extscreen.com/repository/maven-public/' }
         google()
         mavenCentral()
         maven { url 'https://maven.aliyun.com/repository/public' }
@@ -23,7 +24,6 @@ dependencyResolutionManagement {
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         maven { url 'https://maven.aliyun.com/repository/jcenter' }
-        maven { url 'https://nexus.extscreen.com/repository/maven-public/' }
     }
 }
 
