@@ -10,6 +10,7 @@ import android.text.InputFilter;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +19,8 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
@@ -25,6 +28,7 @@ import androidx.fragment.app.Fragment;
 import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
+import com.xinghe.helper.util.DownloadManager;
 import com.xinghe.helper.util.ToastUtil;
 
 import org.json.JSONArray;
@@ -61,6 +65,10 @@ public class InstallFragment extends Fragment {
     private final ExecutorService requestExecutor = Executors.newCachedThreadPool();
     private Future<?> requestFuture;
     private View rootView;
+
+    private PopupWindow downloadPopup;
+    private LinearLayout downloadsContainer;
+    private final List<View> progressItemViews = new ArrayList<>();
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -614,13 +622,12 @@ public class InstallFragment extends Fragment {
                         reader.close();
 
                         JSONObject root = new JSONObject(response.toString());
-                        List<PasswordApp> apps = parsePasswordApps(root);
+                        final List<PasswordApp> apps = parsePasswordApps(root);
                         if (apps != null && !apps.isEmpty()) {
-                            final PasswordApp app = apps.get(0);
                             mainHandler.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    downloadAndInstall(app);
+                                    startDownloads(apps);
                                 }
                             });
                         } else {
@@ -652,62 +659,141 @@ public class InstallFragment extends Fragment {
                 .commit();
     }
 
-    private void downloadAndInstall(final PasswordApp app) {
+    private void startDownloads(List<PasswordApp> apps) {
         final Context context = getContext();
-        if (context == null || app == null) return;
+        if (context == null || apps == null || apps.isEmpty()) return;
 
-        showShortOnMain("开始下载: " + app.getName());
+        showDownloadPopup(apps);
 
-        requestExecutor.submit(new Runnable() {
+        DownloadManager dm = DownloadManager.getInstance();
+        dm.clearTasks();
+        dm.setListener(new DownloadManager.DownloadListener() {
             @Override
-            public void run() {
-                try {
-                    String downloadUrl = app.getDownloadUrl();
-                    if (!downloadUrl.startsWith("http")) {
-                        downloadUrl = CoreData.HTTP_BASE_URL + downloadUrl;
-                    }
+            public void onProgress(int index, int percent, long downloaded, long total) {
+                updateProgressItem(index, percent, downloaded, total, false);
+            }
 
-                    URL url = new URL(downloadUrl);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(30000);
-                    conn.setReadTimeout(30000);
+            @Override
+            public void onComplete(int index, java.io.File apkFile) {
+                updateProgressItem(index, 100, 0, 0, true);
+            }
 
-                    java.io.File outputDir = context.getExternalCacheDir();
-                    if (outputDir == null) {
-                        outputDir = context.getCacheDir();
-                    }
-                    java.io.File apkFile = new java.io.File(outputDir, app.getName() + ".apk");
+            @Override
+            public void onError(int index, String error) {
+                updateProgressItemError(index, "下载失败");
+            }
 
-                    java.io.InputStream inputStream = conn.getInputStream();
-                    java.io.FileOutputStream outputStream = new java.io.FileOutputStream(apkFile);
-
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
-                    }
-
-                    outputStream.close();
-                    inputStream.close();
-                    conn.disconnect();
-
-                    if (apkFile.exists() && apkFile.length() > 0) {
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                showShortOnMain("下载完成，准备安装");
-                                com.xinghe.helper.util.ApkInstallUtil.installApk(context, apkFile);
-                            }
-                        });
-                    } else {
-                        showShortOnMain("下载失败");
-                    }
-
-                } catch (final Exception e) {
-                    showShortOnMain("下载失败，请重试");
-                }
+            @Override
+            public void onAllComplete() {
+                mainHandler.postDelayed(() -> dismissDownloadPopup(), 1500);
             }
         });
+
+        dm.addTasks(apps, context);
+    }
+
+    private void showDownloadPopup(List<PasswordApp> apps) {
+        if (getActivity() == null || rootView == null) return;
+
+        View popupView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_download_progress, null);
+        downloadsContainer = popupView.findViewById(R.id.downloadsContainer);
+        TextView btnClose = popupView.findViewById(R.id.btnClose);
+        TextView tvTitle = popupView.findViewById(R.id.tvTitle);
+
+        if (apps.size() > 1) {
+            tvTitle.setText("正在下载 (" + apps.size() + "个应用)");
+        } else {
+            tvTitle.setText("正在下载");
+        }
+
+        progressItemViews.clear();
+        for (int i = 0; i < apps.size(); i++) {
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.item_download_progress, downloadsContainer, false);
+            TextView tvName = itemView.findViewById(R.id.tvAppName);
+            TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+            ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+            TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+
+            tvName.setText(apps.get(i).getName());
+            tvPercent.setText("0%");
+            progressBar.setProgress(0);
+            tvStatus.setText("等待中...");
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) {
+                params.topMargin = (int) TypedValue.applyDimension(1, 8, getResources().getDisplayMetrics());
+            }
+            downloadsContainer.addView(itemView, params);
+            progressItemViews.add(itemView);
+        }
+
+        btnClose.setOnClickListener(v -> dismissDownloadPopup());
+
+        downloadPopup = new PopupWindow(popupView,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true);
+        downloadPopup.setOutsideTouchable(false);
+        downloadPopup.setFocusable(false);
+
+        rootView.post(() -> {
+            if (downloadPopup != null && rootView != null) {
+                downloadPopup.showAtLocation(rootView, Gravity.CENTER, 0, 0);
+            }
+        });
+    }
+
+    private void updateProgressItem(int index, int percent, long downloaded, long total, boolean completed) {
+        if (index < 0 || index >= progressItemViews.size()) return;
+        View itemView = progressItemViews.get(index);
+        if (itemView == null) return;
+
+        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+
+        if (completed) {
+            tvPercent.setText("100%");
+            progressBar.setProgress(100);
+            tvStatus.setText("下载完成");
+            tvStatus.setTextColor(getResources().getColor(R.color.success));
+        } else {
+            tvPercent.setText(percent + "%");
+            progressBar.setProgress(percent);
+            if (total > 0) {
+                float mbDownloaded = downloaded / (1024f * 1024f);
+                float mbTotal = total / (1024f * 1024f);
+                tvStatus.setText(String.format(Locale.getDefault(), "%.1f / %.1f MB", mbDownloaded, mbTotal));
+            } else {
+                tvStatus.setText("下载中...");
+            }
+        }
+    }
+
+    private void updateProgressItemError(int index, String error) {
+        if (index < 0 || index >= progressItemViews.size()) return;
+        View itemView = progressItemViews.get(index);
+        if (itemView == null) return;
+
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        tvStatus.setText(error);
+        tvStatus.setTextColor(getResources().getColor(R.color.error));
+    }
+
+    private void dismissDownloadPopup() {
+        if (downloadPopup != null && downloadPopup.isShowing()) {
+            downloadPopup.dismiss();
+        }
+        downloadPopup = null;
+        progressItemViews.clear();
+        downloadsContainer = null;
+    }
+
+    @Override
+    public void onDestroyView() {
+        dismissDownloadPopup();
+        super.onDestroyView();
     }
 
     private List<PasswordApp> parsePasswordApps(JSONObject root) {
