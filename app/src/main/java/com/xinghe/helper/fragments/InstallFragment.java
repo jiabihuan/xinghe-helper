@@ -61,6 +61,7 @@ public class InstallFragment extends Fragment {
     private final ExecutorService requestExecutor = Executors.newCachedThreadPool();
     private Future<?> requestFuture;
     private View rootView;
+    private float screenScaleFactor = 1.0f;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -88,6 +89,8 @@ public class InstallFragment extends Fragment {
         animatingKeyboard = false;
         updateDownloadButton(false);
         updateCodeBoxBackgrounds();
+
+        applyScreenAdaptation();
 
         // 默认让第一个输入框获得焦点但不弹出键盘，给用户提示感
         View firstCode = codeViews[0];
@@ -263,11 +266,12 @@ public class InstallFragment extends Fragment {
         TextView backspaceBtn = createKeyboardKey(getString(R.string.password_key_backspace));
         TextView okBtn = createKeyboardKey(getString(R.string.password_key_ok));
 
-        int keySize = getResources().getDimensionPixelSize(R.dimen.dp60);
+        int baseKeySize = getResources().getDimensionPixelSize(R.dimen.dp60);
+        int keySize = Math.round(baseKeySize * screenScaleFactor);
         LinearLayout.LayoutParams wideParams = new LinearLayout.LayoutParams(
                 keySize,
                 keySize);
-        int keyMargin = dpToPx(4);
+        int keyMargin = dpToPx(Math.round(4 * screenScaleFactor));
         wideParams.leftMargin = keyMargin;
         wideParams.rightMargin = keyMargin;
         clearBtn.setLayoutParams(wideParams);
@@ -296,9 +300,10 @@ public class InstallFragment extends Fragment {
     private TextView createKeyboardKey(String label) {
         TextView keyView = new TextView(getContext());
         String action = getKeyboardAction(label);
-        int keySize = getResources().getDimensionPixelSize(R.dimen.dp60);
+        int baseKeySize = getResources().getDimensionPixelSize(R.dimen.dp60);
+        int keySize = Math.round(baseKeySize * screenScaleFactor);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keySize, keySize);
-        int keyMargin = dpToPx(4);
+        int keyMargin = dpToPx(Math.round(4 * screenScaleFactor));
         params.leftMargin = keyMargin;
         params.rightMargin = keyMargin;
         keyView.setLayoutParams(params);
@@ -310,7 +315,7 @@ public class InstallFragment extends Fragment {
         keyView.setSingleLine(true);
         keyView.setText(label);
         keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
-        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp16));
+        keyView.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(getResources().getDimension(R.dimen.sp16) * screenScaleFactor));
         keyView.setTag(action);
 
         keyView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -884,5 +889,64 @@ public class InstallFragment extends Fragment {
                 return true;
             }
         });
+    }
+
+    private void applyScreenAdaptation() {
+        Context ctx = getContext();
+        if (ctx == null) return;
+
+        int screenWidth = ctx.getResources().getDisplayMetrics().widthPixels;
+        float density = ctx.getResources().getDisplayMetrics().density;
+
+        int baseWidthDp = Math.round(screenWidth / density);
+
+        float scaleFactor;
+        if (baseWidthDp < 360) {
+            scaleFactor = 0.7f;
+        } else if (baseWidthDp < 480) {
+            scaleFactor = 0.85f;
+        } else if (baseWidthDp < 600) {
+            scaleFactor = 1.0f;
+        } else if (baseWidthDp < 800) {
+            scaleFactor = 1.2f;
+        } else if (baseWidthDp < 1000) {
+            scaleFactor = 1.4f;
+        } else {
+            scaleFactor = 1.6f;
+        }
+
+        int codeBoxSize = Math.round(72 * scaleFactor);
+        int codeBoxMargin = Math.round(12 * scaleFactor);
+        int codeTextSize = Math.round(codeBoxSize * 0.45f);
+
+        for (EditText et : codeViews) {
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) et.getLayoutParams();
+            params.width = Math.round(codeBoxSize * density);
+            params.height = Math.round(codeBoxSize * density);
+            params.leftMargin = Math.round(codeBoxMargin * density);
+            et.setLayoutParams(params);
+            et.setTextSize(TypedValue.COMPLEX_UNIT_PX, codeTextSize * density);
+        }
+
+        LinearLayout.LayoutParams params0 = (LinearLayout.LayoutParams) codeViews[0].getLayoutParams();
+        params0.leftMargin = 0;
+        codeViews[0].setLayoutParams(params0);
+
+        int btnWidth = Math.round(200 * scaleFactor);
+        int btnHeight = Math.round(44 * scaleFactor);
+        LinearLayout.LayoutParams btnParams = (LinearLayout.LayoutParams) btnDownload.getLayoutParams();
+        btnParams.width = Math.round(btnWidth * density);
+        btnParams.height = Math.round(btnHeight * density);
+        btnParams.topMargin = Math.round(20 * scaleFactor * density);
+        btnDownload.setLayoutParams(btnParams);
+        btnDownload.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(16 * scaleFactor * density));
+
+        TextView tvTitle = rootView.findViewById(R.id.tvTitle);
+        if (tvTitle != null) {
+            tvTitle.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(24 * scaleFactor * density));
+        }
+
+        this.screenScaleFactor = scaleFactor;
+        initCustomKeyboard();
     }
 }
