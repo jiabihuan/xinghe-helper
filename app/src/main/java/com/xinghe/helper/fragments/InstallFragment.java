@@ -1,6 +1,7 @@
 package com.xinghe.helper.fragments;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -22,11 +23,9 @@ import androidx.fragment.app.Fragment;
 import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
-import com.xinghe.helper.model.RecommendToken;
 import com.xinghe.helper.util.ToastUtil;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -54,16 +53,10 @@ public class InstallFragment extends Fragment {
     private View keyboardFirstKey;
     private View keyboardOkKey;
     private LinearLayout layoutKeyboard;
-    private LinearLayout layoutRecommendTokens;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService requestExecutor = Executors.newCachedThreadPool();
     private Future<?> requestFuture;
     private View rootView;
-
-    private final String[] keyboardRow1 = {"1", "2", "3"};
-    private final String[] keyboardRow2 = {"4", "5", "6"};
-    private final String[] keyboardRow3 = {"7", "8", "9"};
-    private final String[] keyboardRow4 = {"", "0", "退格"};
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -82,11 +75,9 @@ public class InstallFragment extends Fragment {
                 view.findViewById(R.id.etCode3)
         };
         layoutKeyboard = view.findViewById(R.id.layoutKeyboard);
-        layoutRecommendTokens = view.findViewById(R.id.layoutRecommendTokens);
 
         initCodeInputs();
         initCustomKeyboard();
-        updateRecommendTokenViews();
         currentCodeIndex = 0;
         showCustomKeyboard();
         updateCodeCursor();
@@ -115,7 +106,7 @@ public class InstallFragment extends Fragment {
                 StringBuilder builder = new StringBuilder();
                 for (int i = start; i < end; i++) {
                     char c = Character.toUpperCase(source.charAt(i));
-                    if ((c >= '0' && c <= '9')) {
+                    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')) {
                         builder.append(c);
                     }
                 }
@@ -207,10 +198,37 @@ public class InstallFragment extends Fragment {
         keyboardOkKey = null;
         layoutKeyboard.removeAllViews();
 
-        addKeyboardRow(keyboardRow1);
-        addKeyboardRow(keyboardRow2);
-        addKeyboardRow(keyboardRow3);
-        addKeyboardRow(keyboardRow4);
+        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row1));
+        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row2));
+
+        addActionRow();
+    }
+
+    private void addActionRow() {
+        LinearLayout row = new LinearLayout(getContext());
+        row.setGravity(17);
+        row.setOrientation(0);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-2, -2);
+        rowParams.topMargin = getResources().getDimensionPixelSize(R.dimen.dp8);
+        layoutKeyboard.addView(row, rowParams);
+
+        TextView clearBtn = createKeyboardKey(getString(R.string.password_key_clear));
+        TextView backspaceBtn = createKeyboardKey(getString(R.string.password_key_backspace));
+        TextView okBtn = createKeyboardKey(getString(R.string.password_key_ok));
+
+        LinearLayout.LayoutParams wideParams = new LinearLayout.LayoutParams(
+                getResources().getDimensionPixelSize(R.dimen.dp72),
+                getResources().getDimensionPixelSize(R.dimen.dp40));
+        int keyMargin = dpToPx(4);
+        wideParams.leftMargin = keyMargin;
+        wideParams.rightMargin = keyMargin;
+        clearBtn.setLayoutParams(wideParams);
+        backspaceBtn.setLayoutParams(wideParams);
+        okBtn.setLayoutParams(wideParams);
+
+        row.addView(clearBtn);
+        row.addView(backspaceBtn);
+        row.addView(okBtn);
     }
 
     private void addKeyboardRow(String[] labels) {
@@ -218,33 +236,23 @@ public class InstallFragment extends Fragment {
         row.setGravity(17);
         row.setOrientation(0);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-2, -2);
-        rowParams.topMargin = dpToPx(8);
+        rowParams.topMargin = getResources().getDimensionPixelSize(R.dimen.dp8);
         layoutKeyboard.addView(row, rowParams);
 
         for (String label : labels) {
-            if (label.isEmpty()) {
-                View emptyView = new View(getContext());
-                LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(dpToPx(60), dpToPx(50));
-                emptyParams.leftMargin = dpToPx(4);
-                emptyParams.rightMargin = dpToPx(4);
-                row.addView(emptyView, emptyParams);
-            } else {
-                TextView keyView = createKeyboardKey(label);
-                row.addView(keyView);
-            }
+            TextView keyView = createKeyboardKey(label);
+            row.addView(keyView);
         }
     }
 
     private TextView createKeyboardKey(String label) {
         TextView keyView = new TextView(getContext());
         String action = getKeyboardAction(label);
-        int keyWidth = dpToPx(60);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keyWidth, dpToPx(50));
+        int keyWidth = getResources().getDimensionPixelSize(R.dimen.dp40);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keyWidth, getResources().getDimensionPixelSize(R.dimen.dp40));
         int keyMargin = dpToPx(4);
         params.leftMargin = keyMargin;
         params.rightMargin = keyMargin;
-
         keyView.setLayoutParams(params);
         keyView.setBackgroundResource(R.drawable.bg_action_button);
         keyView.setClickable(true);
@@ -253,8 +261,8 @@ public class InstallFragment extends Fragment {
         keyView.setGravity(17);
         keyView.setSingleLine(true);
         keyView.setText(label);
-        keyView.setTextColor(getResources().getColor(R.color.text_primary));
-        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp18));
+        keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
+        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp14));
         keyView.setTag(action);
 
         keyView.setOnClickListener(new View.OnClickListener() {
@@ -319,7 +327,6 @@ public class InstallFragment extends Fragment {
     private void handleKeyboardKey(TextView keyView) {
         keyView.requestFocus();
         Object action = keyView.getTag();
-
         if (KEY_ACTION_BACKSPACE.equals(action)) {
             deletePreviousCode();
             keyView.requestFocus();
@@ -345,7 +352,7 @@ public class InstallFragment extends Fragment {
         }
 
         changingText = true;
-        codeViews[index].setText(value.substring(0, 1));
+        codeViews[index].setText(value.substring(0, 1).toUpperCase(Locale.US));
         codeViews[index].setSelection(codeViews[index].length());
         changingText = false;
 
@@ -412,14 +419,25 @@ public class InstallFragment extends Fragment {
         }
     }
 
+    public void deleteCodeFromKeyboard() {
+        deletePreviousCode();
+    }
+
+    public void submitCodeFromKeyboard() {
+        submitCode();
+    }
+
     private void handleTextChanged(int index, Editable editable) {
         if (changingText || editable.length() == 0) return;
 
-        String value = editable.toString();
-        changingText = true;
-        codeViews[index].setText(value);
-        codeViews[index].setSelection(codeViews[index].length());
-        changingText = false;
+        String value = editable.toString().toUpperCase(Locale.US);
+        if (!value.equals(editable.toString())) {
+            changingText = true;
+            codeViews[index].setText(value);
+            codeViews[index].setSelection(codeViews[index].length());
+            changingText = false;
+            return;
+        }
 
         if (index < codeViews.length - 1) {
             codeViews[index + 1].requestFocus();
@@ -428,12 +446,12 @@ public class InstallFragment extends Fragment {
         }
     }
 
-    public void deleteCodeFromKeyboard() {
-        deletePreviousCode();
-    }
-
-    public void submitCodeFromKeyboard() {
-        submitCode();
+    public String getCurrentCode() {
+        StringBuilder builder = new StringBuilder();
+        for (EditText editText : codeViews) {
+            builder.append(editText.getText().toString());
+        }
+        return builder.toString();
     }
 
     private void submitCode() {
@@ -445,14 +463,6 @@ public class InstallFragment extends Fragment {
         } else if (getContext() != null) {
             makeRequest(code);
         }
-    }
-
-    public String getCurrentCode() {
-        StringBuilder builder = new StringBuilder();
-        for (EditText editText : codeViews) {
-            builder.append(editText.getText().toString());
-        }
-        return builder.toString();
     }
 
     private void makeRequest(final String token) {
@@ -699,7 +709,7 @@ public class InstallFragment extends Fragment {
 
     private void disableSystemKeyboard(EditText editText) {
         editText.setRawInputType(1);
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
+        if (Build.VERSION.SDK_INT >= 21) {
             editText.setShowSoftInputOnFocus(false);
             return;
         }
@@ -710,77 +720,5 @@ public class InstallFragment extends Fragment {
         } catch (Exception e) {
             editText.setInputType(0);
         }
-    }
-
-    private void updateRecommendTokenViews() {
-        if (getContext() == null || layoutRecommendTokens == null) return;
-
-        layoutRecommendTokens.removeAllViews();
-        layoutRecommendTokens.setOrientation(1);
-        layoutRecommendTokens.setGravity(17);
-
-        List<RecommendToken> list = CoreData.recommendTokens;
-        int count = list.size();
-        layoutRecommendTokens.setVisibility(count > 0 ? 0 : 8);
-
-        if (count > 0) {
-            for (int rowStart = 0; rowStart < count; rowStart += 4) {
-                LinearLayout row = new LinearLayout(getContext());
-                row.setOrientation(0);
-                row.setGravity(17);
-                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(-2, -2);
-                if (rowStart > 0) {
-                    layoutParams.topMargin = dpToPx(8);
-                }
-                layoutRecommendTokens.addView(row, layoutParams);
-
-                for (int col = 0; col < 4; col++) {
-                    int index = rowStart + col;
-                    if (index >= count) break;
-
-                    final RecommendToken recommendToken = list.get(index);
-                    TextView tokenView = (TextView) LayoutInflater.from(getContext())
-                            .inflate(R.layout.item_recommend_token_button, row, false);
-                    tokenView.setText(recommendToken.getTokenCode() + "(" + recommendToken.getAppName() + ")");
-                    tokenView.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            fillTokenCode(recommendToken.getTokenCode());
-                            submitCode();
-                        }
-                    });
-
-                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
-                    if (col > 0) {
-                        params.leftMargin = dpToPx(8);
-                    }
-                    row.addView(tokenView, params);
-                }
-            }
-        }
-    }
-
-    private void fillTokenCode(String tokenCode) {
-        if (tokenCode == null) return;
-
-        String value = tokenCode.trim();
-        changingText = true;
-        for (int i = 0; i < 4; i++) {
-            if (i < value.length()) {
-                codeViews[i].setText(String.valueOf(value.charAt(i)));
-                codeViews[i].setSelection(codeViews[i].length());
-            } else {
-                codeViews[i].setText((CharSequence) null);
-            }
-        }
-        changingText = false;
-
-        int length = value.length() >= 4 ? 3 : value.length();
-        currentCodeIndex = length;
-        if (length < 0 || length >= 4) {
-            currentCodeIndex = 3;
-        }
-
-        updateCodeCursor();
     }
 }

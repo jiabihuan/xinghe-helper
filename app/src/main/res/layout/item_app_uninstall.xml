@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="@dimen/dp8">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/ivIcon"
+            android:layout_width="@dimen/dp72"
+            android:layout_height="@dimen/dp72"
+            android:scaleType="fitCenter" />
+
+        <LinearLayout
+            android:id="@+id/layoutActions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="#80000000"
+            android:visibility="gone"
+            android:layout_gravity="center">
+
+            <TextView
+                android:id="@+id/btnOpen"
+                android:layout_width="80dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="打开"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp14"
+                android:background="@drawable/bg_action_button"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <TextView
+                android:id="@+id/btnUninstall"
+                android:layout_width="80dp"
+                android:layout_height="28dp"
+                android:layout_marginTop="@dimen/dp4"
+                android:gravity="center"
+                android:text="卸载"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp14"
+                android:background="@drawable/bg_action_button"
+                android:focusable="true"
+                android:clickable="true" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tvName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp4"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/home_text_primary"
+        android:textSize="@dimen/sp14" />
+
+</LinearLayout>

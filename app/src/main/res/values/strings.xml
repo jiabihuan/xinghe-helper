@@ -43,4 +43,9 @@
     <string name="about_version">版本 1.7.0</string>
     <string name="about_desc">让大屏应用安装更简单</string>
     <string name="server_url_default">http://172.245.61.121:3000</string>
+    <string name="app_list_loading">加载中...</string>
+    <string name="app_list_empty">暂无应用</string>
+    <string name="open_failed">打开失败</string>
+    <string name="uninstall_failed">卸载失败</string>
+    <string name="uninstall_open_settings">请在设置中卸载</string>
 </resources>
