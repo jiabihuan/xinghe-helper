@@ -7,6 +7,7 @@
     <dimen name="dp16">16dp</dimen>
     <dimen name="dp20">20dp</dimen>
     <dimen name="dp24">24dp</dimen>
+    <dimen name="dp36">36dp</dimen>
     <dimen name="dp40">40dp</dimen>
     <dimen name="dp48">48dp</dimen>
     <dimen name="dp60">60dp</dimen>
@@ -19,4 +20,5 @@
     <dimen name="sp24">24sp</dimen>
     <dimen name="sp26">26sp</dimen>
     <dimen name="sp28">28sp</dimen>
+    <dimen name="sp32">32sp</dimen>
 </resources>
