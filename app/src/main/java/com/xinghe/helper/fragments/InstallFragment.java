@@ -616,33 +616,21 @@ public class InstallFragment extends Fragment {
                         JSONObject root = new JSONObject(response.toString());
                         List<PasswordApp> apps = parsePasswordApps(root);
                         if (apps != null && !apps.isEmpty()) {
+                            final PasswordApp app = apps.get(0);
                             mainHandler.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    openAppDetail(token);
+                                    downloadAndInstall(app);
                                 }
                             });
                         } else {
-                            showShortOnMain(root.optString("detail", "未找到应用"));
+                            showShortOnMain("未找到应用");
                         }
                     } else {
-                        BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(conn.getErrorStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            response.append(line);
-                        }
-                        reader.close();
-                        String errorMsg = "服务器错误: " + responseCode;
-                        try {
-                            JSONObject err = new JSONObject(response.toString());
-                            errorMsg = err.optString("detail", errorMsg);
-                        } catch (Exception ignored) {}
-                        showShortOnMain(errorMsg);
+                        showShortOnMain("验证失败");
                     }
                 } catch (final Exception e) {
-                    showShortOnMain("网络错误: " + e.getMessage());
+                    showShortOnMain("网络错误，请检查网络连接");
                 } finally {
                     if (conn != null) {
                         conn.disconnect();
@@ -716,7 +704,7 @@ public class InstallFragment extends Fragment {
                     }
 
                 } catch (final Exception e) {
-                    showShortOnMain("下载错误: " + e.getMessage());
+                    showShortOnMain("下载失败，请重试");
                 }
             }
         });
