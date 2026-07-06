@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootAppList"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_main_gradient">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← 返回"
+            android:textColor="@color/home_text_hint"
+            android:textSize="@dimen/sp16"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="选择应用"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp20"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvCodeInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="口令"
+            android:textColor="@color/home_text_hint"
+            android:textSize="@dimen/sp12" />
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:id="@+id/categoryScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:id="@+id/categoryTabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/appRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:scrollbars="vertical" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvSelectedCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="已选 0 个"
+            android:textColor="@color/home_text_hint"
+            android:textSize="@dimen/sp14" />
+
+        <TextView
+            android:id="@+id/btnDownload"
+            android:layout_width="160dp"
+            android:layout_height="48dp"
+            android:background="@drawable/selector_download"
+            android:gravity="center"
+            android:text="立即下载"
+            android:textColor="#4CAF50"
+            android:textSize="@dimen/sp16"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+    </LinearLayout>
+
+</LinearLayout>

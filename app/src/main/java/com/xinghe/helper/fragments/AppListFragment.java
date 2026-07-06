@@ -1,0 +1,559 @@
+package com.xinghe.helper.fragments;
+
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.xinghe.helper.R;
+import com.xinghe.helper.coredata.CoreData;
+import com.xinghe.helper.model.PasswordApp;
+import com.xinghe.helper.util.DownloadManager;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class AppListFragment extends Fragment {
+
+    private String code;
+    private List<PasswordApp> allApps = new ArrayList<>();
+    private List<PasswordApp> filteredApps = new ArrayList<>();
+    private List<CategoryInfo> categories = new ArrayList<>();
+    private int currentCategoryIndex = 0;
+    private Set<Long> selectedAppIds = new HashSet<>();
+
+    private TextView btnBack;
+    private TextView tvTitle;
+    private TextView tvCodeInfo;
+    private LinearLayout categoryTabs;
+    private HorizontalScrollView categoryScroll;
+    private RecyclerView appRecyclerView;
+    private TextView tvSelectedCount;
+    private TextView btnDownload;
+    private View rootView;
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private AppAdapter adapter;
+
+    private View downloadPopupView;
+    private LinearLayout downloadsContainer;
+    private android.widget.PopupWindow downloadPopup;
+
+    public static AppListFragment newInstance(String code) {
+        AppListFragment fragment = new AppListFragment();
+        Bundle args = new Bundle();
+        args.putString("code", code);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.fragment_app_list, container, false);
+        rootView = view;
+
+        if (getArguments() != null) {
+            code = getArguments().getString("code", "");
+        }
+
+        btnBack = view.findViewById(R.id.btnBack);
+        tvTitle = view.findViewById(R.id.tvTitle);
+        tvCodeInfo = view.findViewById(R.id.tvCodeInfo);
+        categoryTabs = view.findViewById(R.id.categoryTabs);
+        categoryScroll = view.findViewById(R.id.categoryScroll);
+        appRecyclerView = view.findViewById(R.id.appRecyclerView);
+        tvSelectedCount = view.findViewById(R.id.tvSelectedCount);
+        btnDownload = view.findViewById(R.id.btnDownload);
+
+        tvCodeInfo.setText("口令: " + code);
+
+        btnBack.setOnClickListener(v -> {
+            if (getActivity() != null) {
+                getActivity().onBackPressed();
+            }
+        });
+
+        btnDownload.setOnClickListener(v -> {
+            List<PasswordApp> selectedApps = getSelectedApps();
+            if (selectedApps.isEmpty()) {
+                Toast.makeText(getContext(), "请先选择应用", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            startDownloads(selectedApps);
+        });
+
+        btnDownload.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                btnDownload.setTextColor(getResources().getColor(R.color.white));
+            } else {
+                btnDownload.setTextColor(0xFF4CAF50);
+            }
+        });
+
+        appRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        adapter = new AppAdapter();
+        appRecyclerView.setAdapter(adapter);
+
+        loadAppList();
+
+        return view;
+    }
+
+    @Override
+    public void onDestroyView() {
+        dismissDownloadPopup();
+        executor.shutdownNow();
+        super.onDestroyView();
+    }
+
+    private void loadAppList() {
+        executor.submit(() -> {
+            HttpURLConnection conn = null;
+            try {
+                String urlStr = CoreData.HTTP_BASE_URL + "/api/codes/" + code;
+                URL url = new URL(urlStr);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    JSONObject root = new JSONObject(response.toString());
+                    String type = root.optString("type", "single");
+
+                    if ("single".equals(type)) {
+                        JSONObject appJson = root.getJSONObject("app");
+                        PasswordApp app = parseApp(appJson);
+                        allApps.add(app);
+                        selectedAppIds.add(app.getAppId());
+                    } else {
+                        JSONArray appsArray = root.getJSONArray("apps");
+                        for (int i = 0; i < appsArray.length(); i++) {
+                            JSONObject appJson = appsArray.getJSONObject(i);
+                            allApps.add(parseApp(appJson));
+                        }
+
+                        JSONArray catsArray = root.optJSONArray("categories");
+                        if (catsArray != null && catsArray.length() > 0) {
+                            for (int i = 0; i < catsArray.length(); i++) {
+                                JSONObject cat = catsArray.getJSONObject(i);
+                                categories.add(new CategoryInfo(
+                                        cat.optLong("id"),
+                                        cat.optString("name")
+                                ));
+                            }
+                        }
+                    }
+
+                    mainHandler.post(this::setupUI);
+                } else {
+                    mainHandler.post(() -> {
+                        Toast.makeText(getContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                        if (getActivity() != null) {
+                            getActivity().onBackPressed();
+                        }
+                    });
+                }
+            } catch (final Exception e) {
+                mainHandler.post(() -> {
+                    Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    if (getActivity() != null) {
+                        getActivity().onBackPressed();
+                    }
+                });
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        });
+    }
+
+    private PasswordApp parseApp(JSONObject item) {
+        if (item == null) return null;
+        return new PasswordApp(
+                item.optLong("id"),
+                item.optString("name"),
+                item.optString("package_name"),
+                item.optString("version_name"),
+                item.optLong("version_code"),
+                21,
+                item.optString("download_url"),
+                "",
+                item.optLong("apk_size"),
+                item.optString("icon_url"),
+                0,
+                item.optString("description"),
+                item.optString("category_name", ""),
+                0.0f
+        );
+    }
+
+    private void setupUI() {
+        if (allApps.size() == 1) {
+            tvTitle.setText("确认下载");
+            categoryTabs.setVisibility(View.GONE);
+            filteredApps.addAll(allApps);
+        } else {
+            tvTitle.setText("选择应用");
+            setupCategoryTabs();
+            filterByCategory(0);
+        }
+
+        updateSelectedCount();
+        adapter.notifyDataSetChanged();
+
+        if (allApps.size() == 1) {
+            btnDownload.setText("立即下载");
+        }
+    }
+
+    private void setupCategoryTabs() {
+        categoryTabs.removeAllViews();
+
+        TextView allTab = createCategoryTab("全部", 0);
+        allTab.setSelected(true);
+        categoryTabs.addView(allTab);
+
+        for (int i = 0; i < categories.size(); i++) {
+            final int index = i + 1;
+            CategoryInfo cat = categories.get(i);
+            TextView tab = createCategoryTab(cat.name, index);
+            categoryTabs.addView(tab);
+        }
+    }
+
+    private TextView createCategoryTab(String name, final int index) {
+        TextView tab = new TextView(getContext());
+        tab.setText(name);
+        tab.setTextColor(getResources().getColor(R.color.home_text_primary));
+        tab.setTextSize(14);
+        tab.setGravity(Gravity.CENTER);
+        tab.setPadding(24, 10, 24, 10);
+        tab.setBackgroundResource(R.drawable.selector_category_tab);
+        tab.setFocusable(true);
+        tab.setFocusableInTouchMode(true);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, 16, 0);
+        tab.setLayoutParams(params);
+
+        tab.setOnClickListener(v -> filterByCategory(index));
+
+        tab.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                tab.setTextColor(getResources().getColor(R.color.white));
+            } else {
+                if (index == currentCategoryIndex) {
+                    tab.setTextColor(getResources().getColor(R.color.white));
+                } else {
+                    tab.setTextColor(getResources().getColor(R.color.home_text_primary));
+                }
+            }
+        });
+
+        return tab;
+    }
+
+    private void filterByCategory(int categoryIndex) {
+        currentCategoryIndex = categoryIndex;
+
+        for (int i = 0; i < categoryTabs.getChildCount(); i++) {
+            View child = categoryTabs.getChildAt(i);
+            if (child instanceof TextView) {
+                ((TextView) child).setSelected(i == categoryIndex);
+                if (i == categoryIndex) {
+                    ((TextView) child).setTextColor(getResources().getColor(R.color.white));
+                } else {
+                    ((TextView) child).setTextColor(getResources().getColor(R.color.home_text_primary));
+                }
+            }
+        }
+
+        filteredApps.clear();
+        if (categoryIndex == 0) {
+            filteredApps.addAll(allApps);
+        } else {
+            CategoryInfo cat = categories.get(categoryIndex - 1);
+            for (PasswordApp app : allApps) {
+                if (app.getCategory() != null && app.getCategory().equals(cat.name)) {
+                    filteredApps.add(app);
+                }
+            }
+        }
+
+        adapter.notifyDataSetChanged();
+    }
+
+    private List<PasswordApp> getSelectedApps() {
+        List<PasswordApp> result = new ArrayList<>();
+        for (PasswordApp app : allApps) {
+            if (selectedAppIds.contains(app.getAppId())) {
+                result.add(app);
+            }
+        }
+        return result;
+    }
+
+    private void updateSelectedCount() {
+        int count = selectedAppIds.size();
+        tvSelectedCount.setText("已选 " + count + " 个");
+        btnDownload.setEnabled(count > 0);
+        btnDownload.setAlpha(count > 0 ? 1.0f : 0.5f);
+    }
+
+    private void startDownloads(List<PasswordApp> apps) {
+        if (getContext() == null) return;
+
+        showDownloadPopup(apps);
+
+        DownloadManager dm = DownloadManager.getInstance();
+        dm.clearTasks();
+        dm.setListener(new DownloadManager.DownloadListener() {
+            @Override
+            public void onProgress(int index, int percent, long downloaded, long total) {
+                updateProgressItem(index, percent, downloaded, total, false);
+            }
+
+            @Override
+            public void onComplete(int index, java.io.File apkFile) {
+                updateProgressItem(index, 100, 0, 0, true);
+            }
+
+            @Override
+            public void onError(int index, String error) {
+                updateProgressItemError(index, "下载失败");
+            }
+
+            @Override
+            public void onAllComplete() {
+                mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000);
+            }
+        });
+
+        dm.addTasks(apps, getContext());
+    }
+
+    private void showDownloadPopup(List<PasswordApp> apps) {
+        if (getActivity() == null || rootView == null) return;
+
+        downloadPopupView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_download_big, null);
+        downloadsContainer = downloadPopupView.findViewById(R.id.downloadsContainer);
+        TextView tvTitle = downloadPopupView.findViewById(R.id.tvTitle);
+        TextView tvSubtitle = downloadPopupView.findViewById(R.id.tvSubtitle);
+        TextView btnBackground = downloadPopupView.findViewById(R.id.btnBackground);
+
+        if (apps.size() > 1) {
+            tvTitle.setText("正在下载");
+            tvSubtitle.setText("共 " + apps.size() + " 个应用");
+        } else {
+            tvTitle.setText("正在下载");
+            tvSubtitle.setText(apps.get(0).getName());
+        }
+
+        for (int i = 0; i < apps.size(); i++) {
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.item_download_big, downloadsContainer, false);
+            TextView tvName = itemView.findViewById(R.id.tvAppName);
+            TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
+            TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+            ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+            TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+
+            tvName.setText(apps.get(i).getName());
+            tvSizeInfo.setText(formatSize(apps.get(i).getSize()));
+            tvPercent.setText("0%");
+            progressBar.setProgress(0);
+            tvStatus.setText("等待中...");
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) {
+                params.topMargin = (int) (16 * getResources().getDisplayMetrics().density);
+            }
+            downloadsContainer.addView(itemView, params);
+        }
+
+        btnBackground.setOnClickListener(v -> dismissDownloadPopup());
+
+        downloadPopup = new android.widget.PopupWindow(downloadPopupView,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                true);
+        downloadPopup.setOutsideTouchable(false);
+        downloadPopup.setFocusable(false);
+
+        rootView.post(() -> {
+            if (downloadPopup != null && rootView != null) {
+                downloadPopup.showAtLocation(rootView, Gravity.CENTER, 0, 0);
+            }
+        });
+    }
+
+    private void updateProgressItem(int index, int percent, long downloaded, long total, boolean completed) {
+        if (downloadsContainer == null) return;
+        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
+        View itemView = downloadsContainer.getChildAt(index);
+        if (itemView == null) return;
+
+        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+        TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+
+        if (completed) {
+            tvPercent.setText("100%");
+            progressBar.setProgress(100);
+            tvStatus.setText("下载完成");
+            tvStatus.setTextColor(getResources().getColor(R.color.success));
+        } else {
+            tvPercent.setText(percent + "%");
+            progressBar.setProgress(percent);
+            if (total > 0) {
+                float mbDownloaded = downloaded / (1024f * 1024f);
+                float mbTotal = total / (1024f * 1024f);
+                tvSizeInfo.setText(String.format(Locale.getDefault(), "%.1f / %.1f MB", mbDownloaded, mbTotal));
+            }
+            tvStatus.setText("下载中...");
+        }
+    }
+
+    private void updateProgressItemError(int index, String error) {
+        if (downloadsContainer == null) return;
+        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
+        View itemView = downloadsContainer.getChildAt(index);
+        if (itemView == null) return;
+
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        tvStatus.setText(error);
+        tvStatus.setTextColor(getResources().getColor(R.color.error));
+    }
+
+    private void dismissDownloadPopup() {
+        if (downloadPopup != null && downloadPopup.isShowing()) {
+            downloadPopup.dismiss();
+        }
+        downloadPopup = null;
+        downloadPopupView = null;
+        downloadsContainer = null;
+    }
+
+    private String formatSize(long size) {
+        if (size <= 0) return "未知大小";
+        if (size < 1024) return size + " B";
+        if (size < 1024 * 1024) return String.format(Locale.getDefault(), "%.1f KB", size / 1024.0);
+        if (size < 1024 * 1024 * 1024) return String.format(Locale.getDefault(), "%.1f MB", size / (1024.0 * 1024));
+        return String.format(Locale.getDefault(), "%.2f GB", size / (1024.0 * 1024 * 1024));
+    }
+
+    private static class CategoryInfo {
+        long id;
+        String name;
+
+        CategoryInfo(long id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    private class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_app_select, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            PasswordApp app = filteredApps.get(position);
+            holder.tvName.setText(app.getName());
+            holder.tvPackage.setText(app.getPackageName());
+            holder.tvSize.setText(formatSize(app.getSize()));
+
+            boolean isSelected = selectedAppIds.contains(app.getAppId());
+            holder.tvCheck.setSelected(isSelected);
+            holder.tvCheck.setText(isSelected ? "✓" : "");
+
+            holder.itemView.setOnClickListener(v -> {
+                long appId = app.getAppId();
+                if (selectedAppIds.contains(appId)) {
+                    selectedAppIds.remove(appId);
+                } else {
+                    selectedAppIds.add(appId);
+                }
+                updateSelectedCount();
+                notifyItemChanged(holder.getAdapterPosition());
+            });
+
+            holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    holder.itemView.setBackgroundResource(R.drawable.selector_app_item);
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return filteredApps.size();
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvIcon;
+            TextView tvName;
+            TextView tvPackage;
+            TextView tvSize;
+            TextView tvCheck;
+
+            ViewHolder(View itemView) {
+                super(itemView);
+                tvIcon = itemView.findViewById(R.id.tvIcon);
+                tvName = itemView.findViewById(R.id.tvName);
+                tvPackage = itemView.findViewById(R.id.tvPackage);
+                tvSize = itemView.findViewById(R.id.tvSize);
+                tvCheck = itemView.findViewById(R.id.tvCheck);
+            }
+        }
+    }
+}
