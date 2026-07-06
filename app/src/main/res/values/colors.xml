@@ -13,4 +13,5 @@
     <color name="divider">#3a3a5c</color>
     <color name="error">#ff5252</color>
     <color name="success">#4caf50</color>
+    <color name="transparent">#00000000</color>
 </resources>

@@ -1,18 +1,19 @@
 package com.xinghe.helper;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
-
+import com.xinghe.helper.activity.BasicTransNavActivity;
 import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
 
-public class MainActivity extends AppCompatActivity {
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
+
+public class MainActivity extends BasicTransNavActivity {
 
     private TextView navInstall;
     private TextView navRemote;

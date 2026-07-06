@@ -32,4 +32,8 @@
     <string name="about_version">版本 1.5.0</string>
     <string name="about_desc">让大屏应用安装更简单</string>
     <string name="server_url_default">http://172.245.61.121:3000</string>
+    <string name="password_key_backspace">退格</string>
+    <string name="password_key_clear">清除</string>
+    <string name="password_key_ok">确定</string>
+    <string name="password_empty">请输入4位口令</string>
 </resources>
