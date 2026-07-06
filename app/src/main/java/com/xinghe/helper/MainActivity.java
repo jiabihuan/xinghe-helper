@@ -63,7 +63,7 @@ public class MainActivity extends BasicTransNavActivity {
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.fragment_container, installFragment)
+                    .add(R.id.fragmentContainer, installFragment)
                     .commit();
             currentFragment = installFragment;
             updateNav(0);
@@ -75,7 +75,7 @@ public class MainActivity extends BasicTransNavActivity {
 
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         if (!fragment.isAdded()) {
-            transaction.add(R.id.fragment_container, fragment);
+            transaction.add(R.id.fragmentContainer, fragment);
         }
         transaction.hide(currentFragment).show(fragment).commit();
         currentFragment = fragment;

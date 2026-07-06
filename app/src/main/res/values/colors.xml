@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="home_bg">#1E1E2E</color>
+    <color name="home_text_primary">#FFFFFF</color>
+    <color name="home_text_hint">#A0A0B0</color>
+    <color name="white">#FFFFFF</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
     <color name="primary">#1a1a2e</color>
     <color name="primary_dark">#0f0f1a</color>
     <color name="accent">#00d4ff</color>
-    <color name="accent_dark">#00a8cc</color>
     <color name="text_primary">#ffffff</color>
     <color name="text_secondary">#a0a0b0</color>
     <color name="card_bg">#252540</color>
     <color name="card_focus">#3a3a5c</color>
     <color name="keyboard_key">#2a2a45</color>
-    <color name="keyboard_key_focus">#00d4ff</color>
     <color name="divider">#3a3a5c</color>
     <color name="error">#ff5252</color>
     <color name="success">#4caf50</color>
