@@ -1,113 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="@drawable/bg_main_gradient">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:text="@string/password_title"
+        android:textColor="@color/home_text_primary"
+        android:textSize="@dimen/sp24"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp8"
+        android:text="输入口令后按OK键"
+        android:textColor="@color/home_text_hint"
+        android:textSize="@dimen/sp14" />
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/layoutPin"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:paddingStart="@dimen/dp20"
-        android:paddingEnd="@dimen/dp20">
+        android:layout_marginTop="@dimen/dp20"
+        android:orientation="horizontal">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/password_title"
-            android:textColor="@color/home_text_primary"
-            android:textSize="@dimen/sp24" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp8"
-            android:text="@string/password_subtitle"
-            android:textColor="@color/home_text_hint"
-            android:textSize="@dimen/sp14"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:id="@+id/layoutPin"
-            android:layout_width="wrap_content"
+        <EditText
+            android:id="@+id/etCode0"
+            android:layout_width="@dimen/dp72"
             android:layout_height="@dimen/dp72"
-            android:layout_marginTop="@dimen/dp12"
-            android:orientation="horizontal">
-
-            <EditText
-                android:id="@+id/etCode0"
-                android:layout_width="@dimen/dp72"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_code_digit"
-                android:gravity="center"
-                android:inputType="number"
-                android:maxLength="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp24"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/etCode1"
-                android:layout_width="@dimen/dp72"
-                android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/dp12"
-                android:background="@drawable/bg_code_digit"
-                android:gravity="center"
-                android:inputType="number"
-                android:maxLength="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp24"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/etCode2"
-                android:layout_width="@dimen/dp72"
-                android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/dp12"
-                android:background="@drawable/bg_code_digit"
-                android:gravity="center"
-                android:inputType="number"
-                android:maxLength="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp24"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/etCode3"
-                android:layout_width="@dimen/dp72"
-                android:layout_height="match_parent"
-                android:layout_marginStart="@dimen/dp12"
-                android:background="@drawable/bg_code_digit"
-                android:gravity="center"
-                android:inputType="number"
-                android:maxLength="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp24"
-                android:textStyle="bold" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/layoutRecommendTokens"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/dp8"
+            android:background="@drawable/bg_code_digit"
             android:gravity="center"
-            android:orientation="vertical"
-            android:visibility="gone" />
+            android:inputType="textCapCharacters"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etCode1"
+            android:layout_width="@dimen/dp72"
+            android:layout_height="@dimen/dp72"
+            android:layout_marginStart="@dimen/dp12"
+            android:background="@drawable/bg_code_digit"
+            android:gravity="center"
+            android:inputType="textCapCharacters"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etCode2"
+            android:layout_width="@dimen/dp72"
+            android:layout_height="@dimen/dp72"
+            android:layout_marginStart="@dimen/dp12"
+            android:background="@drawable/bg_code_digit"
+            android:gravity="center"
+            android:inputType="textCapCharacters"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/etCode3"
+            android:layout_width="@dimen/dp72"
+            android:layout_height="@dimen/dp72"
+            android:layout_marginStart="@dimen/dp12"
+            android:background="@drawable/bg_code_digit"
+            android:gravity="center"
+            android:inputType="textCapCharacters"
+            android:maxLength="1"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
 
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/btnDownload"
+        android:layout_width="180dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="@dimen/dp40"
+        android:background="@drawable/bg_button_green"
+        android:gravity="center"
+        android:text="立即下载"
+        android:textColor="#4CAF50"
+        android:textSize="@dimen/sp16"
+        android:focusable="true"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
     <LinearLayout
         android:id="@+id/layoutKeyboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="2dp"
-        android:background="@color/home_bg"
+        android:layout_marginBottom="@dimen/dp20"
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="gone" />
 
-</FrameLayout>
+</LinearLayout>

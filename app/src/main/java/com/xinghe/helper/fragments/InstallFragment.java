@@ -42,17 +42,18 @@ import java.util.concurrent.Future;
 
 public class InstallFragment extends Fragment {
 
-    private static final int CODE_LENGTH = 4;
     private static final String KEY_ACTION_BACKSPACE = "backspace";
     private static final String KEY_ACTION_CLEAR = "clear";
     private static final String KEY_ACTION_OK = "ok";
 
     private boolean changingText;
+    private boolean keyboardVisible;
     private EditText[] codeViews;
     private int currentCodeIndex;
     private View keyboardFirstKey;
     private View keyboardOkKey;
     private LinearLayout layoutKeyboard;
+    private TextView btnDownload;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService requestExecutor = Executors.newCachedThreadPool();
     private Future<?> requestFuture;
@@ -75,14 +76,38 @@ public class InstallFragment extends Fragment {
                 view.findViewById(R.id.etCode3)
         };
         layoutKeyboard = view.findViewById(R.id.layoutKeyboard);
+        btnDownload = view.findViewById(R.id.btnDownload);
 
         initCodeInputs();
         initCustomKeyboard();
-        currentCodeIndex = 0;
-        showCustomKeyboard();
         updateCodeCursor();
-        focusKeyboard();
-        focusKeyboardLater();
+        keyboardVisible = false;
+
+        View firstCode = codeViews[0];
+        firstCode.post(new Runnable() {
+            @Override
+            public void run() {
+                firstCode.requestFocus();
+            }
+        });
+
+        btnDownload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                submitCode();
+            }
+        });
+
+        btnDownload.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == 0 && (keyCode == 23 || keyCode == 66)) {
+                    submitCode();
+                    return true;
+                }
+                return false;
+            }
+        });
     }
 
     @Override
@@ -119,10 +144,6 @@ public class InstallFragment extends Fragment {
             codeViews[i].setFilters(new InputFilter[]{filter, new InputFilter.LengthFilter(1)});
             codeViews[i].setSelectAllOnFocus(true);
             disableSystemKeyboard(codeViews[i]);
-            codeViews[i].setFocusable(false);
-            codeViews[i].setFocusableInTouchMode(false);
-            codeViews[i].setClickable(false);
-            codeViews[i].setLongClickable(false);
             codeViews[i].setCursorVisible(false);
 
             codeViews[i].setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -131,6 +152,9 @@ public class InstallFragment extends Fragment {
                     if (hasFocus) {
                         currentCodeIndex = index;
                         ((EditText) v).selectAll();
+                        if (!keyboardVisible) {
+                            showCustomKeyboard();
+                        }
                     }
                 }
             });
@@ -139,6 +163,7 @@ public class InstallFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     currentCodeIndex = index;
+                    showCustomKeyboard();
                 }
             });
 
@@ -179,16 +204,15 @@ public class InstallFragment extends Fragment {
                 codeViews[index - 1].setText((CharSequence) null);
                 return true;
             }
-        } else if (keyCode != 23 && keyCode != 66) {
-            return false;
-        } else {
-            if (isCustomKeyboardVisible()) {
+        } else if (keyCode == 23 || keyCode == 66) {
+            if (getCurrentCode().length() == 4) {
                 submitCode();
-            } else {
+            } else if (!keyboardVisible) {
                 showCustomKeyboard();
             }
             return true;
         }
+        return false;
     }
 
     private void initCustomKeyboard() {
@@ -200,7 +224,6 @@ public class InstallFragment extends Fragment {
 
         addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row1));
         addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row2));
-
         addActionRow();
     }
 
@@ -282,16 +305,8 @@ public class InstallFragment extends Fragment {
                     deleteCodeFromKeyboard();
                     return true;
                 } else if (keyCode == 23 || keyCode == 66) {
-                    if (v.getTag() != null) {
-                        v.performClick();
-                        return true;
-                    } else if (getCurrentCode().length() < 4) {
-                        v.performClick();
-                        return true;
-                    } else {
-                        submitCodeFromKeyboard();
-                        return true;
-                    }
+                    v.performClick();
+                    return true;
                 }
                 return false;
             }
@@ -363,6 +378,7 @@ public class InstallFragment extends Fragment {
         }
 
         updateCodeCursor();
+        updateDownloadButton();
         focusKeyboardOkIfCodeFull();
     }
 
@@ -377,6 +393,7 @@ public class InstallFragment extends Fragment {
             codeViews[index].setText((CharSequence) null);
             currentCodeIndex = index;
             updateCodeCursor();
+            updateDownloadButton();
             return;
         }
 
@@ -385,6 +402,7 @@ public class InstallFragment extends Fragment {
             currentCodeIndex = index - 1;
         }
         updateCodeCursor();
+        updateDownloadButton();
     }
 
     private void clearCode() {
@@ -395,6 +413,7 @@ public class InstallFragment extends Fragment {
         changingText = false;
         currentCodeIndex = 0;
         updateCodeCursor();
+        updateDownloadButton();
     }
 
     private void updateCodeCursor() {
@@ -407,16 +426,14 @@ public class InstallFragment extends Fragment {
         currentCodeIndex = firstEmptyCodeIndex;
 
         for (int i = 0; i < codeViews.length; i++) {
-            boolean isSelected = i == firstEmptyCodeIndex;
-            codeViews[i].setSelected(isSelected);
             codeViews[i].setCursorVisible(false);
-
-            if (isSelected && codeViews[i].getText().length() == 0) {
-                codeViews[i].setHint("|");
-            } else {
-                codeViews[i].setHint((CharSequence) null);
-            }
         }
+    }
+
+    private void updateDownloadButton() {
+        if (btnDownload == null) return;
+        boolean full = getCurrentCode().length() == 4;
+        btnDownload.setVisibility(full ? View.VISIBLE : View.GONE);
     }
 
     public void deleteCodeFromKeyboard() {
@@ -438,6 +455,8 @@ public class InstallFragment extends Fragment {
             changingText = false;
             return;
         }
+
+        updateDownloadButton();
 
         if (index < codeViews.length - 1) {
             codeViews[index + 1].requestFocus();
@@ -647,17 +666,6 @@ public class InstallFragment extends Fragment {
         }
     }
 
-    private void focusKeyboardLater() {
-        if (keyboardFirstKey != null) {
-            keyboardFirstKey.post(new Runnable() {
-                @Override
-                public void run() {
-                    focusKeyboard();
-                }
-            });
-        }
-    }
-
     private void focusKeyboardOkIfCodeFull() {
         if (getFirstEmptyCodeIndex() < 0 && keyboardOkKey != null) {
             keyboardOkKey.requestFocus();
@@ -698,12 +706,14 @@ public class InstallFragment extends Fragment {
     private void showCustomKeyboard() {
         if (layoutKeyboard != null) {
             layoutKeyboard.setVisibility(0);
+            keyboardVisible = true;
         }
     }
 
     private void hideCustomKeyboard() {
         if (layoutKeyboard != null) {
             layoutKeyboard.setVisibility(8);
+            keyboardVisible = false;
         }
     }
 

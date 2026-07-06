@@ -82,25 +82,19 @@ public class MainActivity extends BasicTransNavActivity {
     }
 
     private void updateNav(int index) {
-        navInstall.setTextColor(getResources().getColor(R.color.text_secondary));
-        navRemote.setTextColor(getResources().getColor(R.color.text_secondary));
-        navManager.setTextColor(getResources().getColor(R.color.text_secondary));
-        navInstall.setAlpha(0.7f);
-        navRemote.setAlpha(0.7f);
-        navManager.setAlpha(0.7f);
+        navInstall.setTextColor(getResources().getColor(R.color.home_text_hint));
+        navRemote.setTextColor(getResources().getColor(R.color.home_text_hint));
+        navManager.setTextColor(getResources().getColor(R.color.home_text_hint));
 
         switch (index) {
             case 0:
-                navInstall.setTextColor(getResources().getColor(R.color.accent));
-                navInstall.setAlpha(1.0f);
+                navInstall.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
             case 1:
-                navRemote.setTextColor(getResources().getColor(R.color.accent));
-                navRemote.setAlpha(1.0f);
+                navRemote.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
             case 2:
-                navManager.setTextColor(getResources().getColor(R.color.accent));
-                navManager.setAlpha(1.0f);
+                navManager.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
         }
     }

@@ -1,8 +1,8 @@
 package com.xinghe.helper.fragments;
 
-import android.content.Context;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,72 +10,115 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.xinghe.helper.R;
+import com.xinghe.helper.util.ApkInstallUtil;
+import com.xinghe.helper.util.RemotePushServer;
+import com.xinghe.helper.util.ToastUtil;
 
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Enumeration;
+import java.io.File;
 
-public class RemoteFragment extends Fragment {
+public class RemoteFragment extends Fragment implements RemotePushServer.OnPushListener {
+
+    private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private TextView tvPushUrl;
-    private TextView tvIpAddress;
+    private TextView tvPushStatus;
+    private RemotePushServer pushServer;
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_remote, container, false);
-
-        tvPushUrl = view.findViewById(R.id.tv_push_url);
-        tvIpAddress = view.findViewById(R.id.tv_ip_address);
-
-        String ip = getLocalIpAddress();
-        if (ip != null && !ip.isEmpty()) {
-            tvPushUrl.setText("http://" + ip + ":3000");
-            tvIpAddress.setText("设备IP: " + ip);
-        }
-
-        return view;
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_remote, container, false);
     }
 
-    private String getLocalIpAddress() {
-        try {
-            WifiManager wifiManager = (WifiManager) requireActivity().getApplicationContext()
-                    .getSystemService(Context.WIFI_SERVICE);
-            if (wifiManager != null && wifiManager.isWifiEnabled()) {
-                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                int ipInt = wifiInfo.getIpAddress();
-                String ip = intToIp(ipInt);
-                if (ip != null && !ip.equals("0.0.0.0")) {
-                    return ip;
-                }
-            }
+    @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        tvPushUrl = view.findViewById(R.id.tvPushUrl);
+        tvPushStatus = view.findViewById(R.id.tvPushStatus);
 
-            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
-                 en.hasMoreElements();) {
-                NetworkInterface intf = en.nextElement();
-                for (Enumeration<InetAddress> enumIpAddr = intf.getInetAddresses();
-                     enumIpAddr.hasMoreElements();) {
-                    InetAddress inetAddress = enumIpAddr.nextElement();
-                    if (!inetAddress.isLoopbackAddress() && inetAddress.getHostAddress() != null) {
-                        String ip = inetAddress.getHostAddress();
-                        if (ip.indexOf(':') < 0 && ip.startsWith("192.168.")) {
-                            return ip;
-                        }
-                    }
-                }
+        if (getContext() == null) return;
+
+        pushServer = new RemotePushServer(getContext());
+        pushServer.setListener(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+            } else {
+                startServer();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else {
+            startServer();
         }
-        return null;
     }
 
-    private String intToIp(int i) {
-        return (i & 0xFF) + "." + ((i >> 8) & 0xFF) + "." +
-                ((i >> 16) & 0xFF) + "." + ((i >> 24) & 0xFF);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            startServer();
+        }
+    }
+
+    private void startServer() {
+        if (pushServer != null) {
+            pushServer.start();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (pushServer != null) {
+            pushServer.stop();
+            pushServer = null;
+        }
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onServerStarted(final String url) {
+        if (tvPushUrl != null) {
+            tvPushUrl.setText(url);
+        }
+        if (tvPushStatus != null) {
+            tvPushStatus.setText("等待推送...");
+        }
+    }
+
+    @Override
+    public void onServerStopped() {
+        if (tvPushStatus != null) {
+            tvPushStatus.setText("服务已停止");
+        }
+    }
+
+    @Override
+    public void onPushStarted() {
+        if (tvPushStatus != null) {
+            tvPushStatus.setText("正在接收文件...");
+        }
+    }
+
+    @Override
+    public void onPushCompleted(final File apkFile) {
+        if (tvPushStatus != null) {
+            tvPushStatus.setText("接收完成，准备安装");
+        }
+        if (getContext() != null) {
+            ToastUtil.showShort(getContext(), "远程推送成功，开始安装");
+            ApkInstallUtil.installApk(getContext(), apkFile);
+        }
+    }
+
+    @Override
+    public void onPushFailed(final String error) {
+        if (tvPushStatus != null) {
+            tvPushStatus.setText("推送失败: " + error);
+        }
     }
 }

@@ -1,146 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="40dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingVertical="40dp"
-        android:paddingHorizontal="60dp">
+        android:text="@string/title_remote"
+        android:textColor="@color/home_text_primary"
+        android:textSize="@dimen/sp24"
+        android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/title_remote"
-            android:textSize="44sp"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:layout_marginTop="20dp" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp8"
+        android:text="电视和手机/电脑连接同一个WiFi"
+        android:textColor="@color/home_text_hint"
+        android:textSize="@dimen/sp14" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/subtitle_remote"
-            android:textSize="22sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="40dp" />
+    <TextView
+        android:id="@+id/tvPushUrl"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp40"
+        android:text="正在启动服务..."
+        android:textColor="@color/accent"
+        android:textSize="@dimen/sp18" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:weightSum="2">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp12"
+        android:text="用浏览器访问上方地址，上传APK文件"
+        android:textColor="@color/home_text_hint"
+        android:textSize="@dimen/sp14" />
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="30dp"
-                android:background="@drawable/bg_card"
-                android:layout_marginHorizontal="15dp">
+    <TextView
+        android:id="@+id/tvPushStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp40"
+        android:text=""
+        android:textColor="@color/home_text_primary"
+        android:textSize="@dimen/sp16" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="💻"
-                    android:textSize="64sp"
-                    android:layout_marginBottom="16dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/method_computer"
-                    android:textSize="26sp"
-                    android:textColor="@color/text_primary"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="10dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/desc_computer"
-                    android:textSize="18sp"
-                    android:textColor="@color/text_secondary"
-                    android:gravity="center"
-                    android:layout_marginBottom="16dp" />
-
-                <TextView
-                    android:id="@+id/tv_push_url"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="xinghe.tv/push"
-                    android:textSize="22sp"
-                    android:textColor="@color/accent"
-                    android:textStyle="bold"
-                    android:paddingHorizontal="20dp"
-                    android:paddingVertical="10dp"
-                    android:background="@drawable/bg_code_digit" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="30dp"
-                android:background="@drawable/bg_card"
-                android:layout_marginHorizontal="15dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="📱"
-                    android:textSize="64sp"
-                    android:layout_marginBottom="16dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/method_phone"
-                    android:textSize="26sp"
-                    android:textColor="@color/text_primary"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="10dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/desc_phone"
-                    android:textSize="18sp"
-                    android:textColor="@color/text_secondary"
-                    android:gravity="center"
-                    android:layout_marginBottom="16dp" />
-
-                <ImageView
-                    android:id="@+id/iv_qr_code"
-                    android:layout_width="160dp"
-                    android:layout_height="160dp"
-                    android:background="@color/text_primary"
-                    android:contentDescription="QR Code" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_ip_address"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="设备IP: ---.---.---.---"
-            android:textSize="20sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginTop="40dp" />
-
-    </LinearLayout>
-
-</ScrollView>
+</LinearLayout>
