@@ -17,7 +17,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.xinghe.helper.R;
@@ -119,7 +119,10 @@ public class AppListFragment extends Fragment {
             }
         });
 
-        appRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        GridLayoutManager layoutManager = new GridLayoutManager(getContext(), 6);
+        appRecyclerView.setLayoutManager(layoutManager);
+        int spacing = getResources().getDimensionPixelSize(R.dimen.dp8);
+        appRecyclerView.addItemDecoration(new GridSpacingItemDecoration(6, spacing, true));
         adapter = new AppAdapter();
         appRecyclerView.setAdapter(adapter);
 
@@ -622,7 +625,7 @@ public class AppListFragment extends Fragment {
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_app_select, parent, false);
+                    .inflate(R.layout.item_app_grid_select, parent, false);
             return new ViewHolder(view);
         }
 
@@ -630,12 +633,11 @@ public class AppListFragment extends Fragment {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             PasswordApp app = filteredApps.get(position);
             holder.tvName.setText(app.getName());
-            holder.tvPackage.setText(app.getPackageName());
             holder.tvSize.setText(formatSize(app.getSize()));
 
             boolean isSelected = selectedAppIds.contains(app.getAppId());
+            holder.tvCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
             holder.tvCheck.setSelected(isSelected);
-            holder.tvCheck.setText(isSelected ? "✓" : "");
 
             holder.itemView.setOnClickListener(v -> {
                 long appId = app.getAppId();
@@ -648,10 +650,21 @@ public class AppListFragment extends Fragment {
                 notifyItemChanged(holder.getAdapterPosition());
             });
 
-            holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus) {
-                    holder.itemView.setBackgroundResource(R.drawable.selector_app_item);
+            holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                        long appId = app.getAppId();
+                        if (selectedAppIds.contains(appId)) {
+                            selectedAppIds.remove(appId);
+                        } else {
+                            selectedAppIds.add(appId);
+                        }
+                        updateSelectedCount();
+                        notifyItemChanged(holder.getAdapterPosition());
+                        return true;
+                    }
                 }
+                return false;
             });
         }
 
@@ -661,19 +674,51 @@ public class AppListFragment extends Fragment {
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            TextView tvIcon;
+            android.widget.ImageView ivIcon;
             TextView tvName;
-            TextView tvPackage;
             TextView tvSize;
             TextView tvCheck;
 
             ViewHolder(View itemView) {
                 super(itemView);
-                tvIcon = itemView.findViewById(R.id.tvIcon);
+                ivIcon = itemView.findViewById(R.id.ivIcon);
                 tvName = itemView.findViewById(R.id.tvName);
-                tvPackage = itemView.findViewById(R.id.tvPackage);
                 tvSize = itemView.findViewById(R.id.tvSize);
                 tvCheck = itemView.findViewById(R.id.tvCheck);
+            }
+        }
+    }
+
+    private static class GridSpacingItemDecoration extends RecyclerView.ItemDecoration {
+        private int spanCount;
+        private int spacing;
+        private boolean includeEdge;
+
+        GridSpacingItemDecoration(int spanCount, int spacing, boolean includeEdge) {
+            this.spanCount = spanCount;
+            this.spacing = spacing;
+            this.includeEdge = includeEdge;
+        }
+
+        @Override
+        public void getItemOffsets(android.graphics.Rect outRect, View view,
+                                   RecyclerView parent, RecyclerView.State state) {
+            int position = parent.getChildAdapterPosition(view);
+            int column = position % spanCount;
+
+            if (includeEdge) {
+                outRect.left = spacing - column * spacing / spanCount;
+                outRect.right = (column + 1) * spacing / spanCount;
+                if (position < spanCount) {
+                    outRect.top = spacing;
+                }
+                outRect.bottom = spacing;
+            } else {
+                outRect.left = column * spacing / spanCount;
+                outRect.right = spacing - (column + 1) * spacing / spanCount;
+                if (position >= spanCount) {
+                    outRect.top = spacing;
+                }
             }
         }
     }
