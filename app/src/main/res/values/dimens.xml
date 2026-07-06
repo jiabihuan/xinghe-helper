@@ -8,6 +8,7 @@
     <dimen name="dp20">20dp</dimen>
     <dimen name="dp24">24dp</dimen>
     <dimen name="dp40">40dp</dimen>
+    <dimen name="dp48">48dp</dimen>
     <dimen name="dp60">60dp</dimen>
     <dimen name="dp72">72dp</dimen>
     <dimen name="sp12">12sp</dimen>
@@ -17,4 +18,5 @@
     <dimen name="sp20">20sp</dimen>
     <dimen name="sp24">24sp</dimen>
     <dimen name="sp26">26sp</dimen>
+    <dimen name="sp28">28sp</dimen>
 </resources>
