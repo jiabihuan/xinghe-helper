@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingVertical="40dp"
+        android:paddingHorizontal="60dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title_remote"
+            android:textSize="44sp"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/subtitle_remote"
+            android:textSize="22sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="40dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:weightSum="2">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="30dp"
+                android:background="@drawable/bg_card"
+                android:layout_marginHorizontal="15dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💻"
+                    android:textSize="64sp"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/method_computer"
+                    android:textSize="26sp"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/desc_computer"
+                    android:textSize="18sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:id="@+id/tv_push_url"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="xinghe.tv/push"
+                    android:textSize="22sp"
+                    android:textColor="@color/accent"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="20dp"
+                    android:paddingVertical="10dp"
+                    android:background="@drawable/bg_code_digit" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="30dp"
+                android:background="@drawable/bg_card"
+                android:layout_marginHorizontal="15dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📱"
+                    android:textSize="64sp"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/method_phone"
+                    android:textSize="26sp"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/desc_phone"
+                    android:textSize="18sp"
+                    android:textColor="@color/text_secondary"
+                    android:gravity="center"
+                    android:layout_marginBottom="16dp" />
+
+                <ImageView
+                    android:id="@+id/iv_qr_code"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:background="@color/text_primary"
+                    android:contentDescription="QR Code" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_ip_address"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="设备IP: ---.---.---.---"
+            android:textSize="20sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="40dp" />
+
+    </LinearLayout>
+
+</ScrollView>

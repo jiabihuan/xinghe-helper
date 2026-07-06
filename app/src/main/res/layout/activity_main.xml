@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/primary">
+
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:id="@+id/nav_bar"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_nav"
+        android:gravity="center"
+        android:paddingHorizontal="40dp">
+
+        <TextView
+            android:id="@+id/nav_install"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:text="@string/nav_install"
+            android:textSize="24sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:focusable="true"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/nav_remote"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:text="@string/nav_remote"
+            android:textSize="24sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:focusable="true"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/nav_manager"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:text="@string/nav_manager"
+            android:textSize="24sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:focusable="true"
+            android:clickable="true"
+            android:background="?attr/selectableItemBackground" />
+
+    </LinearLayout>
+
+</LinearLayout>
