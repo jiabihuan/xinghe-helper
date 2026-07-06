@@ -19,6 +19,7 @@ import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.ApkInstallUtil;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
