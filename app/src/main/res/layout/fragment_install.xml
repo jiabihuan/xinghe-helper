@@ -44,7 +44,7 @@
             android:gravity="center"
             android:inputType="textCapCharacters"
             android:maxLength="1"
-            android:textColor="@color/text_primary"
+            android:textColor="#333333"
             android:textSize="@dimen/sp24"
             android:textStyle="bold" />
 
@@ -57,7 +57,7 @@
             android:gravity="center"
             android:inputType="textCapCharacters"
             android:maxLength="1"
-            android:textColor="@color/text_primary"
+            android:textColor="#333333"
             android:textSize="@dimen/sp24"
             android:textStyle="bold" />
 
@@ -70,7 +70,7 @@
             android:gravity="center"
             android:inputType="textCapCharacters"
             android:maxLength="1"
-            android:textColor="@color/text_primary"
+            android:textColor="#333333"
             android:textSize="@dimen/sp24"
             android:textStyle="bold" />
 
@@ -83,17 +83,26 @@
             android:gravity="center"
             android:inputType="textCapCharacters"
             android:maxLength="1"
-            android:textColor="@color/text_primary"
+            android:textColor="#333333"
             android:textSize="@dimen/sp24"
             android:textStyle="bold" />
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/layoutKeyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp12"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/btnDownload"
         android:layout_width="200dp"
         android:layout_height="44dp"
-        android:layout_marginTop="@dimen/dp40"
+        android:layout_marginTop="@dimen/dp20"
         android:background="@drawable/bg_button_green"
         android:gravity="center"
         android:text="立即下载"
@@ -107,14 +116,5 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
-
-    <LinearLayout
-        android:id="@+id/layoutKeyboard"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/dp20"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:visibility="gone" />
 
 </LinearLayout>
