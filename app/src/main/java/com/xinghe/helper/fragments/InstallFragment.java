@@ -430,7 +430,6 @@ public class InstallFragment extends Fragment {
             index = getLastFilledCodeIndex();
         }
         if (index < 0) {
-            // 已经全部清空，收起键盘
             if (keyboardVisible) {
                 hideCustomKeyboardWithAnimation();
             }
@@ -444,8 +443,13 @@ public class InstallFragment extends Fragment {
             updateCodeBoxBackgrounds();
             updateDownloadButton(true);
 
-            if (getCurrentCode().length() == 0 && keyboardVisible) {
-                hideCustomKeyboardWithAnimation();
+            if (getCurrentCode().length() == 0) {
+                if (keyboardVisible) {
+                    hideCustomKeyboardWithAnimation();
+                }
+                if (codeViews != null && codeViews.length > 0) {
+                    codeViews[0].requestFocus();
+                }
             }
             return;
         }
@@ -457,12 +461,20 @@ public class InstallFragment extends Fragment {
             updateCodeBoxBackgrounds();
             updateDownloadButton(true);
 
-            if (getCurrentCode().length() == 0 && keyboardVisible) {
-                hideCustomKeyboardWithAnimation();
+            if (getCurrentCode().length() == 0) {
+                if (keyboardVisible) {
+                    hideCustomKeyboardWithAnimation();
+                }
+                if (codeViews != null && codeViews.length > 0) {
+                    codeViews[0].requestFocus();
+                }
             }
         } else {
             if (keyboardVisible) {
                 hideCustomKeyboardWithAnimation();
+            }
+            if (codeViews != null && codeViews.length > 0) {
+                codeViews[0].requestFocus();
             }
         }
     }
@@ -477,6 +489,9 @@ public class InstallFragment extends Fragment {
         updateCodeCursor();
         updateCodeBoxBackgrounds();
         updateDownloadButton(true);
+        if (codeViews != null && codeViews.length > 0) {
+            codeViews[0].requestFocus();
+        }
     }
 
     private void updateCodeCursor() {
@@ -568,6 +583,21 @@ public class InstallFragment extends Fragment {
             builder.append(editText.getText().toString());
         }
         return builder.toString();
+    }
+
+    public boolean onBackPressed() {
+        if (keyboardVisible) {
+            hideCustomKeyboardWithAnimation();
+            if (codeViews != null && codeViews.length > 0) {
+                codeViews[0].requestFocus();
+            }
+            return true;
+        }
+        if (getCurrentCode().length() > 0) {
+            deletePreviousCode();
+            return true;
+        }
+        return false;
     }
 
     private void submitCode() {

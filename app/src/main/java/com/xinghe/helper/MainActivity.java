@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.xinghe.helper.activity.BasicTransNavActivity;
 import com.xinghe.helper.fragments.InstallFragment;
@@ -23,6 +24,9 @@ public class MainActivity extends BasicTransNavActivity {
     private Fragment remoteFragment;
     private Fragment managerFragment;
     private Fragment currentFragment;
+
+    private long lastBackPressTime = 0;
+    private static final long BACK_PRESS_INTERVAL = 2000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +89,25 @@ public class MainActivity extends BasicTransNavActivity {
         }
     }
 
+    @Override
+    public void onBackPressed() {
+        if (currentFragment instanceof InstallFragment) {
+            boolean handled = ((InstallFragment) currentFragment).onBackPressed();
+            if (handled) {
+                lastBackPressTime = 0;
+                return;
+            }
+        }
+
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastBackPressTime < BACK_PRESS_INTERVAL) {
+            super.onBackPressed();
+        } else {
+            lastBackPressTime = currentTime;
+            Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void switchFragment(Fragment fragment) {
         if (currentFragment == fragment) return;
 
@@ -94,6 +117,7 @@ public class MainActivity extends BasicTransNavActivity {
         }
         transaction.hide(currentFragment).show(fragment).commit();
         currentFragment = fragment;
+        lastBackPressTime = 0;
     }
 
     private void updateNav(int index) {

@@ -448,11 +448,15 @@ public class AppListFragment extends Fragment {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 true);
         downloadPopup.setOutsideTouchable(false);
-        downloadPopup.setFocusable(false);
+        downloadPopup.setFocusable(true);
 
         rootView.post(() -> {
-            if (downloadPopup != null && rootView != null) {
+            if (downloadPopup != null && rootView != null && downloadPopupView != null) {
                 downloadPopup.showAtLocation(rootView, Gravity.CENTER, 0, 0);
+                View btn = downloadPopupView.findViewById(R.id.btnBackground);
+                if (btn != null) {
+                    btn.requestFocus();
+                }
             }
         });
     }

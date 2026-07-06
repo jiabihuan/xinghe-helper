@@ -4,7 +4,10 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:padding="@dimen/dp8">
+    android:padding="@dimen/dp8"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:background="@drawable/selector_app_item">
 
     <FrameLayout
         android:layout_width="wrap_content"
