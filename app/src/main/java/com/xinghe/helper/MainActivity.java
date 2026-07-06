@@ -91,6 +91,12 @@ public class MainActivity extends BasicTransNavActivity {
 
     @Override
     public void onBackPressed() {
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            getSupportFragmentManager().popBackStack();
+            lastBackPressTime = 0;
+            return;
+        }
+
         if (currentFragment instanceof InstallFragment) {
             boolean handled = ((InstallFragment) currentFragment).onBackPressed();
             if (handled) {

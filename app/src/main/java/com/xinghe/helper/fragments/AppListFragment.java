@@ -309,6 +309,7 @@ public class AppListFragment extends Fragment {
         tab.setBackgroundResource(R.drawable.selector_category_tab);
         tab.setFocusable(true);
         tab.setFocusableInTouchMode(true);
+        tab.setClickable(true);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -316,11 +317,70 @@ public class AppListFragment extends Fragment {
         params.setMargins(0, 0, 16, 0);
         tab.setLayoutParams(params);
 
-        tab.setOnClickListener(v -> filterByCategory(index));
+        tab.setOnClickListener(v -> {
+            filterByCategory(index);
+            tab.requestFocus();
+        });
+
+        tab.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    filterByCategory(index);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    int nextIndex = index + 1;
+                    if (nextIndex < categoryTabs.getChildCount()) {
+                        View nextTab = categoryTabs.getChildAt(nextIndex);
+                        if (nextTab != null) {
+                            nextTab.requestFocus();
+                            categoryScroll.smoothScrollBy(nextTab.getLeft() - categoryScroll.getScrollX(), 0);
+                            return true;
+                        }
+                    }
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    int prevIndex = index - 1;
+                    if (prevIndex >= 0) {
+                        View prevTab = categoryTabs.getChildAt(prevIndex);
+                        if (prevTab != null) {
+                            prevTab.requestFocus();
+                            categoryScroll.smoothScrollBy(prevTab.getLeft() - categoryScroll.getScrollX(), 0);
+                            return true;
+                        }
+                    }
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (appRecyclerView != null && adapter != null && adapter.getItemCount() > 0) {
+                        appRecyclerView.requestFocus();
+                        return true;
+                    }
+                    if (btnDownload != null) {
+                        btnDownload.requestFocus();
+                        return true;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        });
 
         tab.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 tab.setTextColor(getResources().getColor(R.color.white));
+                v.post(() -> {
+                    int scrollX = categoryScroll.getScrollX();
+                    int tabLeft = v.getLeft();
+                    int tabRight = v.getRight();
+                    int visibleWidth = categoryScroll.getWidth();
+                    if (tabLeft < scrollX) {
+                        categoryScroll.scrollBy(tabLeft - scrollX - 20, 0);
+                    } else if (tabRight > scrollX + visibleWidth) {
+                        categoryScroll.scrollBy(tabRight - scrollX - visibleWidth + 20, 0);
+                    }
+                });
             } else {
                 if (index == currentCategoryIndex) {
                     tab.setTextColor(getResources().getColor(R.color.white));
