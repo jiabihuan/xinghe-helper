@@ -14,6 +14,8 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -48,6 +50,7 @@ public class InstallFragment extends Fragment {
 
     private boolean changingText;
     private boolean keyboardVisible;
+    private boolean animatingKeyboard;
     private EditText[] codeViews;
     private int currentCodeIndex;
     private View keyboardFirstKey;
@@ -82,7 +85,11 @@ public class InstallFragment extends Fragment {
         initCustomKeyboard();
         updateCodeCursor();
         keyboardVisible = false;
+        animatingKeyboard = false;
+        updateDownloadButton(false);
+        updateCodeBoxBackgrounds();
 
+        // 默认让第一个输入框获得焦点但不弹出键盘，给用户提示感
         View firstCode = codeViews[0];
         firstCode.post(new Runnable() {
             @Override
@@ -149,12 +156,10 @@ public class InstallFragment extends Fragment {
             codeViews[i].setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
+                    updateCodeBoxBackgrounds();
                     if (hasFocus) {
                         currentCodeIndex = index;
                         ((EditText) v).selectAll();
-                        if (!keyboardVisible) {
-                            showCustomKeyboard();
-                        }
                     }
                 }
             });
@@ -163,7 +168,7 @@ public class InstallFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     currentCodeIndex = index;
-                    showCustomKeyboard();
+                    showCustomKeyboardWithAnimation();
                 }
             });
 
@@ -194,21 +199,29 @@ public class InstallFragment extends Fragment {
 
     private boolean handleKey(int index, int keyCode) {
         if (keyCode == 67) {
+            // 返回/退格键：删除当前或上一个输入框的内容
             if (codeViews[index].getText().length() > 0) {
                 codeViews[index].setText((CharSequence) null);
                 return true;
-            } else if (index <= 0) {
-                return false;
-            } else {
+            } else if (index > 0) {
                 codeViews[index - 1].requestFocus();
                 codeViews[index - 1].setText((CharSequence) null);
                 return true;
+            } else {
+                // 已经在第一个框且为空，如果键盘显示则收起键盘
+                if (keyboardVisible) {
+                    hideCustomKeyboardWithAnimation();
+                    return true;
+                }
+                return false;
             }
         } else if (keyCode == 23 || keyCode == 66) {
+            // OK/确定键：弹出键盘，或提交
             if (getCurrentCode().length() == 4) {
                 submitCode();
-            } else if (!keyboardVisible) {
-                showCustomKeyboard();
+            } else {
+                showCustomKeyboardWithAnimation();
+                focusKeyboard();
             }
             return true;
         }
@@ -349,7 +362,9 @@ public class InstallFragment extends Fragment {
             clearCode();
             keyView.requestFocus();
         } else if (KEY_ACTION_OK.equals(action)) {
-            submitCode();
+            if (getCurrentCode().length() == 4) {
+                submitCode();
+            }
         } else {
             inputCodeValue(keyView.getText().toString());
         }
@@ -378,31 +393,55 @@ public class InstallFragment extends Fragment {
         }
 
         updateCodeCursor();
-        updateDownloadButton();
+        updateCodeBoxBackgrounds();
+        updateDownloadButton(true);
         focusKeyboardOkIfCodeFull();
     }
 
     private void deletePreviousCode() {
         int index = getFocusedCodeIndex();
-        if (index < 0 && ((index = currentCodeIndex) >= 4 || codeViews[index].getText().length() == 0)) {
+        if (index < 0) {
+            index = currentCodeIndex;
+        }
+        if (index >= 4 || index < 0) {
             index = getLastFilledCodeIndex();
         }
-        if (index < 0) return;
+        if (index < 0) {
+            // 已经全部清空，收起键盘
+            if (keyboardVisible) {
+                hideCustomKeyboardWithAnimation();
+            }
+            return;
+        }
 
         if (codeViews[index].getText().length() > 0) {
             codeViews[index].setText((CharSequence) null);
             currentCodeIndex = index;
             updateCodeCursor();
-            updateDownloadButton();
+            updateCodeBoxBackgrounds();
+            updateDownloadButton(true);
+
+            if (getCurrentCode().length() == 0 && keyboardVisible) {
+                hideCustomKeyboardWithAnimation();
+            }
             return;
         }
 
         if (index > 0) {
             codeViews[index - 1].setText((CharSequence) null);
             currentCodeIndex = index - 1;
+            updateCodeCursor();
+            updateCodeBoxBackgrounds();
+            updateDownloadButton(true);
+
+            if (getCurrentCode().length() == 0 && keyboardVisible) {
+                hideCustomKeyboardWithAnimation();
+            }
+        } else {
+            if (keyboardVisible) {
+                hideCustomKeyboardWithAnimation();
+            }
         }
-        updateCodeCursor();
-        updateDownloadButton();
     }
 
     private void clearCode() {
@@ -413,7 +452,8 @@ public class InstallFragment extends Fragment {
         changingText = false;
         currentCodeIndex = 0;
         updateCodeCursor();
-        updateDownloadButton();
+        updateCodeBoxBackgrounds();
+        updateDownloadButton(true);
     }
 
     private void updateCodeCursor() {
@@ -430,10 +470,46 @@ public class InstallFragment extends Fragment {
         }
     }
 
-    private void updateDownloadButton() {
+    private void updateDownloadButton(boolean animate) {
         if (btnDownload == null) return;
         boolean full = getCurrentCode().length() == 4;
-        btnDownload.setVisibility(full ? View.VISIBLE : View.GONE);
+        if (full && btnDownload.getVisibility() != View.VISIBLE) {
+            btnDownload.setVisibility(View.VISIBLE);
+            if (animate) {
+                btnDownload.startAnimation(AnimationUtils.loadAnimation(getContext(), android.R.anim.fade_in));
+            }
+        } else if (!full && btnDownload.getVisibility() == View.VISIBLE) {
+            if (animate) {
+                Animation fadeOut = AnimationUtils.loadAnimation(getContext(), android.R.anim.fade_out);
+                fadeOut.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {}
+
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                        if (btnDownload != null) {
+                            btnDownload.setVisibility(View.INVISIBLE);
+                        }
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {}
+                });
+                btnDownload.startAnimation(fadeOut);
+            } else {
+                btnDownload.setVisibility(View.INVISIBLE);
+            }
+        }
+    }
+
+    private void updateCodeBoxBackgrounds() {
+        for (int i = 0; i < codeViews.length; i++) {
+            if (codeViews[i].hasFocus()) {
+                codeViews[i].setBackgroundResource(R.drawable.bg_code_digit_active);
+            } else {
+                codeViews[i].setBackgroundResource(R.drawable.bg_code_digit);
+            }
+        }
     }
 
     public void deleteCodeFromKeyboard() {
@@ -456,12 +532,10 @@ public class InstallFragment extends Fragment {
             return;
         }
 
-        updateDownloadButton();
+        updateDownloadButton(true);
 
         if (index < codeViews.length - 1) {
             codeViews[index + 1].requestFocus();
-        } else {
-            submitCode();
         }
     }
 
@@ -700,21 +774,51 @@ public class InstallFragment extends Fragment {
     }
 
     private boolean isCustomKeyboardVisible() {
-        return layoutKeyboard != null && layoutKeyboard.getVisibility() == 0;
+        return layoutKeyboard != null && layoutKeyboard.getVisibility() == View.VISIBLE;
     }
 
-    private void showCustomKeyboard() {
-        if (layoutKeyboard != null) {
-            layoutKeyboard.setVisibility(0);
-            keyboardVisible = true;
-        }
+    private void showCustomKeyboardWithAnimation() {
+        if (layoutKeyboard == null || keyboardVisible || animatingKeyboard) return;
+        animatingKeyboard = true;
+        layoutKeyboard.setVisibility(View.VISIBLE);
+        Animation anim = AnimationUtils.loadAnimation(getContext(), R.anim.slide_in_bottom);
+        anim.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {}
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                keyboardVisible = true;
+                animatingKeyboard = false;
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+        });
+        layoutKeyboard.startAnimation(anim);
     }
 
-    private void hideCustomKeyboard() {
-        if (layoutKeyboard != null) {
-            layoutKeyboard.setVisibility(8);
-            keyboardVisible = false;
-        }
+    private void hideCustomKeyboardWithAnimation() {
+        if (layoutKeyboard == null || !keyboardVisible || animatingKeyboard) return;
+        animatingKeyboard = true;
+        Animation anim = AnimationUtils.loadAnimation(getContext(), R.anim.slide_out_bottom);
+        anim.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {}
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                if (layoutKeyboard != null) {
+                    layoutKeyboard.setVisibility(View.GONE);
+                }
+                keyboardVisible = false;
+                animatingKeyboard = false;
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {}
+        });
+        layoutKeyboard.startAnimation(anim);
     }
 
     private void disableSystemKeyboard(EditText editText) {

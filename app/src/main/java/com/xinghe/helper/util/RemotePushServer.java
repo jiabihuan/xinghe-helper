@@ -136,18 +136,83 @@ public class RemotePushServer {
     }
 
     private String getLocalIpAddress() {
+        // 1. 优先从 WiFi 获取
         try {
             WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             if (wm != null) {
                 int ip = wm.getConnectionInfo().getIpAddress();
                 if (ip != 0) {
-                    return Formatter.formatIpAddress(ip);
+                    String wifiIp = Formatter.formatIpAddress(ip);
+                    if (!"0.0.0.0".equals(wifiIp) && !"127.0.0.1".equals(wifiIp)) {
+                        return wifiIp;
+                    }
                 }
             }
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (Exception e) {
-            return "0.0.0.0";
+        } catch (Exception ignored) {
         }
+
+        // 2. 遍历所有网络接口，找到内网 IPv4 地址（支持有线/无线/热点）
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface ni = interfaces.nextElement();
+                if (ni == null || ni.isLoopback() || !ni.isUp() || ni.isVirtual()) {
+                    continue;
+                }
+                String name = ni.getName().toLowerCase(Locale.US);
+                // 排除常见的虚拟/移动网络接口
+                if (name.contains("lo") || name.contains("dummy") || name.contains("p2p")
+                        || name.contains("tun") || name.contains("ppp") || name.contains("rmnet")) {
+                    continue;
+                }
+
+                java.util.Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr == null || addr.isLoopbackAddress() || addr.isLinkLocalAddress()) {
+                        continue;
+                    }
+                    String host = addr.getHostAddress();
+                    if (host == null) continue;
+                    // 只取 IPv4
+                    if (host.contains(":")) continue;
+                    // 优先返回内网地址
+                    if (isPrivateIpv4(host)) {
+                        return host;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 3. 兜底：localhost
+        try {
+            String localhost = InetAddress.getLocalHost().getHostAddress();
+            if (localhost != null && !localhost.startsWith("127.")) {
+                return localhost;
+            }
+        } catch (Exception ignored) {
+        }
+
+        return "0.0.0.0";
+    }
+
+    private boolean isPrivateIpv4(String ip) {
+        if (ip == null || ip.isEmpty()) return false;
+        String[] parts = ip.split("\\.");
+        if (parts.length != 4) return false;
+        try {
+            int a = Integer.parseInt(parts[0]);
+            int b = Integer.parseInt(parts[1]);
+            // 10.x.x.x
+            if (a == 10) return true;
+            // 172.16-31.x.x
+            if (a == 172 && b >= 16 && b <= 31) return true;
+            // 192.168.x.x
+            if (a == 192 && b == 168) return true;
+        } catch (NumberFormatException ignored) {
+        }
+        return false;
     }
 
     private void notifyServerStarted(final String url) {
