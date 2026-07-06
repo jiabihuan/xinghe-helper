@@ -41,7 +41,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp24"
+            android:textSize="@dimen/sp26"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
@@ -58,7 +58,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp24"
+            android:textSize="@dimen/sp26"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
@@ -75,7 +75,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp24"
+            android:textSize="@dimen/sp26"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
@@ -92,7 +92,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp24"
+            android:textSize="@dimen/sp26"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
