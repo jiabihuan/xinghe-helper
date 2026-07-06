@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:background="@drawable/bg_main_gradient">
+    android:background="@drawable/bg_main_gradient"
+    android:padding="16dp">
 
     <View
         android:layout_width="match_parent"
@@ -17,7 +18,7 @@
         android:layout_height="wrap_content"
         android:text="@string/password_title"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp24"
+        android:textSize="@dimen/sp18"
         android:textStyle="bold" />
 
     <LinearLayout
@@ -29,8 +30,8 @@
 
         <EditText
             android:id="@+id/etCode0"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
+            android:layout_width="@dimen/dp50"
+            android:layout_height="@dimen/dp50"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -38,16 +39,16 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp20"
+            android:textSize="@dimen/sp18"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode1"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp50"
+            android:layout_height="@dimen/dp50"
+            android:layout_marginStart="@dimen/dp8"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -55,16 +56,16 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp20"
+            android:textSize="@dimen/sp18"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode2"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp50"
+            android:layout_height="@dimen/dp50"
+            android:layout_marginStart="@dimen/dp8"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -72,16 +73,16 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp20"
+            android:textSize="@dimen/sp18"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode3"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp50"
+            android:layout_height="@dimen/dp50"
+            android:layout_marginStart="@dimen/dp8"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -89,7 +90,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp20"
+            android:textSize="@dimen/sp18"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:importantForAutofill="no" />
@@ -107,14 +108,14 @@
 
     <TextView
         android:id="@+id/btnDownload"
-        android:layout_width="200dp"
-        android:layout_height="44dp"
-        android:layout_marginTop="@dimen/dp20"
+        android:layout_width="160dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="@dimen/dp16"
         android:background="@drawable/selector_download"
         android:gravity="center"
         android:text="立即下载"
         android:textColor="#4CAF50"
-        android:textSize="@dimen/sp16"
+        android:textSize="@dimen/sp14"
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:visibility="invisible" />

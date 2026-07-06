@@ -263,9 +263,10 @@ public class InstallFragment extends Fragment {
         TextView backspaceBtn = createKeyboardKey(getString(R.string.password_key_backspace));
         TextView okBtn = createKeyboardKey(getString(R.string.password_key_ok));
 
+        int keySize = getResources().getDimensionPixelSize(R.dimen.dp60);
         LinearLayout.LayoutParams wideParams = new LinearLayout.LayoutParams(
-                getResources().getDimensionPixelSize(R.dimen.dp72),
-                getResources().getDimensionPixelSize(R.dimen.dp40));
+                keySize,
+                keySize);
         int keyMargin = dpToPx(4);
         wideParams.leftMargin = keyMargin;
         wideParams.rightMargin = keyMargin;
@@ -295,8 +296,8 @@ public class InstallFragment extends Fragment {
     private TextView createKeyboardKey(String label) {
         TextView keyView = new TextView(getContext());
         String action = getKeyboardAction(label);
-        int keyWidth = getResources().getDimensionPixelSize(R.dimen.dp40);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keyWidth, getResources().getDimensionPixelSize(R.dimen.dp40));
+        int keySize = getResources().getDimensionPixelSize(R.dimen.dp60);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keySize, keySize);
         int keyMargin = dpToPx(4);
         params.leftMargin = keyMargin;
         params.rightMargin = keyMargin;
@@ -309,7 +310,7 @@ public class InstallFragment extends Fragment {
         keyView.setSingleLine(true);
         keyView.setText(label);
         keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
-        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp14));
+        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp16));
         keyView.setTag(action);
 
         keyView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
