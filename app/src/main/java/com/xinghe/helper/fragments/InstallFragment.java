@@ -139,6 +139,7 @@ public class InstallFragment extends Fragment {
     @Override
     public void onDestroyView() {
         cancelRequest();
+        dismissDownloadPopup();
         mainHandler.removeCallbacksAndMessages(null);
         rootView = null;
         super.onDestroyView();
@@ -788,12 +789,6 @@ public class InstallFragment extends Fragment {
         downloadPopup = null;
         progressItemViews.clear();
         downloadsContainer = null;
-    }
-
-    @Override
-    public void onDestroyView() {
-        dismissDownloadPopup();
-        super.onDestroyView();
     }
 
     private List<PasswordApp> parsePasswordApps(JSONObject root) {
