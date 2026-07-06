@@ -616,11 +616,10 @@ public class InstallFragment extends Fragment {
                         JSONObject root = new JSONObject(response.toString());
                         List<PasswordApp> apps = parsePasswordApps(root);
                         if (apps != null && !apps.isEmpty()) {
-                            final PasswordApp app = apps.get(0);
                             mainHandler.post(new Runnable() {
                                 @Override
                                 public void run() {
-                                    downloadAndInstall(app);
+                                    openAppDetail(token);
                                 }
                             });
                         } else {
@@ -651,6 +650,18 @@ public class InstallFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void openAppDetail(String code) {
+        if (getActivity() == null) return;
+        AppDetailFragment detailFragment = AppDetailFragment.newInstance(code);
+        getActivity().getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                        android.R.anim.fade_in, android.R.anim.fade_out,
+                        android.R.anim.fade_in, android.R.anim.fade_out)
+                .replace(R.id.fragmentContainer, detailFragment)
+                .addToBackStack(null)
+                .commit();
     }
 
     private void downloadAndInstall(final PasswordApp app) {
