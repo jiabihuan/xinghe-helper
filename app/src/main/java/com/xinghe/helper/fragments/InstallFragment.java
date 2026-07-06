@@ -129,6 +129,21 @@ public class InstallFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        if (codeViews != null && codeViews.length > 0) {
+            mainHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (codeViews != null && codeViews[0] != null) {
+                        codeViews[0].requestFocus();
+                    }
+                }
+            }, 100);
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         cancelRequest();
         mainHandler.removeCallbacksAndMessages(null);
@@ -433,6 +448,7 @@ public class InstallFragment extends Fragment {
             if (keyboardVisible) {
                 hideCustomKeyboardWithAnimation();
             }
+            focusFirstCodeView();
             return;
         }
 
@@ -447,9 +463,7 @@ public class InstallFragment extends Fragment {
                 if (keyboardVisible) {
                     hideCustomKeyboardWithAnimation();
                 }
-                if (codeViews != null && codeViews.length > 0) {
-                    codeViews[0].requestFocus();
-                }
+                focusFirstCodeView();
             }
             return;
         }
@@ -465,17 +479,26 @@ public class InstallFragment extends Fragment {
                 if (keyboardVisible) {
                     hideCustomKeyboardWithAnimation();
                 }
-                if (codeViews != null && codeViews.length > 0) {
-                    codeViews[0].requestFocus();
-                }
+                focusFirstCodeView();
             }
         } else {
             if (keyboardVisible) {
                 hideCustomKeyboardWithAnimation();
             }
-            if (codeViews != null && codeViews.length > 0) {
-                codeViews[0].requestFocus();
-            }
+            focusFirstCodeView();
+        }
+    }
+
+    private void focusFirstCodeView() {
+        if (codeViews != null && codeViews.length > 0 && codeViews[0] != null) {
+            mainHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (codeViews != null && codeViews[0] != null) {
+                        codeViews[0].requestFocus();
+                    }
+                }
+            }, 50);
         }
     }
 
@@ -490,7 +513,14 @@ public class InstallFragment extends Fragment {
         updateCodeBoxBackgrounds();
         updateDownloadButton(true);
         if (codeViews != null && codeViews.length > 0) {
-            codeViews[0].requestFocus();
+            mainHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (codeViews != null && codeViews[0] != null) {
+                        codeViews[0].requestFocus();
+                    }
+                }
+            }, 50);
         }
     }
 
@@ -588,9 +618,7 @@ public class InstallFragment extends Fragment {
     public boolean onBackPressed() {
         if (keyboardVisible) {
             hideCustomKeyboardWithAnimation();
-            if (codeViews != null && codeViews.length > 0) {
-                codeViews[0].requestFocus();
-            }
+            focusFirstCodeView();
             return true;
         }
         if (getCurrentCode().length() > 0) {

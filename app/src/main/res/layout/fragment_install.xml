@@ -37,13 +37,16 @@
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
-            android:focusableInTouchMode="false"
+            android:focusableInTouchMode="true"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp32"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
+            android:nextFocusRight="@id/etCode1"
+            android:nextFocusLeft="@id/etCode0"
+            android:nextFocusDown="@id/btnDownload"
             android:importantForAutofill="no" />
 
         <EditText
@@ -54,13 +57,16 @@
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
-            android:focusableInTouchMode="false"
+            android:focusableInTouchMode="true"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp32"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
+            android:nextFocusRight="@id/etCode2"
+            android:nextFocusLeft="@id/etCode0"
+            android:nextFocusDown="@id/btnDownload"
             android:importantForAutofill="no" />
 
         <EditText
@@ -71,13 +77,16 @@
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
-            android:focusableInTouchMode="false"
+            android:focusableInTouchMode="true"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp32"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
+            android:nextFocusRight="@id/etCode3"
+            android:nextFocusLeft="@id/etCode1"
+            android:nextFocusDown="@id/btnDownload"
             android:importantForAutofill="no" />
 
         <EditText
@@ -88,13 +97,16 @@
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
-            android:focusableInTouchMode="false"
+            android:focusableInTouchMode="true"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp32"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
+            android:nextFocusRight="@id/etCode3"
+            android:nextFocusLeft="@id/etCode2"
+            android:nextFocusDown="@id/btnDownload"
             android:importantForAutofill="no" />
 
     </LinearLayout>
@@ -120,6 +132,7 @@
         android:textSize="@dimen/sp14"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:nextFocusUp="@id/etCode0"
         android:visibility="invisible" />
 
     <View

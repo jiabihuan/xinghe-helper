@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -272,6 +273,15 @@ public class AppListFragment extends Fragment {
         if (allApps.size() == 1) {
             btnDownload.setText("立即下载");
         }
+
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (btnBack != null) {
+                    btnBack.requestFocus();
+                }
+            }
+        }, 100);
     }
 
     private void setupCategoryTabs() {
@@ -450,13 +460,32 @@ public class AppListFragment extends Fragment {
         downloadPopup.setOutsideTouchable(false);
         downloadPopup.setFocusable(true);
 
+        downloadPopupView.setFocusableInTouchMode(true);
+        downloadPopupView.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
+                    dismissDownloadPopup();
+                    return true;
+                }
+                return false;
+            }
+        });
+
         rootView.post(() -> {
             if (downloadPopup != null && rootView != null && downloadPopupView != null) {
                 downloadPopup.showAtLocation(rootView, Gravity.CENTER, 0, 0);
-                View btn = downloadPopupView.findViewById(R.id.btnBackground);
-                if (btn != null) {
-                    btn.requestFocus();
-                }
+                mainHandler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (downloadPopupView != null) {
+                            View btn = downloadPopupView.findViewById(R.id.btnBackground);
+                            if (btn != null) {
+                                btn.requestFocus();
+                            }
+                        }
+                    }
+                }, 100);
             }
         });
     }
