@@ -138,12 +138,14 @@ public class AppListFragment extends Fragment {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
-                String urlStr = CoreData.HTTP_BASE_URL + "/api/codes/" + code;
-                URL url = new URL(urlStr);
+                JSONObject root = null;
+                
+                String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
+                URL url = new URL(multiUrl);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
 
                 int responseCode = conn.getResponseCode();
                 if (responseCode == 200) {
@@ -155,8 +157,34 @@ public class AppListFragment extends Fragment {
                         response.append(line);
                     }
                     reader.close();
+                    root = new JSONObject(response.toString());
+                }
+                conn.disconnect();
+                conn = null;
 
-                    JSONObject root = new JSONObject(response.toString());
+                if (root == null) {
+                    String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
+                    url = new URL(singleUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(conn.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        root = new JSONObject(response.toString());
+                    }
+                }
+
+                if (root != null) {
                     String type = root.optString("type", "single");
 
                     if ("single".equals(type)) {
@@ -186,7 +214,7 @@ public class AppListFragment extends Fragment {
                     mainHandler.post(this::setupUI);
                 } else {
                     mainHandler.post(() -> {
-                        Toast.makeText(getContext(), "加载失败", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "口令不存在", Toast.LENGTH_SHORT).show();
                         if (getActivity() != null) {
                             getActivity().onBackPressed();
                         }

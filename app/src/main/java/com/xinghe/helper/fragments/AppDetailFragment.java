@@ -117,12 +117,14 @@ public class AppDetailFragment extends Fragment {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
-                String urlStr = CoreData.HTTP_BASE_URL + "/api/codes/" + code;
-                URL url = new URL(urlStr);
+                JSONObject root = null;
+                
+                String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
+                URL url = new URL(multiUrl);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
 
                 int responseCode = conn.getResponseCode();
                 if (responseCode == 200) {
@@ -134,9 +136,45 @@ public class AppDetailFragment extends Fragment {
                         response.append(line);
                     }
                     reader.close();
+                    root = new JSONObject(response.toString());
+                }
+                conn.disconnect();
+                conn = null;
 
-                    JSONObject root = new JSONObject(response.toString());
-                    JSONObject appJson = root.optJSONObject("app");
+                if (root == null) {
+                    String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
+                    url = new URL(singleUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(conn.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        root = new JSONObject(response.toString());
+                    }
+                }
+
+                if (root != null) {
+                    JSONObject appJson = null;
+                    String type = root.optString("type", "single");
+                    if ("single".equals(type)) {
+                        appJson = root.optJSONObject("app");
+                    } else {
+                        JSONArray appsArray = root.optJSONArray("apps");
+                        if (appsArray != null && appsArray.length() > 0) {
+                            appJson = appsArray.getJSONObject(0);
+                        }
+                    }
+                    
                     if (appJson != null) {
                         app = new PasswordApp(
                                 appJson.optLong("id"),
@@ -169,7 +207,7 @@ public class AppDetailFragment extends Fragment {
                     }
                 } else {
                     mainHandler.post(() -> {
-                        Toast.makeText(getActivity(), "服务器错误: " + responseCode, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), "口令不存在", Toast.LENGTH_SHORT).show();
                         btnDownload.setEnabled(true);
                         btnDownload.setText("重试");
                     });

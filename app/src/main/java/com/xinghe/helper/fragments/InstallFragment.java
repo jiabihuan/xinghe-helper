@@ -595,12 +595,14 @@ public class InstallFragment extends Fragment {
             public void run() {
                 HttpURLConnection conn = null;
                 try {
-                    String urlStr = CoreData.HTTP_BASE_URL + "/api/codes/" + token;
-                    URL url = new URL(urlStr);
+                    JSONObject root = null;
+                    
+                    String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + token;
+                    URL url = new URL(multiUrl);
                     conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(15000);
-                    conn.setReadTimeout(15000);
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
 
                     int responseCode = conn.getResponseCode();
                     if (responseCode == 200) {
@@ -612,8 +614,34 @@ public class InstallFragment extends Fragment {
                             response.append(line);
                         }
                         reader.close();
+                        root = new JSONObject(response.toString());
+                    }
+                    conn.disconnect();
+                    conn = null;
 
-                        JSONObject root = new JSONObject(response.toString());
+                    if (root == null) {
+                        String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + token;
+                        url = new URL(singleUrl);
+                        conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("GET");
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(10000);
+
+                        responseCode = conn.getResponseCode();
+                        if (responseCode == 200) {
+                            BufferedReader reader = new BufferedReader(
+                                    new InputStreamReader(conn.getInputStream()));
+                            StringBuilder response = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                response.append(line);
+                            }
+                            reader.close();
+                            root = new JSONObject(response.toString());
+                        }
+                    }
+
+                    if (root != null) {
                         final List<PasswordApp> apps = parsePasswordApps(root);
                         if (apps != null && !apps.isEmpty()) {
                             mainHandler.post(new Runnable() {
@@ -626,7 +654,7 @@ public class InstallFragment extends Fragment {
                             showShortOnMain("未找到应用");
                         }
                     } else {
-                        showShortOnMain("验证失败");
+                        showShortOnMain("口令不存在，请检查后重试");
                     }
                 } catch (final Exception e) {
                     showShortOnMain("网络错误，请检查网络连接");
