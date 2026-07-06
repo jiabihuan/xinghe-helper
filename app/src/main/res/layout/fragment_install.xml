@@ -20,20 +20,11 @@
         android:textSize="@dimen/sp24"
         android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/tvSubtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp8"
-        android:text="输入口令后按OK键"
-        android:textColor="@color/home_text_hint"
-        android:textSize="@dimen/sp14" />
-
     <LinearLayout
         android:id="@+id/layoutPin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp20"
+        android:layout_marginTop="@dimen/dp12"
         android:orientation="horizontal">
 
         <EditText
@@ -42,11 +33,15 @@
             android:layout_height="@dimen/dp72"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp24"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:imeOptions="flagNoExtractUi"
+            android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode1"
@@ -55,11 +50,15 @@
             android:layout_marginStart="@dimen/dp12"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp24"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:imeOptions="flagNoExtractUi"
+            android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode2"
@@ -68,11 +67,15 @@
             android:layout_marginStart="@dimen/dp12"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp24"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:imeOptions="flagNoExtractUi"
+            android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode3"
@@ -81,11 +84,15 @@
             android:layout_marginStart="@dimen/dp12"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
             android:textSize="@dimen/sp24"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:imeOptions="flagNoExtractUi"
+            android:importantForAutofill="no" />
 
     </LinearLayout>
 
@@ -103,7 +110,7 @@
         android:layout_width="200dp"
         android:layout_height="44dp"
         android:layout_marginTop="@dimen/dp20"
-        android:background="@drawable/bg_button_green"
+        android:background="@drawable/selector_download"
         android:gravity="center"
         android:text="立即下载"
         android:textColor="#4CAF50"

@@ -10,7 +10,7 @@ public class CoreData {
     public static String EXTERNAL_FILE_PATH = null;
     public static String FILE_PATH = null;
     public static String FILE_UDP_ADDR = null;
-    public static String HTTP_BASE_URL = "http://172.245.61.121:3000";
+    public static String HTTP_BASE_URL = "http://172.245.61.121:8000";
     public static final int PROTOCOL_VER = 1;
     public static String externalFooter;
     public static String externalMarqueeInfo;

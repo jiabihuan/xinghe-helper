@@ -61,6 +61,21 @@ public class MainActivity extends BasicTransNavActivity {
             }
         });
 
+        View.OnFocusChangeListener navFocusListener = new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    if (v == navInstall) updateNav(0);
+                    else if (v == navRemote) updateNav(1);
+                    else if (v == navManager) updateNav(2);
+                }
+            }
+        };
+
+        navInstall.setOnFocusChangeListener(navFocusListener);
+        navRemote.setOnFocusChangeListener(navFocusListener);
+        navManager.setOnFocusChangeListener(navFocusListener);
+
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.fragmentContainer, installFragment)

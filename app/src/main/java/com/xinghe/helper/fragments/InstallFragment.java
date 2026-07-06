@@ -105,6 +105,17 @@ public class InstallFragment extends Fragment {
             }
         });
 
+        btnDownload.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    btnDownload.setTextColor(getResources().getColor(R.color.white));
+                } else {
+                    btnDownload.setTextColor(0xFF4CAF50);
+                }
+            }
+        });
+
         btnDownload.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -290,7 +301,7 @@ public class InstallFragment extends Fragment {
         params.leftMargin = keyMargin;
         params.rightMargin = keyMargin;
         keyView.setLayoutParams(params);
-        keyView.setBackgroundResource(R.drawable.bg_action_button);
+        keyView.setBackgroundResource(R.drawable.selector_key);
         keyView.setClickable(true);
         keyView.setFocusable(true);
         keyView.setFocusableInTouchMode(true);
@@ -300,6 +311,17 @@ public class InstallFragment extends Fragment {
         keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
         keyView.setTextSize(0, getResources().getDimension(R.dimen.sp14));
         keyView.setTag(action);
+
+        keyView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    keyView.setTextColor(getResources().getColor(R.color.accent));
+                } else {
+                    keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
+                }
+            }
+        });
 
         keyView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -570,10 +592,11 @@ public class InstallFragment extends Fragment {
         requestFuture = requestExecutor.submit(new Runnable() {
             @Override
             public void run() {
+                HttpURLConnection conn = null;
                 try {
-                    String urlStr = CoreData.HTTP_BASE_URL + "/api/code/" + token;
+                    String urlStr = CoreData.HTTP_BASE_URL + "/api/codes/" + token;
                     URL url = new URL(urlStr);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("GET");
                     conn.setConnectTimeout(15000);
                     conn.setReadTimeout(15000);
@@ -590,28 +613,40 @@ public class InstallFragment extends Fragment {
                         reader.close();
 
                         JSONObject root = new JSONObject(response.toString());
-                        if (root.optBoolean("success", false)) {
-                            List<PasswordApp> apps = parsePasswordApps(root);
-                            if (apps != null && !apps.isEmpty()) {
-                                final PasswordApp app = apps.get(0);
-                                mainHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        downloadAndInstall(app);
-                                    }
-                                });
-                            } else {
-                                showShortOnMain("未找到应用");
-                            }
+                        List<PasswordApp> apps = parsePasswordApps(root);
+                        if (apps != null && !apps.isEmpty()) {
+                            final PasswordApp app = apps.get(0);
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    downloadAndInstall(app);
+                                }
+                            });
                         } else {
-                            showShortOnMain(root.optString("message", "验证失败"));
+                            showShortOnMain(root.optString("detail", "未找到应用"));
                         }
                     } else {
-                        showShortOnMain("服务器错误: " + responseCode);
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(conn.getErrorStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        String errorMsg = "服务器错误: " + responseCode;
+                        try {
+                            JSONObject err = new JSONObject(response.toString());
+                            errorMsg = err.optString("detail", errorMsg);
+                        } catch (Exception ignored) {}
+                        showShortOnMain(errorMsg);
                     }
-                    conn.disconnect();
                 } catch (final Exception e) {
                     showShortOnMain("网络错误: " + e.getMessage());
+                } finally {
+                    if (conn != null) {
+                        conn.disconnect();
+                    }
                 }
             }
         });
@@ -679,39 +714,51 @@ public class InstallFragment extends Fragment {
         if (root == null) return Collections.emptyList();
 
         try {
-            JSONObject data = root.optJSONObject("data");
-            if (data == null) return Collections.emptyList();
-
-            JSONArray apps = data.optJSONArray("apps");
-            if (apps == null || apps.length() == 0) return Collections.emptyList();
-
+            String type = root.optString("type", "single");
             List<PasswordApp> result = new ArrayList<>();
-            for (int i = 0; i < apps.length(); i++) {
-                JSONObject item = apps.optJSONObject(i);
-                if (item != null) {
-                    PasswordApp app = new PasswordApp(
-                            item.optLong("app_id"),
-                            item.optString("name"),
-                            item.optString("package_name"),
-                            item.optString("version_name"),
-                            item.optLong("version_code"),
-                            item.optInt("min_android_api"),
-                            item.optString("download_url"),
-                            item.optString("md5"),
-                            item.optLong("size"),
-                            item.optString("icon_url"),
-                            item.optLong("icon_size"),
-                            item.optString("description"),
-                            item.optString("category"),
-                            (float) item.optDouble("rating")
-                    );
+
+            if ("merged".equals(type)) {
+                JSONArray apps = root.optJSONArray("apps");
+                if (apps == null || apps.length() == 0) return Collections.emptyList();
+                for (int i = 0; i < apps.length(); i++) {
+                    JSONObject item = apps.optJSONObject(i);
+                    PasswordApp app = parseAppItem(item);
+                    if (app != null) {
+                        result.add(app);
+                    }
+                }
+            } else {
+                JSONObject item = root.optJSONObject("app");
+                PasswordApp app = parseAppItem(item);
+                if (app != null) {
                     result.add(app);
                 }
             }
+
             return result;
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    private PasswordApp parseAppItem(JSONObject item) {
+        if (item == null) return null;
+        return new PasswordApp(
+                item.optLong("id"),
+                item.optString("name"),
+                item.optString("package_name"),
+                item.optString("version_name"),
+                item.optLong("version_code"),
+                21,
+                item.optString("download_url"),
+                "",
+                item.optLong("apk_size"),
+                item.optString("icon_url"),
+                0,
+                item.optString("description"),
+                "",
+                0.0f
+        );
     }
 
     private void cancelRequest() {
@@ -822,17 +869,19 @@ public class InstallFragment extends Fragment {
     }
 
     private void disableSystemKeyboard(EditText editText) {
-        editText.setRawInputType(1);
-        if (Build.VERSION.SDK_INT >= 21) {
-            editText.setShowSoftInputOnFocus(false);
-            return;
+        editText.setInputType(0);
+        editText.setRawInputType(0);
+        editText.setShowSoftInputOnFocus(false);
+        
+        if (Build.VERSION.SDK_INT >= 26) {
+            editText.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO);
         }
-        try {
-            java.lang.reflect.Method method = EditText.class.getMethod("setShowSoftInputOnFocus", Boolean.TYPE);
-            method.setAccessible(true);
-            method.invoke(editText, false);
-        } catch (Exception e) {
-            editText.setInputType(0);
-        }
+        
+        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                return true;
+            }
+        });
     }
 }
