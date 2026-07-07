@@ -39,6 +39,7 @@
                 android:textSize="@dimen/sp14"
                 android:background="@drawable/bg_action_button"
                 android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:clickable="true" />
 
             <TextView
@@ -52,6 +53,7 @@
                 android:textSize="@dimen/sp14"
                 android:background="@drawable/bg_action_button"
                 android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:clickable="true" />
 
         </LinearLayout>

@@ -163,27 +163,37 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
 
     @Override
     public void onOpenApp(InstalledApp app) {
-        if (getContext() == null) return;
-        Intent intent = getContext().getPackageManager().getLaunchIntentForPackage(app.getPackageName());
-        if (intent == null) {
-            ToastUtil.showShort(getContext(), "打开失败");
-            return;
+        Context context = getContext();
+        if (context == null || app == null) return;
+        try {
+            Intent intent = context.getPackageManager().getLaunchIntentForPackage(app.getPackageName());
+            if (intent == null) {
+                ToastUtil.showShort(context, "打开失败");
+                return;
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            ToastUtil.showShort(context, "打开失败");
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
     }
 
     @Override
     public void onUninstallApp(InstalledApp app) {
-        if (getContext() == null) return;
-        Uri packageUri = Uri.parse("package:" + app.getPackageName());
-        if (startIntent(new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri))) {
-            // do nothing
-        } else if (startIntent(new Intent(Intent.ACTION_DELETE, packageUri))) {
-            // do nothing
-        } else {
-            ToastUtil.showShort(getContext(), "请在设置中卸载");
-            openAppDetails(packageUri);
+        Context context = getContext();
+        if (context == null || app == null) return;
+        try {
+            Uri packageUri = Uri.parse("package:" + app.getPackageName());
+            if (startIntent(new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri))) {
+                // do nothing
+            } else if (startIntent(new Intent(Intent.ACTION_DELETE, packageUri))) {
+                // do nothing
+            } else {
+                ToastUtil.showShort(context, "请在设置中卸载");
+                openAppDetails(packageUri);
+            }
+        } catch (Exception e) {
+            ToastUtil.showShort(context, "卸载失败");
         }
     }
 

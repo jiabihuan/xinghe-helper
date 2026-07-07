@@ -258,9 +258,15 @@ public class InstallFragment extends Fragment {
     }
 
     private boolean handleKey(int index, int keyCode) {
-        if (keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_BACK || keyCode == 67) {
+        if (keyCode == KeyEvent.KEYCODE_DEL || keyCode == 67) {
             deletePreviousCode();
             return true;
+        } else if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (getCurrentCode().length() > 0) {
+                deletePreviousCode();
+                return true;
+            }
+            return false;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == 23 || keyCode == 66) {
             // OK/确定键：如果输入完成则提交，否则跳到键盘
             if (getCurrentCode().length() == 4) {
@@ -371,9 +377,15 @@ public class InstallFragment extends Fragment {
                 if (event.getAction() != 0) {
                     return false;
                 }
-                if (keyCode == 67 || keyCode == KeyEvent.KEYCODE_BACK) {
+                if (keyCode == 67) {
                     deleteCodeFromKeyboard();
                     return true;
+                } else if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    if (getCurrentCode().length() > 0) {
+                        deleteCodeFromKeyboard();
+                        return true;
+                    }
+                    return false;
                 } else if (keyCode == 23 || keyCode == 66 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                     v.performClick();
                     return true;

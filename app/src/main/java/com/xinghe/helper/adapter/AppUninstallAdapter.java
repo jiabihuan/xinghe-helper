@@ -102,6 +102,22 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
                     hideActions(holder);
                     return true;
                 }
+                if (keyCode == 23 || keyCode == 66 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    v.performClick();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    if (v == holder.btnUninstall) {
+                        holder.btnOpen.requestFocus();
+                        return true;
+                    }
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (v == holder.btnOpen) {
+                        holder.btnUninstall.requestFocus();
+                        return true;
+                    }
+                }
                 return false;
             }
         };
