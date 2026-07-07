@@ -1,6 +1,7 @@
 package com.xinghe.helper.fragments;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -882,14 +883,9 @@ public class InstallFragment extends Fragment {
 
     private void openAppList(String code) {
         if (getActivity() == null) return;
-        AppListFragment fragment = AppListFragment.newInstance(code);
-        getActivity().getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(
-                        android.R.anim.fade_in, android.R.anim.fade_out,
-                        android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.fragmentContainer, fragment)
-                .addToBackStack(null)
-                .commit();
+        Intent intent = new Intent(getActivity(), com.xinghe.helper.activity.AppListActivity.class);
+        intent.putExtra("code", code);
+        startActivity(intent);
     }
 
     private List<PasswordApp> parsePasswordApps(JSONObject root) {
