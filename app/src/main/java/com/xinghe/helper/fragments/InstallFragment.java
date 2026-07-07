@@ -259,25 +259,8 @@ public class InstallFragment extends Fragment {
 
     private boolean handleKey(int index, int keyCode) {
         if (keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_BACK || keyCode == 67) {
-            // 返回/退格键：删除当前或上一个输入框的内容
-            if (codeViews[index].getText().length() > 0) {
-                codeViews[index].setText((CharSequence) null);
-                currentCodeIndex = index;
-                updateCodeCursor();
-                updateCodeBoxBackgrounds();
-                updateDownloadButton(true);
-                return true;
-            } else if (index > 0) {
-                codeViews[index - 1].requestFocus();
-                codeViews[index - 1].setText((CharSequence) null);
-                currentCodeIndex = index - 1;
-                updateCodeCursor();
-                updateCodeBoxBackgrounds();
-                updateDownloadButton(true);
-                return true;
-            } else {
-                return false;
-            }
+            deletePreviousCode();
+            return true;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == 23 || keyCode == 66) {
             // OK/确定键：如果输入完成则提交，否则跳到键盘
             if (getCurrentCode().length() == 4) {
@@ -586,50 +569,19 @@ public class InstallFragment extends Fragment {
     }
 
     private void deletePreviousCode() {
-        int index = getFocusedCodeIndex();
-        if (index < 0) {
-            index = currentCodeIndex;
-        }
-        if (index >= 4 || index < 0) {
-            index = getLastFilledCodeIndex();
-        }
-        if (index < 0) {
+        int lastIndex = getLastFilledCodeIndex();
+        if (lastIndex < 0) {
             focusFirstCodeView();
             return;
         }
 
-        if (codeViews[index].getText().length() > 0) {
-            codeViews[index].setText((CharSequence) null);
-            currentCodeIndex = index;
-            updateCodeCursor();
-            updateCodeBoxBackgrounds();
-            updateDownloadButton(true);
+        codeViews[lastIndex].setText((CharSequence) null);
+        currentCodeIndex = lastIndex;
+        updateCodeCursor();
+        updateCodeBoxBackgrounds();
+        updateDownloadButton(true);
 
-            if (getCurrentCode().length() == 0) {
-                focusFirstCodeView();
-            }
-            return;
-        }
-
-        if (index > 0) {
-            codeViews[index - 1].setText((CharSequence) null);
-            currentCodeIndex = index - 1;
-            updateCodeCursor();
-            updateCodeBoxBackgrounds();
-            updateDownloadButton(true);
-
-            if (getCurrentCode().length() == 0) {
-                if (keyboardVisible) {
-                    hideCustomKeyboardWithAnimation();
-                }
-                focusFirstCodeView();
-            }
-        } else {
-            if (keyboardVisible) {
-                hideCustomKeyboardWithAnimation();
-            }
-            focusFirstCodeView();
-        }
+        codeViews[lastIndex].requestFocus();
     }
 
     private void focusFirstCodeView() {

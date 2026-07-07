@@ -48,6 +48,16 @@
                     android:focusable="false"
                     android:focusableInTouchMode="false" />
             </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/tvCodeInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="口令"
+                android:textColor="@color/home_text_hint"
+                android:textSize="13sp"
+                android:focusable="false"
+                android:layout_marginTop="6dp" />
         </LinearLayout>
 
         <TextView
@@ -64,12 +74,12 @@
             android:layout_marginTop="8dp" />
 
         <TextView
-            android:id="@+id/tvCodeInfo"
+            android:id="@+id/tvSelectedCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="口令"
+            android:text="已选 0 个"
             android:textColor="@color/home_text_hint"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:focusable="false"
             android:layout_marginTop="12dp" />
     </LinearLayout>
@@ -91,24 +101,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:gravity="center"
         android:paddingLeft="24dp"
         android:paddingRight="24dp"
         android:paddingTop="8dp"
         android:paddingBottom="20dp">
 
         <TextView
-            android:id="@+id/tvSelectedCount"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="已选 0 个"
-            android:textColor="@color/home_text_hint"
-            android:textSize="16sp" />
-
-        <TextView
             android:id="@+id/btnDownload"
-            android:layout_width="200dp"
+            android:layout_width="240dp"
             android:layout_height="52dp"
             android:background="@drawable/selector_download"
             android:gravity="center"
