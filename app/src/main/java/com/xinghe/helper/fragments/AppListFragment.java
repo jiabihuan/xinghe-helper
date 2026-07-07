@@ -512,6 +512,11 @@ public class AppListFragment extends Fragment {
             }
 
             @Override
+            public void onCancelled(int index) {
+                updateProgressItemCancelled(index);
+            }
+
+            @Override
             public void onAllComplete() {
                 mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000);
             }
@@ -538,18 +543,53 @@ public class AppListFragment extends Fragment {
         }
 
         for (int i = 0; i < apps.size(); i++) {
+            final int index = i;
             View itemView = LayoutInflater.from(getContext()).inflate(R.layout.item_download_big, downloadsContainer, false);
             TextView tvName = itemView.findViewById(R.id.tvAppName);
             TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
             TextView tvPercent = itemView.findViewById(R.id.tvPercent);
             ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
             TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+            final TextView btnCancel = itemView.findViewById(R.id.btnCancel);
 
             tvName.setText(apps.get(i).getName());
             tvSizeInfo.setText(formatSize(apps.get(i).getSize()));
             tvPercent.setText("0%");
             progressBar.setProgress(0);
             tvStatus.setText("等待中...");
+
+            btnCancel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DownloadManager dm = DownloadManager.getInstance();
+                    dm.cancelTask(index);
+                    btnCancel.setVisibility(View.GONE);
+                }
+            });
+
+            btnCancel.setOnKeyListener(new View.OnKeyListener() {
+                @Override
+                public boolean onKey(View v, int keyCode, KeyEvent event) {
+                    if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                            || keyCode == 23 || keyCode == 66) {
+                        v.performClick();
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            btnCancel.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (hasFocus) {
+                        btnCancel.setTextColor(0xFFFFFFFF);
+                    } else {
+                        btnCancel.setTextColor(0xFFFF6B6B);
+                    }
+                }
+            });
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -608,12 +648,16 @@ public class AppListFragment extends Fragment {
         ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
         TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
         TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        TextView btnCancel = itemView.findViewById(R.id.btnCancel);
 
         if (completed) {
             tvPercent.setText("100%");
             progressBar.setProgress(100);
             tvStatus.setText("下载完成");
             tvStatus.setTextColor(getResources().getColor(R.color.success));
+            if (btnCancel != null) {
+                btnCancel.setVisibility(View.GONE);
+            }
         } else {
             tvPercent.setText(percent + "%");
             progressBar.setProgress(percent);
@@ -633,8 +677,31 @@ public class AppListFragment extends Fragment {
         if (itemView == null) return;
 
         TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        TextView btnCancel = itemView.findViewById(R.id.btnCancel);
         tvStatus.setText(error);
         tvStatus.setTextColor(getResources().getColor(R.color.error));
+        if (btnCancel != null) {
+            btnCancel.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateProgressItemCancelled(int index) {
+        if (downloadsContainer == null) return;
+        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
+        View itemView = downloadsContainer.getChildAt(index);
+        if (itemView == null) return;
+
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        TextView btnCancel = itemView.findViewById(R.id.btnCancel);
+        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+        tvStatus.setText("已取消");
+        tvStatus.setTextColor(getResources().getColor(R.color.home_text_hint));
+        if (btnCancel != null) {
+            btnCancel.setVisibility(View.GONE);
+        }
+        if (progressBar != null) {
+            progressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xFF888888));
+        }
     }
 
     private void dismissDownloadPopup() {
