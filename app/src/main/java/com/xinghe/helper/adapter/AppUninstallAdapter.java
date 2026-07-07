@@ -19,7 +19,6 @@ import java.util.List;
 public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapter.AppViewHolder> {
 
     private final List<InstalledApp> apps = new ArrayList<>();
-    private int expandedPosition = -1;
     private final OnAppActionListener listener;
 
     public interface OnAppActionListener {
@@ -34,7 +33,6 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
     public void setApps(List<InstalledApp> items) {
         apps.clear();
         apps.addAll(items);
-        expandedPosition = -1;
         notifyDataSetChanged();
     }
 
@@ -48,82 +46,26 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
     @Override
     public void onBindViewHolder(final AppViewHolder holder, int position) {
         final InstalledApp app = apps.get(position);
-        final boolean expanded = position == expandedPosition;
 
         holder.ivIcon.setImageDrawable(app.getIcon());
         holder.tvName.setText(app.getAppName());
-        holder.layoutActions.setVisibility(expanded ? View.VISIBLE : View.GONE);
-
-        if (expanded) {
-            holder.btnOpen.post(new Runnable() {
-                @Override
-                public void run() {
-                    holder.btnOpen.requestFocus();
-                }
-            });
-        }
-
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showActions(holder.getAdapterPosition());
-            }
-        });
 
         holder.itemView.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() != 0) return false;
-                if (keyCode == 23 || keyCode == 66) {
-                    showActions(holder.getAdapterPosition());
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == 23 || keyCode == 66) {
+                    listener.onOpenApp(app);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    holder.btnOpen.requestFocus();
                     return true;
                 }
                 return false;
             }
         });
-
-        holder.layoutActions.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() != 0) return false;
-                if (keyCode == 4 || keyCode == 111) {
-                    hideActions(holder);
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        View.OnKeyListener actionKeyListener = new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() != 0) return false;
-                if (keyCode == 4 || keyCode == 111) {
-                    hideActions(holder);
-                    return true;
-                }
-                if (keyCode == 23 || keyCode == 66 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                    v.performClick();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    if (v == holder.btnUninstall) {
-                        holder.btnOpen.requestFocus();
-                        return true;
-                    }
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    if (v == holder.btnOpen) {
-                        holder.btnUninstall.requestFocus();
-                        return true;
-                    }
-                }
-                return false;
-            }
-        };
-
-        holder.btnOpen.setOnKeyListener(actionKeyListener);
-        holder.btnUninstall.setOnKeyListener(actionKeyListener);
 
         holder.btnOpen.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -139,35 +81,73 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             }
         });
 
-        View.OnFocusChangeListener focusChangeListener = new View.OnFocusChangeListener() {
+        holder.btnOpen.setOnKeyListener(new View.OnKeyListener() {
             @Override
-            public void onFocusChange(View view, boolean hasFocus) {
-                if (!hasFocus && !holder.btnOpen.isFocused() && !holder.btnUninstall.isFocused()) {
-                    hideActions(holder);
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == 23 || keyCode == 66) {
+                    v.performClick();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    holder.btnUninstall.requestFocus();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    holder.itemView.requestFocus();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    holder.itemView.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        holder.btnUninstall.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == 23 || keyCode == 66) {
+                    v.performClick();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    holder.btnOpen.requestFocus();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    holder.itemView.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        holder.btnOpen.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    holder.btnOpen.setTextColor(0xFFFFFFFF);
+                } else {
+                    holder.btnOpen.setTextColor(v.getResources().getColor(R.color.home_text_primary));
                 }
             }
-        };
+        });
 
-        holder.btnOpen.setOnFocusChangeListener(focusChangeListener);
-        holder.btnUninstall.setOnFocusChangeListener(focusChangeListener);
-    }
-
-    private void showActions(int position) {
-        if (position == -1) return;
-        int oldPosition = expandedPosition;
-        expandedPosition = position;
-        if (oldPosition != -1) {
-            notifyItemChanged(oldPosition);
-        }
-        notifyItemChanged(position);
-    }
-
-    private void hideActions(AppViewHolder holder) {
-        int position = holder.getAdapterPosition();
-        if (position == -1) return;
-        expandedPosition = -1;
-        holder.layoutActions.setVisibility(View.GONE);
-        holder.itemView.requestFocus();
+        holder.btnUninstall.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    holder.btnUninstall.setTextColor(0xFFFFFFFF);
+                } else {
+                    holder.btnUninstall.setTextColor(v.getResources().getColor(R.color.home_text_primary));
+                }
+            }
+        });
     }
 
     @Override

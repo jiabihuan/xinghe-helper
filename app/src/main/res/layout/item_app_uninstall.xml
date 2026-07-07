@@ -9,56 +9,13 @@
     android:focusableInTouchMode="true"
     android:background="@drawable/selector_app_item">
 
-    <FrameLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content">
-
-        <ImageView
-            android:id="@+id/ivIcon"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:scaleType="fitCenter" />
-
-        <LinearLayout
-            android:id="@+id/layoutActions"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="#80000000"
-            android:visibility="gone"
-            android:layout_gravity="center">
-
-            <TextView
-                android:id="@+id/btnOpen"
-                android:layout_width="80dp"
-                android:layout_height="28dp"
-                android:gravity="center"
-                android:text="打开"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:background="@drawable/bg_action_button"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true" />
-
-            <TextView
-                android:id="@+id/btnUninstall"
-                android:layout_width="80dp"
-                android:layout_height="28dp"
-                android:layout_marginTop="@dimen/dp4"
-                android:gravity="center"
-                android:text="卸载"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:background="@drawable/bg_action_button"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true" />
-
-        </LinearLayout>
-
-    </FrameLayout>
+    <ImageView
+        android:id="@+id/ivIcon"
+        android:layout_width="@dimen/dp72"
+        android:layout_height="@dimen/dp72"
+        android:scaleType="fitCenter"
+        android:focusable="false"
+        android:clickable="false" />
 
     <TextView
         android:id="@+id/tvName"
@@ -68,6 +25,47 @@
         android:maxLines="1"
         android:ellipsize="end"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp14" />
+        android:textSize="@dimen/sp14"
+        android:focusable="false"
+        android:clickable="false" />
+
+    <LinearLayout
+        android:id="@+id/layoutActions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="@dimen/dp6"
+        android:focusable="false"
+        android:clickable="false">
+
+        <TextView
+            android:id="@+id/btnOpen"
+            android:layout_width="60dp"
+            android:layout_height="26dp"
+            android:gravity="center"
+            android:text="打开"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp13"
+            android:background="@drawable/selector_action_button"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/btnUninstall"
+            android:layout_width="60dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="@dimen/dp6"
+            android:gravity="center"
+            android:text="卸载"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp13"
+            android:background="@drawable/selector_action_button"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:clickable="true" />
+
+    </LinearLayout>
 
 </LinearLayout>

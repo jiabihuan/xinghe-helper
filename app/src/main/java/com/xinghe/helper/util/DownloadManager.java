@@ -23,6 +23,7 @@ public class DownloadManager {
         void onProgress(int index, int percent, long downloaded, long total);
         void onComplete(int index, File apkFile);
         void onError(int index, String error);
+        void onCancelled(int index);
         void onAllComplete();
     }
 
@@ -33,8 +34,10 @@ public class DownloadManager {
         public long total;
         public boolean completed;
         public boolean error;
+        public boolean cancelled;
         public String errorMsg;
         public File apkFile;
+        public HttpURLConnection connection;
 
         public DownloadTask(PasswordApp app) {
             this.app = app;
@@ -43,6 +46,7 @@ public class DownloadManager {
             this.total = app.getSize();
             this.completed = false;
             this.error = false;
+            this.cancelled = false;
             this.errorMsg = "";
         }
     }
@@ -79,14 +83,23 @@ public class DownloadManager {
             try {
                 downloadFile(task, context, index);
             } catch (Exception e) {
-                task.error = true;
-                task.errorMsg = e.getMessage();
-                mainHandler.post(() -> {
-                    if (listener != null) {
-                        listener.onError(index, e.getMessage());
-                    }
-                    checkAllComplete();
-                });
+                if (task.cancelled) {
+                    mainHandler.post(() -> {
+                        if (listener != null) {
+                            listener.onCancelled(index);
+                        }
+                        checkAllComplete();
+                    });
+                } else {
+                    task.error = true;
+                    task.errorMsg = e.getMessage();
+                    mainHandler.post(() -> {
+                        if (listener != null) {
+                            listener.onError(index, e.getMessage());
+                        }
+                        checkAllComplete();
+                    });
+                }
             }
         });
     }
@@ -94,6 +107,26 @@ public class DownloadManager {
     public void addTasks(List<PasswordApp> apps, Context context) {
         for (PasswordApp app : apps) {
             addTask(app, context);
+        }
+    }
+
+    public void cancelTask(int index) {
+        if (index < 0 || index >= tasks.size()) return;
+        DownloadTask task = tasks.get(index);
+        if (task.completed || task.error || task.cancelled) return;
+        task.cancelled = true;
+        if (task.connection != null) {
+            try {
+                task.connection.disconnect();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+    }
+
+    public void cancelAllTasks() {
+        for (int i = 0; i < tasks.size(); i++) {
+            cancelTask(i);
         }
     }
 
@@ -106,6 +139,7 @@ public class DownloadManager {
 
         URL url = new URL(downloadUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        task.connection = conn;
         conn.setConnectTimeout(30000);
         conn.setReadTimeout(30000);
         conn.setRequestMethod("GET");
@@ -113,6 +147,11 @@ public class DownloadManager {
         int responseCode = conn.getResponseCode();
         if (responseCode != 200) {
             throw new Exception("服务器错误: " + responseCode);
+        }
+
+        if (task.cancelled) {
+            conn.disconnect();
+            throw new Exception("已取消");
         }
 
         int contentLength = conn.getContentLength();
@@ -134,6 +173,15 @@ public class DownloadManager {
         long totalRead = 0;
 
         while ((bytesRead = inputStream.read(buffer)) != -1) {
+            if (task.cancelled) {
+                outputStream.close();
+                inputStream.close();
+                conn.disconnect();
+                if (apkFile.exists()) {
+                    apkFile.delete();
+                }
+                throw new Exception("已取消");
+            }
             outputStream.write(buffer, 0, bytesRead);
             totalRead += bytesRead;
             task.downloaded = totalRead;
@@ -156,6 +204,14 @@ public class DownloadManager {
         outputStream.close();
         inputStream.close();
         conn.disconnect();
+        task.connection = null;
+
+        if (task.cancelled) {
+            if (apkFile.exists()) {
+                apkFile.delete();
+            }
+            throw new Exception("已取消");
+        }
 
         if (apkFile.exists() && apkFile.length() > 0) {
             task.completed = true;
@@ -177,7 +233,7 @@ public class DownloadManager {
     private void checkAllComplete() {
         boolean allDone = true;
         for (DownloadTask task : tasks) {
-            if (!task.completed && !task.error) {
+            if (!task.completed && !task.error && !task.cancelled) {
                 allDone = false;
                 break;
             }
