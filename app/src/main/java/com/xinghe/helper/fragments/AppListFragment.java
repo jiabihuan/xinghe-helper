@@ -397,8 +397,8 @@ public class AppListFragment extends Fragment {
                                 } else {
                                     appRecyclerView.scrollToPosition(0);
                                     appRecyclerView.post(() -> {
-                                        View v = lm.findViewByPosition(0);
-                                        if (v != null) v.requestFocus();
+                                        View child = lm.findViewByPosition(0);
+                                        if (child != null) child.requestFocus();
                                     });
                                 }
                             }
