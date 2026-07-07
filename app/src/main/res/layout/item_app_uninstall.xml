@@ -13,9 +13,7 @@
         android:id="@+id/ivIcon"
         android:layout_width="@dimen/dp72"
         android:layout_height="@dimen/dp72"
-        android:scaleType="fitCenter"
-        android:focusable="false"
-        android:clickable="false" />
+        android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/tvName"
@@ -25,47 +23,6 @@
         android:maxLines="1"
         android:ellipsize="end"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp14"
-        android:focusable="false"
-        android:clickable="false" />
-
-    <LinearLayout
-        android:id="@+id/layoutActions"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:layout_marginTop="@dimen/dp6"
-        android:focusable="false"
-        android:clickable="false">
-
-        <TextView
-            android:id="@+id/btnOpen"
-            android:layout_width="60dp"
-            android:layout_height="26dp"
-            android:gravity="center"
-            android:text="打开"
-            android:textColor="@color/home_text_primary"
-            android:textSize="@dimen/sp13"
-            android:background="@drawable/selector_action_button"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:clickable="true" />
-
-        <TextView
-            android:id="@+id/btnUninstall"
-            android:layout_width="60dp"
-            android:layout_height="26dp"
-            android:layout_marginStart="@dimen/dp6"
-            android:gravity="center"
-            android:text="卸载"
-            android:textColor="@color/home_text_primary"
-            android:textSize="@dimen/sp13"
-            android:background="@drawable/selector_action_button"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:clickable="true" />
-
-    </LinearLayout>
+        android:textSize="@dimen/sp14" />
 
 </LinearLayout>
