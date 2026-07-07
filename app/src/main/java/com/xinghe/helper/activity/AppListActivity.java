@@ -121,6 +121,7 @@ public class AppListActivity extends AppCompatActivity {
 
         GridLayoutManager layoutManager = new GridLayoutManager(this, 6);
         appRecyclerView.setLayoutManager(layoutManager);
+        appRecyclerView.setItemAnimator(null);
         int spacing = getResources().getDimensionPixelSize(R.dimen.dp8);
         appRecyclerView.addItemDecoration(new GridSpacingItemDecoration(6, spacing, true));
         adapter = new AppAdapter();

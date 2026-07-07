@@ -594,9 +594,6 @@ public class InstallFragment extends Fragment {
             index = getLastFilledCodeIndex();
         }
         if (index < 0) {
-            if (keyboardVisible) {
-                hideCustomKeyboardWithAnimation();
-            }
             focusFirstCodeView();
             return;
         }
@@ -609,9 +606,6 @@ public class InstallFragment extends Fragment {
             updateDownloadButton(true);
 
             if (getCurrentCode().length() == 0) {
-                if (keyboardVisible) {
-                    hideCustomKeyboardWithAnimation();
-                }
                 focusFirstCodeView();
             }
             return;
@@ -960,6 +954,10 @@ public class InstallFragment extends Fragment {
     }
 
     private void focusKeyboard() {
+        if (layoutKeyboard != null && layoutKeyboard.getVisibility() != View.VISIBLE) {
+            layoutKeyboard.setVisibility(View.VISIBLE);
+            keyboardVisible = true;
+        }
         if (keyboardFirstKey != null) {
             keyboardFirstKey.requestFocus();
         }
