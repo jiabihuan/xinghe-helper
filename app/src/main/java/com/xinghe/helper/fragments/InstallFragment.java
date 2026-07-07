@@ -138,6 +138,7 @@ public class InstallFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        setupNavFocusDown();
         if (codeViews != null && codeViews.length > 0) {
             mainHandler.postDelayed(new Runnable() {
                 @Override
@@ -147,6 +148,31 @@ public class InstallFragment extends Fragment {
                     }
                 }
             }, 100);
+        }
+    }
+
+    private void setupNavFocusDown() {
+        if (getActivity() == null || codeViews == null || codeViews.length == 0) return;
+        View navInstall = getActivity().findViewById(R.id.nav_install);
+        if (navInstall != null) {
+            navInstall.setNextFocusDownId(codeViews[0].getId());
+            navInstall.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (codeViews != null && codeViews[0] != null) {
+                        codeViews[0].requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+        View navRemote = getActivity().findViewById(R.id.nav_remote);
+        if (navRemote != null) {
+            navRemote.setNextFocusDownId(codeViews[0].getId());
+        }
+        View navManager = getActivity().findViewById(R.id.nav_manager);
+        if (navManager != null) {
+            navManager.setNextFocusDownId(codeViews[0].getId());
         }
     }
 
@@ -231,24 +257,27 @@ public class InstallFragment extends Fragment {
     }
 
     private boolean handleKey(int index, int keyCode) {
-        if (keyCode == 67) {
+        if (keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_BACK || keyCode == 67) {
             // 返回/退格键：删除当前或上一个输入框的内容
             if (codeViews[index].getText().length() > 0) {
                 codeViews[index].setText((CharSequence) null);
+                currentCodeIndex = index;
+                updateCodeCursor();
+                updateCodeBoxBackgrounds();
+                updateDownloadButton(true);
                 return true;
             } else if (index > 0) {
                 codeViews[index - 1].requestFocus();
                 codeViews[index - 1].setText((CharSequence) null);
+                currentCodeIndex = index - 1;
+                updateCodeCursor();
+                updateCodeBoxBackgrounds();
+                updateDownloadButton(true);
                 return true;
             } else {
-                // 已经在第一个框且为空，如果键盘显示则收起键盘
-                if (keyboardVisible) {
-                    hideCustomKeyboardWithAnimation();
-                    return true;
-                }
                 return false;
             }
-        } else if (keyCode == 23 || keyCode == 66) {
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == 23 || keyCode == 66) {
             // OK/确定键：如果输入完成则提交，否则跳到键盘
             if (getCurrentCode().length() == 4) {
                 submitCode();
@@ -256,6 +285,24 @@ public class InstallFragment extends Fragment {
                 focusKeyboard();
             }
             return true;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            // 下键：跳到键盘
+            focusKeyboard();
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            // 左键：左移一个输入框
+            if (index > 0) {
+                codeViews[index - 1].requestFocus();
+                return true;
+            }
+            return false;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            // 右键：右移一个输入框
+            if (index < 3) {
+                codeViews[index + 1].requestFocus();
+                return true;
+            }
+            return false;
         }
         return false;
     }
@@ -340,28 +387,103 @@ public class InstallFragment extends Fragment {
                 if (event.getAction() != 0) {
                     return false;
                 }
-                if (keyCode == 67) {
+                if (keyCode == 67 || keyCode == KeyEvent.KEYCODE_BACK) {
                     deleteCodeFromKeyboard();
                     return true;
-                } else if (keyCode == 23 || keyCode == 66) {
+                } else if (keyCode == 23 || keyCode == 66 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                     v.performClick();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    Object tag = v.getTag();
-                    if (KEY_ACTION_BACKSPACE.equals(tag) || isLastInRow(v)) {
-                        if (btnDownload != null && btnDownload.getVisibility() == View.VISIBLE) {
-                            btnDownload.requestFocus();
-                            return true;
+                    // 下键：如果是第二行最后（退格）且有下载按钮，跳到下载按钮；否则计算下一行同列
+                    ViewParent parent = v.getParent();
+                    if (parent instanceof LinearLayout) {
+                        LinearLayout row = (LinearLayout) parent;
+                        int idx = row.indexOfChild(v);
+                        ViewParent gp = row.getParent();
+                        if (gp instanceof LinearLayout) {
+                            LinearLayout keyboard = (LinearLayout) gp;
+                            int rowIdx = keyboard.indexOfChild(row);
+                            if (rowIdx < keyboard.getChildCount() - 1) {
+                                // 还有下一行
+                                LinearLayout nextRow = (LinearLayout) keyboard.getChildAt(rowIdx + 1);
+                                if (idx < nextRow.getChildCount()) {
+                                    View nextKey = nextRow.getChildAt(idx);
+                                    if (nextKey != null) {
+                                        nextKey.requestFocus();
+                                        return true;
+                                    }
+                                }
+                                // 列数不够，跳到最后一个
+                                if (nextRow.getChildCount() > 0) {
+                                    nextRow.getChildAt(nextRow.getChildCount() - 1).requestFocus();
+                                    return true;
+                                }
+                            } else {
+                                // 最后一行，检查是否跳到下载按钮
+                                if (btnDownload != null && btnDownload.getVisibility() == View.VISIBLE) {
+                                    btnDownload.requestFocus();
+                                    return true;
+                                }
+                            }
                         }
                     }
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    Object tag = v.getTag();
-                    if (isFirstInRow(v)) {
-                        if (codeViews != null && codeViews.length > 0) {
-                            int focused = getFocusedCodeIndex();
-                            if (focused < 0) focused = 0;
-                            codeViews[focused].requestFocus();
+                    // 上键：第一行跳到对应的输入框，否则跳到上一行同列
+                    ViewParent parent = v.getParent();
+                    if (parent instanceof LinearLayout) {
+                        LinearLayout row = (LinearLayout) parent;
+                        int idx = row.indexOfChild(v);
+                        ViewParent gp = row.getParent();
+                        if (gp instanceof LinearLayout) {
+                            LinearLayout keyboard = (LinearLayout) gp;
+                            int rowIdx = keyboard.indexOfChild(row);
+                            if (rowIdx > 0) {
+                                // 上一行
+                                LinearLayout prevRow = (LinearLayout) keyboard.getChildAt(rowIdx - 1);
+                                if (idx < prevRow.getChildCount()) {
+                                    View prevKey = prevRow.getChildAt(idx);
+                                    if (prevKey != null) {
+                                        prevKey.requestFocus();
+                                        return true;
+                                    }
+                                }
+                                if (prevRow.getChildCount() > 0) {
+                                    prevRow.getChildAt(prevRow.getChildCount() - 1).requestFocus();
+                                    return true;
+                                }
+                            } else {
+                                // 第一行，跳到对应的输入框
+                                if (codeViews != null && codeViews.length > 0) {
+                                    int codeIdx = Math.min(idx, codeViews.length - 1);
+                                    if (codeIdx < 0) codeIdx = 0;
+                                    codeViews[codeIdx].requestFocus();
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    // 左键：上一个按键
+                    ViewParent parent = v.getParent();
+                    if (parent instanceof LinearLayout) {
+                        LinearLayout row = (LinearLayout) parent;
+                        int idx = row.indexOfChild(v);
+                        if (idx > 0) {
+                            row.getChildAt(idx - 1).requestFocus();
+                            return true;
+                        }
+                    }
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    // 右键：下一个按键
+                    ViewParent parent = v.getParent();
+                    if (parent instanceof LinearLayout) {
+                        LinearLayout row = (LinearLayout) parent;
+                        int idx = row.indexOfChild(v);
+                        if (idx < row.getChildCount() - 1) {
+                            row.getChildAt(idx + 1).requestFocus();
                             return true;
                         }
                     }
@@ -642,11 +764,6 @@ public class InstallFragment extends Fragment {
     }
 
     public boolean onBackPressed() {
-        if (keyboardVisible) {
-            hideCustomKeyboardWithAnimation();
-            focusFirstCodeView();
-            return true;
-        }
         if (getCurrentCode().length() > 0) {
             deletePreviousCode();
             return true;
