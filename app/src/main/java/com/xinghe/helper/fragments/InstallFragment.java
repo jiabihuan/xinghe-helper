@@ -14,6 +14,7 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.EditText;
@@ -84,7 +85,7 @@ public class InstallFragment extends Fragment {
         initCodeInputs();
         initCustomKeyboard();
         updateCodeCursor();
-        keyboardVisible = false;
+        keyboardVisible = true;
         animatingKeyboard = false;
         updateDownloadButton(false);
         updateCodeBoxBackgrounds();
@@ -119,9 +120,15 @@ public class InstallFragment extends Fragment {
         btnDownload.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() == 0 && (keyCode == 23 || keyCode == 66)) {
-                    submitCode();
-                    return true;
+                if (event.getAction() == 0) {
+                    if (keyCode == 23 || keyCode == 66) {
+                        submitCode();
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        focusLastKeyOfKeyboard();
+                        return true;
+                    }
                 }
                 return false;
             }
@@ -242,11 +249,10 @@ public class InstallFragment extends Fragment {
                 return false;
             }
         } else if (keyCode == 23 || keyCode == 66) {
-            // OK/确定键：弹出键盘，或提交
+            // OK/确定键：如果输入完成则提交，否则跳到键盘
             if (getCurrentCode().length() == 4) {
                 submitCode();
             } else {
-                showCustomKeyboardWithAnimation();
                 focusKeyboard();
             }
             return true;
@@ -261,40 +267,14 @@ public class InstallFragment extends Fragment {
         keyboardOkKey = null;
         layoutKeyboard.removeAllViews();
 
-        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row1));
-        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row2));
-        addActionRow();
+        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row1), true);
+        addKeyboardRow(getResources().getStringArray(R.array.password_keyboard_row2), false);
     }
 
     private void addActionRow() {
-        LinearLayout row = new LinearLayout(getContext());
-        row.setGravity(17);
-        row.setOrientation(0);
-        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-2, -2);
-        rowParams.topMargin = getResources().getDimensionPixelSize(R.dimen.dp8);
-        layoutKeyboard.addView(row, rowParams);
-
-        TextView clearBtn = createKeyboardKey(getString(R.string.password_key_clear));
-        TextView backspaceBtn = createKeyboardKey(getString(R.string.password_key_backspace));
-        TextView okBtn = createKeyboardKey(getString(R.string.password_key_ok));
-
-        int keySize = getResources().getDimensionPixelSize(R.dimen.dp48);
-        LinearLayout.LayoutParams wideParams = new LinearLayout.LayoutParams(
-                keySize,
-                keySize);
-        int keyMargin = dpToPx(4);
-        wideParams.leftMargin = keyMargin;
-        wideParams.rightMargin = keyMargin;
-        clearBtn.setLayoutParams(wideParams);
-        backspaceBtn.setLayoutParams(wideParams);
-        okBtn.setLayoutParams(wideParams);
-
-        row.addView(clearBtn);
-        row.addView(backspaceBtn);
-        row.addView(okBtn);
     }
 
-    private void addKeyboardRow(String[] labels) {
+    private void addKeyboardRow(String[] labels, boolean isFirstRow) {
         LinearLayout row = new LinearLayout(getContext());
         row.setGravity(17);
         row.setOrientation(0);
@@ -303,17 +283,25 @@ public class InstallFragment extends Fragment {
         layoutKeyboard.addView(row, rowParams);
 
         for (String label : labels) {
-            TextView keyView = createKeyboardKey(label);
+            TextView keyView = createKeyboardKey(label, false);
             row.addView(keyView);
+        }
+
+        if (isFirstRow) {
+            TextView clearBtn = createKeyboardKey(getString(R.string.password_key_clear), true);
+            row.addView(clearBtn);
+        } else {
+            TextView backspaceBtn = createKeyboardKey(getString(R.string.password_key_backspace), true);
+            row.addView(backspaceBtn);
         }
     }
 
-    private TextView createKeyboardKey(String label) {
+    private TextView createKeyboardKey(String label, boolean isAction) {
         TextView keyView = new TextView(getContext());
         String action = getKeyboardAction(label);
-        int keySize = getResources().getDimensionPixelSize(R.dimen.dp36);
+        int keySize = getResources().getDimensionPixelSize(R.dimen.dp54);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(keySize, keySize);
-        int keyMargin = dpToPx(4);
+        int keyMargin = dpToPx(6);
         params.leftMargin = keyMargin;
         params.rightMargin = keyMargin;
         keyView.setLayoutParams(params);
@@ -325,7 +313,7 @@ public class InstallFragment extends Fragment {
         keyView.setSingleLine(true);
         keyView.setText(label);
         keyView.setTextColor(getResources().getColor(R.color.home_text_primary));
-        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp14));
+        keyView.setTextSize(0, getResources().getDimension(R.dimen.sp18));
         keyView.setTag(action);
 
         keyView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -358,6 +346,26 @@ public class InstallFragment extends Fragment {
                 } else if (keyCode == 23 || keyCode == 66) {
                     v.performClick();
                     return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    Object tag = v.getTag();
+                    if (KEY_ACTION_BACKSPACE.equals(tag) || isLastInRow(v)) {
+                        if (btnDownload != null && btnDownload.getVisibility() == View.VISIBLE) {
+                            btnDownload.requestFocus();
+                            return true;
+                        }
+                    }
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    Object tag = v.getTag();
+                    if (isFirstInRow(v)) {
+                        if (codeViews != null && codeViews.length > 0) {
+                            int focused = getFocusedCodeIndex();
+                            if (focused < 0) focused = 0;
+                            codeViews[focused].requestFocus();
+                            return true;
+                        }
+                    }
+                    return true;
                 }
                 return false;
             }
@@ -375,6 +383,24 @@ public class InstallFragment extends Fragment {
 
     private int dpToPx(int value) {
         return Math.round(TypedValue.applyDimension(1, value, getResources().getDisplayMetrics()));
+    }
+
+    private boolean isFirstInRow(View v) {
+        ViewParent parent = v.getParent();
+        if (parent instanceof LinearLayout) {
+            LinearLayout row = (LinearLayout) parent;
+            return row.indexOfChild(v) == 0;
+        }
+        return false;
+    }
+
+    private boolean isLastInRow(View v) {
+        ViewParent parent = v.getParent();
+        if (parent instanceof LinearLayout) {
+            LinearLayout row = (LinearLayout) parent;
+            return row.indexOfChild(v) == row.getChildCount() - 1;
+        }
+        return false;
     }
 
     private String getKeyboardAction(String label) {
@@ -826,9 +852,23 @@ public class InstallFragment extends Fragment {
         }
     }
 
+    private void focusLastKeyOfKeyboard() {
+        if (layoutKeyboard == null || layoutKeyboard.getChildCount() < 2) return;
+        View lastRow = layoutKeyboard.getChildAt(layoutKeyboard.getChildCount() - 1);
+        if (lastRow instanceof LinearLayout) {
+            LinearLayout row = (LinearLayout) lastRow;
+            if (row.getChildCount() > 0) {
+                View lastKey = row.getChildAt(row.getChildCount() - 1);
+                if (lastKey != null) {
+                    lastKey.requestFocus();
+                }
+            }
+        }
+    }
+
     private void focusKeyboardOkIfCodeFull() {
-        if (getFirstEmptyCodeIndex() < 0 && keyboardOkKey != null) {
-            keyboardOkKey.requestFocus();
+        if (getFirstEmptyCodeIndex() < 0 && btnDownload != null && btnDownload.getVisibility() == View.VISIBLE) {
+            btnDownload.requestFocus();
         }
     }
 

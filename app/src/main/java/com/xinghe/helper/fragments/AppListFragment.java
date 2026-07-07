@@ -1,14 +1,18 @@
 package com.xinghe.helper.fragments;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -29,6 +33,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -37,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -62,6 +68,7 @@ public class AppListFragment extends Fragment {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private AppAdapter adapter;
+    private final ConcurrentHashMap<String, Bitmap> iconCache = new ConcurrentHashMap<>();
 
     private View downloadPopupView;
     private LinearLayout downloadsContainer;
@@ -117,6 +124,30 @@ public class AppListFragment extends Fragment {
             } else {
                 btnDownload.setTextColor(0xFF4CAF50);
             }
+        });
+
+        btnDownload.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    if (appRecyclerView != null && adapter != null && adapter.getItemCount() > 0) {
+                        GridLayoutManager lm = (GridLayoutManager) appRecyclerView.getLayoutManager();
+                        if (lm != null) {
+                            int lastPos = adapter.getItemCount() - 1;
+                            appRecyclerView.scrollToPosition(lastPos);
+                            appRecyclerView.post(() -> {
+                                View lastView = lm.findViewByPosition(lastPos);
+                                if (lastView != null) lastView.requestFocus();
+                            });
+                        }
+                    }
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    v.performClick();
+                    return true;
+                }
+            }
+            return false;
         });
 
         GridLayoutManager layoutManager = new GridLayoutManager(getContext(), 6);
@@ -357,7 +388,21 @@ public class AppListFragment extends Fragment {
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                     if (appRecyclerView != null && adapter != null && adapter.getItemCount() > 0) {
-                        appRecyclerView.requestFocus();
+                        mainHandler.postDelayed(() -> {
+                            GridLayoutManager lm = (GridLayoutManager) appRecyclerView.getLayoutManager();
+                            if (lm != null) {
+                                View firstChild = lm.findViewByPosition(0);
+                                if (firstChild != null) {
+                                    firstChild.requestFocus();
+                                } else {
+                                    appRecyclerView.scrollToPosition(0);
+                                    appRecyclerView.post(() -> {
+                                        View v = lm.findViewByPosition(0);
+                                        if (v != null) v.requestFocus();
+                                    });
+                                }
+                            }
+                        }, 20);
                         return true;
                     }
                     if (btnDownload != null) {
@@ -626,6 +671,8 @@ public class AppListFragment extends Fragment {
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_app_grid_select, parent, false);
+            view.setFocusable(true);
+            view.setFocusableInTouchMode(true);
             return new ViewHolder(view);
         }
 
@@ -637,7 +684,13 @@ public class AppListFragment extends Fragment {
 
             boolean isSelected = selectedAppIds.contains(app.getAppId());
             holder.tvCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
-            holder.tvCheck.setSelected(isSelected);
+
+            String iconUrl = app.getIconUrl();
+            if (iconUrl != null && iconUrl.length() > 0) {
+                loadIcon(iconUrl, holder.ivIcon);
+            } else {
+                holder.ivIcon.setImageResource(android.R.color.transparent);
+            }
 
             holder.itemView.setOnClickListener(v -> {
                 long appId = app.getAppId();
@@ -663,8 +716,122 @@ public class AppListFragment extends Fragment {
                         notifyItemChanged(holder.getAdapterPosition());
                         return true;
                     }
+
+                    int pos = holder.getAdapterPosition();
+                    GridLayoutManager lm = (GridLayoutManager) appRecyclerView.getLayoutManager();
+                    if (lm == null) return false;
+                    int span = lm.getSpanCount();
+
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (pos < getItemCount() - 1 && (pos + 1) % span != 0) {
+                            View next = lm.findViewByPosition(pos + 1);
+                            if (next != null) {
+                                next.requestFocus();
+                                return true;
+                            }
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (pos > 0 && pos % span != 0) {
+                            View prev = lm.findViewByPosition(pos - 1);
+                            if (prev != null) {
+                                prev.requestFocus();
+                                return true;
+                            }
+                        }
+                        if (pos < span) {
+                            if (categoryTabs != null && categoryTabs.getChildCount() > 0
+                                    && currentCategoryIndex < categoryTabs.getChildCount()) {
+                                View tab = categoryTabs.getChildAt(currentCategoryIndex);
+                                if (tab != null) {
+                                    tab.requestFocus();
+                                    return true;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (pos >= span) {
+                            View above = lm.findViewByPosition(pos - span);
+                            if (above != null) {
+                                above.requestFocus();
+                                return true;
+                            }
+                        } else {
+                            if (categoryTabs != null && categoryTabs.getChildCount() > 0
+                                    && currentCategoryIndex < categoryTabs.getChildCount()) {
+                                View tab = categoryTabs.getChildAt(currentCategoryIndex);
+                                if (tab != null) {
+                                    tab.requestFocus();
+                                    return true;
+                                }
+                            }
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        int nextPos = pos + span;
+                        if (nextPos < getItemCount()) {
+                            View below = lm.findViewByPosition(nextPos);
+                            if (below != null) {
+                                below.requestFocus();
+                                appRecyclerView.smoothScrollToPosition(nextPos);
+                                return true;
+                            }
+                        } else {
+                            if (btnDownload != null && btnDownload.isEnabled()) {
+                                btnDownload.requestFocus();
+                                return true;
+                            }
+                        }
+                        return true;
+                    }
                 }
                 return false;
+            });
+        }
+
+        private void loadIcon(String url, ImageView imageView) {
+            if (url == null || url.length() == 0) return;
+            Bitmap cached = iconCache.get(url);
+            if (cached != null) {
+                imageView.setImageBitmap(cached);
+                return;
+            }
+            imageView.setTag(url);
+            executor.submit(() -> {
+                HttpURLConnection conn = null;
+                try {
+                    String fullUrl = url;
+                    if (!url.startsWith("http")) {
+                        fullUrl = CoreData.HTTP_BASE_URL + url;
+                    }
+                    URL u = new URL(fullUrl);
+                    conn = (HttpURLConnection) u.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
+                    if (conn.getResponseCode() == 200) {
+                        InputStream is = conn.getInputStream();
+                        Bitmap bmp = BitmapFactory.decodeStream(is);
+                        is.close();
+                        if (bmp != null) {
+                            iconCache.put(url, bmp);
+                            mainHandler.post(() -> {
+                                Object tag = imageView.getTag();
+                                if (tag != null && tag.equals(url)) {
+                                    imageView.setImageBitmap(bmp);
+                                }
+                            });
+                        }
+                    }
+                } catch (Exception e) {
+                    // ignore
+                } finally {
+                    if (conn != null) conn.disconnect();
+                }
             });
         }
 
@@ -674,7 +841,7 @@ public class AppListFragment extends Fragment {
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            android.widget.ImageView ivIcon;
+            ImageView ivIcon;
             TextView tvName;
             TextView tvSize;
             TextView tvCheck;

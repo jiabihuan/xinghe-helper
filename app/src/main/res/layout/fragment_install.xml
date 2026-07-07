@@ -12,7 +12,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="0.6" />
 
     <TextView
         android:id="@+id/tvTitle"
@@ -20,20 +20,20 @@
         android:layout_height="wrap_content"
         android:text="@string/password_title"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp20"
+        android:textSize="@dimen/sp24"
         android:textStyle="bold" />
 
     <LinearLayout
         android:id="@+id/layoutPin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp12"
+        android:layout_marginTop="@dimen/dp20"
         android:orientation="horizontal">
 
         <EditText
             android:id="@+id/etCode0"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
+            android:layout_width="@dimen/dp108"
+            android:layout_height="@dimen/dp108"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -41,19 +41,19 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp32"
+            android:textSize="@dimen/sp40"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode1"
             android:nextFocusLeft="@id/etCode0"
-            android:nextFocusDown="@id/btnDownload"
+            android:nextFocusDown="@id/layoutKeyboard"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode1"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp108"
+            android:layout_height="@dimen/dp108"
+            android:layout_marginStart="@dimen/dp16"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -61,19 +61,19 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp32"
+            android:textSize="@dimen/sp40"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode2"
             android:nextFocusLeft="@id/etCode0"
-            android:nextFocusDown="@id/btnDownload"
+            android:nextFocusDown="@id/layoutKeyboard"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode2"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp108"
+            android:layout_height="@dimen/dp108"
+            android:layout_marginStart="@dimen/dp16"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -81,19 +81,19 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp32"
+            android:textSize="@dimen/sp40"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode3"
             android:nextFocusLeft="@id/etCode1"
-            android:nextFocusDown="@id/btnDownload"
+            android:nextFocusDown="@id/layoutKeyboard"
             android:importantForAutofill="no" />
 
         <EditText
             android:id="@+id/etCode3"
-            android:layout_width="@dimen/dp72"
-            android:layout_height="@dimen/dp72"
-            android:layout_marginStart="@dimen/dp12"
+            android:layout_width="@dimen/dp108"
+            android:layout_height="@dimen/dp108"
+            android:layout_marginStart="@dimen/dp16"
             android:background="@drawable/bg_code_digit"
             android:gravity="center"
             android:focusable="true"
@@ -101,12 +101,12 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp32"
+            android:textSize="@dimen/sp40"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode3"
             android:nextFocusLeft="@id/etCode2"
-            android:nextFocusDown="@id/btnDownload"
+            android:nextFocusDown="@id/layoutKeyboard"
             android:importantForAutofill="no" />
 
     </LinearLayout>
@@ -115,24 +115,24 @@
         android:id="@+id/layoutKeyboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp12"
+        android:layout_marginTop="@dimen/dp16"
         android:gravity="center"
         android:orientation="vertical"
-        android:visibility="gone" />
+        android:visibility="visible" />
 
     <TextView
         android:id="@+id/btnDownload"
-        android:layout_width="160dp"
-        android:layout_height="40dp"
+        android:layout_width="200dp"
+        android:layout_height="52dp"
         android:layout_marginTop="@dimen/dp16"
         android:background="@drawable/selector_download"
         android:gravity="center"
         android:text="立即下载"
         android:textColor="#4CAF50"
-        android:textSize="@dimen/sp14"
+        android:textSize="@dimen/sp18"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        android:nextFocusUp="@id/etCode0"
+        android:nextFocusUp="@id/layoutKeyboard"
         android:visibility="invisible" />
 
     <View
