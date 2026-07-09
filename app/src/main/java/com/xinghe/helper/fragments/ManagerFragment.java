@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,6 +34,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -293,6 +296,16 @@ public class ManagerFragment extends Fragment {
             return false;
         });
 
+        btnClose.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                btnClose.setTextColor(getResources().getColor(R.color.white));
+                btnClose.setBackgroundResource(R.drawable.bg_button_focus);
+            } else {
+                btnClose.setTextColor(getResources().getColor(R.color.accent));
+                btnClose.setBackgroundResource(R.drawable.bg_button);
+            }
+        });
+
         uninstallPopup = new android.widget.PopupWindow(uninstallPopupView,
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);
         uninstallPopup.setOutsideTouchable(false);
@@ -320,6 +333,8 @@ public class ManagerFragment extends Fragment {
             uninstallExecutor = Executors.newSingleThreadExecutor();
         }
 
+        boolean adbAvailable = AdbUninstallUtil.isAdbAvailable();
+
         uninstallExecutor.submit(() -> {
             int successCount = 0;
             for (int i = 0; i < toUninstall.size(); i++) {
@@ -334,16 +349,33 @@ public class ManagerFragment extends Fragment {
                     tvStatus.setTextColor(getResources().getColor(R.color.accent));
                 });
 
-                final boolean[] success = {false};
-                final String[] message = {""};
+                boolean succeeded;
+                String msg;
 
-                AdbUninstallUtil.uninstall(app.getPackageName(), (packageName, result, msg) -> {
-                    success[0] = result;
-                    message[0] = msg;
-                });
+                if (adbAvailable) {
+                    final boolean[] success = {false};
+                    final String[] message = {""};
+                    final CountDownLatch latch = new CountDownLatch(1);
 
-                final boolean succeeded = success[0];
-                final String msg = message[0];
+                    AdbUninstallUtil.uninstall(app.getPackageName(), (packageName, result, m) -> {
+                        success[0] = result;
+                        message[0] = m;
+                        latch.countDown();
+                    });
+
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+
+                    succeeded = success[0];
+                    msg = message[0];
+                } else {
+                    succeeded = performManualUninstall(app);
+                    msg = succeeded ? "卸载成功" : "等待用户确认";
+                }
 
                 if (succeeded) successCount++;
 
@@ -354,7 +386,7 @@ public class ManagerFragment extends Fragment {
                         tvResult.setText("✓");
                         tvResult.setTextColor(getResources().getColor(R.color.success));
                     } else {
-                        tvStatus.setText("卸载失败: " + msg);
+                        tvStatus.setText(msg);
                         tvStatus.setTextColor(getResources().getColor(R.color.error));
                         tvResult.setText("✗");
                         tvResult.setTextColor(getResources().getColor(R.color.error));
@@ -362,7 +394,7 @@ public class ManagerFragment extends Fragment {
                 });
 
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(adbAvailable ? 500 : 2000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -376,6 +408,41 @@ public class ManagerFragment extends Fragment {
                 btnClose.requestFocus();
             });
         });
+    }
+
+    private boolean performManualUninstall(InstalledApp app) {
+        if (getContext() == null) return false;
+
+        try {
+            String packageName = app.getPackageName();
+            Uri packageUri = Uri.parse("package:" + packageName);
+
+            Intent uninstallIntent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
+                uninstallIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            } else {
+                uninstallIntent = new Intent(Intent.ACTION_DELETE, packageUri);
+            }
+
+            uninstallIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(uninstallIntent);
+
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            try {
+                getContext().getPackageManager().getPackageInfo(packageName, 0);
+                return false;
+            } catch (PackageManager.NameNotFoundException e) {
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void dismissUninstallPopup() {

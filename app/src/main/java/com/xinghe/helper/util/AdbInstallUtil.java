@@ -1,12 +1,15 @@
 package com.xinghe.helper.util;
 
+import android.content.Context;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 
-public class AdbUninstallUtil {
+public class AdbInstallUtil {
 
-    public interface UninstallCallback {
-        void onResult(String packageName, boolean success, String message);
+    public interface InstallCallback {
+        void onResult(boolean success, String message);
     }
 
     public static boolean isAdbAvailable() {
@@ -26,25 +29,32 @@ public class AdbUninstallUtil {
         }
     }
 
-    public static void uninstall(String packageName, UninstallCallback callback) {
+    public static void install(Context context, File apkFile, InstallCallback callback) {
         boolean success = false;
         String message = "";
 
         try {
-            Process process = Runtime.getRuntime().exec(new String[]{"pm", "uninstall", packageName});
+            String apkPath = apkFile.getAbsolutePath();
+            Process process = Runtime.getRuntime().exec(new String[]{"pm", "install", "-r", apkPath});
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             StringBuilder output = new StringBuilder();
+            StringBuilder errorOutput = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line);
+            }
+            while ((line = errorReader.readLine()) != null) {
+                errorOutput.append(line);
             }
             process.waitFor();
             String result = output.toString();
             if (result.contains("Success")) {
                 success = true;
-                message = "卸载成功";
+                message = "安装成功";
             } else {
-                message = result.isEmpty() ? "卸载失败" : result;
+                message = result.isEmpty() ? errorOutput.toString() : result;
+                if (message.isEmpty()) message = "安装失败";
             }
         } catch (Exception e) {
             message = e.getMessage();
@@ -52,20 +62,29 @@ public class AdbUninstallUtil {
 
         if (!success) {
             try {
-                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", "pm uninstall " + packageName});
+                String apkPath = apkFile.getAbsolutePath();
+                Process process = Runtime.getRuntime().exec(new String[]{"su", "-c", "pm install -r " + apkPath});
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
                 StringBuilder output = new StringBuilder();
+                StringBuilder errorOutput = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line);
+                }
+                while ((line = errorReader.readLine()) != null) {
+                    errorOutput.append(line);
                 }
                 process.waitFor();
                 String result = output.toString();
                 if (result.contains("Success")) {
                     success = true;
-                    message = "卸载成功";
+                    message = "安装成功";
                 } else {
-                    if (message.isEmpty()) message = result.isEmpty() ? "卸载失败" : result;
+                    if (message.isEmpty()) {
+                        message = result.isEmpty() ? errorOutput.toString() : result;
+                        if (message.isEmpty()) message = "安装失败";
+                    }
                 }
             } catch (Exception e) {
                 if (message.isEmpty()) message = e.getMessage();
@@ -73,7 +92,7 @@ public class AdbUninstallUtil {
         }
 
         if (callback != null) {
-            callback.onResult(packageName, success, message);
+            callback.onResult(success, message);
         }
     }
 }

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
 
 public class DownloadManager {
 
@@ -222,14 +223,29 @@ public class DownloadManager {
                 if (listener != null) {
                     listener.onComplete(index, apkFile);
                 }
-                ApkInstallUtil.installApk(context, apkFile);
                 checkAllComplete();
             });
 
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            boolean adbAvailable = AdbInstallUtil.isAdbAvailable();
+            if (adbAvailable) {
+                final CountDownLatch latch = new CountDownLatch(1);
+                AdbInstallUtil.install(context, apkFile, (success, message) -> {
+                    latch.countDown();
+                });
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                mainHandler.post(() -> {
+                    ApkInstallUtil.installApk(context, apkFile);
+                });
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
         } else {
             throw new Exception("下载失败");

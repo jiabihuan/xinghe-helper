@@ -600,6 +600,23 @@ public class AppListFragment extends Fragment {
         }
 
         btnBackground.setOnClickListener(v -> dismissDownloadPopup());
+        btnBackground.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN &&
+                    (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                v.performClick();
+                return true;
+            }
+            return false;
+        });
+        btnBackground.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                btnBackground.setTextColor(getResources().getColor(R.color.white));
+                btnBackground.setBackgroundResource(R.drawable.bg_button_focus);
+            } else {
+                btnBackground.setTextColor(getResources().getColor(R.color.accent));
+                btnBackground.setBackgroundResource(R.drawable.bg_button);
+            }
+        });
 
         downloadPopup = new android.widget.PopupWindow(downloadPopupView,
                 ViewGroup.LayoutParams.MATCH_PARENT,

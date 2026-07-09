@@ -41,16 +41,18 @@
 
         <TextView
             android:id="@+id/btnBackground"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="200dp"
+            android:layout_height="48dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="20dp"
             android:text="后台下载"
             android:textColor="@color/accent"
-            android:textSize="14sp"
+            android:textSize="16sp"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:padding="8dp" />
+            android:padding="8dp"
+            android:background="@drawable/bg_button"
+            android:gravity="center" />
 
     </LinearLayout>
 
