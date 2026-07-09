@@ -2,6 +2,7 @@ package com.xinghe.helper.adapter;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
