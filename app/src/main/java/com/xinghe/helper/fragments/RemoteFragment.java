@@ -23,6 +23,10 @@ import com.xinghe.helper.util.RemotePushServer;
 import com.xinghe.helper.util.ToastUtil;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import android.os.Environment;
 
 public class RemoteFragment extends Fragment implements RemotePushServer.OnPushListener {
 
@@ -51,10 +55,21 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         pushServer.setListener(this);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            List<String> permissions = new ArrayList<>();
             if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    !Environment.isExternalStorageManager()) {
+                permissions.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
+            }
+            if (!permissions.isEmpty()) {
+                requestPermissions(permissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);
             } else {
                 startServer();
             }
@@ -67,7 +82,21 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            startServer();
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            if (allGranted) {
+                startServer();
+            } else {
+                if (tvPushStatus != null) {
+                    tvPushStatus.setText("权限被拒绝，部分功能不可用");
+                }
+                startServer();
+            }
         }
     }
 

@@ -386,19 +386,30 @@ public class RemotePushServer {
                 return;
             }
 
-            File resultFile;
-            String fileName;
-            if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
-                resultFile = parseMultipart(body, contentType);
-                fileName = extractFileNameFromMultipart(body, contentType);
-            } else {
-                boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
-                fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
-                resultFile = saveRawBody(body, fileName);
+            File resultFile = null;
+            String fileName = null;
+
+            try {
+                if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
+                    resultFile = parseMultipart(body, contentType);
+                    fileName = extractFileNameFromMultipart(body, contentType);
+                } else {
+                    boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
+                    fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
+                    resultFile = saveRawBody(body, fileName);
+                }
+            } catch (IOException e) {
+                sendJson(output, "{\"success\":false,\"message\":\"保存文件失败: " + e.getMessage() + "\"}", 500);
+                notifyPushFailed("保存文件失败: " + e.getMessage());
+                return;
+            } catch (Exception e) {
+                sendJson(output, "{\"success\":false,\"message\":\"处理文件失败: " + e.getMessage() + "\"}", 500);
+                notifyPushFailed("处理文件失败: " + e.getMessage());
+                return;
             }
 
             if (resultFile != null && resultFile.exists() && resultFile.length() > 0) {
-                boolean isApk = fileName.toLowerCase(Locale.US).endsWith(".apk");
+                boolean isApk = fileName != null && fileName.toLowerCase(Locale.US).endsWith(".apk");
                 sendJson(output, "{\"success\":true,\"message\":\"上传成功\"}", 200);
                 notifyPushCompleted(resultFile, isApk);
             } else {
@@ -463,14 +474,24 @@ public class RemotePushServer {
                 File externalDir = android.os.Environment.getExternalStorageDirectory();
                 File xingheDir = new File(externalDir, "星河助手");
                 if (!xingheDir.exists()) {
-                    xingheDir.mkdirs();
+                    boolean created = xingheDir.mkdirs();
+                    if (!created) {
+                        File altDir = context.getExternalFilesDir(null);
+                        if (altDir != null) {
+                            xingheDir = new File(altDir, "星河助手");
+                            xingheDir.mkdirs();
+                        }
+                    }
                 }
-                return xingheDir;
+                if (xingheDir.exists() && xingheDir.canWrite()) {
+                    return xingheDir;
+                }
             } catch (Exception e) {
-                File cacheDir = context.getExternalCacheDir();
-                if (cacheDir == null) cacheDir = context.getCacheDir();
-                return cacheDir;
+                e.printStackTrace();
             }
+            File cacheDir = context.getExternalFilesDir(null);
+            if (cacheDir == null) cacheDir = context.getCacheDir();
+            return cacheDir;
         }
 
         private File parseMultipart(byte[] body, String contentType) throws IOException {
