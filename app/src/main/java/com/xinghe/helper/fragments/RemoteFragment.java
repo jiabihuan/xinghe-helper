@@ -1,11 +1,14 @@
 package com.xinghe.helper.fragments;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,8 +28,6 @@ import com.xinghe.helper.util.ToastUtil;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
-import android.os.Environment;
 
 public class RemoteFragment extends Fragment implements RemotePushServer.OnPushListener {
 
@@ -54,6 +55,27 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         pushServer = new RemotePushServer(getContext());
         pushServer.setListener(this);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ 需要MANAGE_EXTERNAL_STORAGE，通过系统设置开启
+            if (!Environment.isExternalStorageManager()) {
+                ToastUtil.showShort(getContext(), "请开启\"所有文件访问权限\"以保存文件到根目录");
+                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    startActivityForResult(intent, PERMISSION_REQUEST_CODE);
+                } catch (Exception e) {
+                    intent.setData(null);
+                    startActivityForResult(intent, PERMISSION_REQUEST_CODE);
+                }
+                startServer();
+                return;
+            } else {
+                startServer();
+                return;
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             List<String> permissions = new ArrayList<>();
             if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -63,10 +85,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
             if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                    !Environment.isExternalStorageManager()) {
-                permissions.add(Manifest.permission.MANAGE_EXTERNAL_STORAGE);
             }
             if (!permissions.isEmpty()) {
                 requestPermissions(permissions.toArray(new String[0]), PERMISSION_REQUEST_CODE);

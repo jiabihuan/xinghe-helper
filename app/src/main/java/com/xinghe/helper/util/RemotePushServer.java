@@ -462,28 +462,30 @@ public class RemotePushServer {
         }
 
         private File getXingheDir() {
-            try {
-                File externalDir = android.os.Environment.getExternalStorageDirectory();
-                File xingheDir = new File(externalDir, "星河助手");
-                if (!xingheDir.exists()) {
-                    boolean created = xingheDir.mkdirs();
-                    if (!created) {
-                        File altDir = context.getExternalFilesDir(null);
-                        if (altDir != null) {
-                            xingheDir = new File(altDir, "星河助手");
-                            xingheDir.mkdirs();
-                        }
-                    }
-                }
-                if (xingheDir.exists() && xingheDir.canWrite()) {
-                    return xingheDir;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            File externalDir = android.os.Environment.getExternalStorageDirectory();
+            File xingheDir = new File(externalDir, "星河助手");
+            
+            if (!xingheDir.exists()) {
+                xingheDir.mkdirs();
             }
-            File cacheDir = context.getExternalFilesDir(null);
-            if (cacheDir == null) cacheDir = context.getCacheDir();
-            return cacheDir;
+            
+            if (xingheDir.exists() && xingheDir.canWrite()) {
+                android.util.Log.d("RemotePushServer", "getXingheDir: " + xingheDir.getAbsolutePath());
+                return xingheDir;
+            }
+            
+            // 尝试应用外部存储目录作为备选
+            File altDir = context.getExternalFilesDir(null);
+            if (altDir != null) {
+                File fallbackDir = new File(altDir, "星河助手");
+                if (!fallbackDir.exists()) {
+                    fallbackDir.mkdirs();
+                }
+                android.util.Log.d("RemotePushServer", "getXingheDir fallback: " + fallbackDir.getAbsolutePath());
+                return fallbackDir;
+            }
+            
+            return context.getCacheDir();
         }
 
         private File parseMultipart(byte[] body, String contentType) throws IOException {
