@@ -2,33 +2,36 @@ package com.xinghe.helper.util;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.format.Formatter;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Map;
+
+import fi.iki.elonen.NanoHTTPD;
 
 /**
- * 远程推送 HTTP 服务器
- * 原理：在电视端启动一个轻量级 HTTP 服务器，同局域网内的手机/电脑通过浏览器
- * 访问电视 IP:端口，选择 APK 文件上传。电视端保存 APK 后调用系统安装器安装。
- * 参考 GitHub 上众多 Android 局域网传文件项目的实现思路：ServerSocket + 简易 HTTP 协议解析。
+ * 远程推送 HTTP 服务器（基于 NanoHTTPD）
+ * 参考开源方案：
+ * - matan-h/Transfer：使用 NanoHTTPD 在 Android 上搭建本地文件服务器
+ * - WPSeven/Android-Http-File-Server：使用 NanoHTTPD 流式上传大文件
+ * 改造点：
+ * 1. 用成熟的 NanoHTTPD 替代手写 HTTP 解析，避免协议解析错误导致的"未知错误"。
+ * 2. 使用 NanoHTTPD 内置的 multipart/form-data 解析，稳定可靠。
+ * 3. 上传文件先落到缓存，再移动到根目录"星河助手"文件夹，避免写入失败损坏文件。
+ * 4. APK 文件保存后自动拉起安装，其它文件仅保存。
  */
-public class RemotePushServer {
+public class RemotePushServer extends NanoHTTPD {
 
     private static final int PORT = 8080;
 
@@ -52,7 +55,7 @@ public class RemotePushServer {
             "<body>" +
             "<div class=\"container\">" +
             "<h1>星河助手远程推送</h1>" +
-            "<p class=\"tip\">选择文件推送到电视（APK自动安装，其他文件保存到星河助手文件夹</p>" +
+            "<p class=\"tip\">选择文件推送到电视（APK自动安装，其他文件保存到星河助手文件夹）</p>" +
             "<input type=\"file\" id=\"file\" onchange=\"onFileSelected()\">" +
             "<button class=\"btn select\" onclick=\"document.getElementById('file').click()\">选择文件</button>" +
             "<button class=\"btn push\" id=\"pushBtn\" onclick=\"upload()\">推送到电视</button>" +
@@ -65,11 +68,8 @@ public class RemotePushServer {
             "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{var msg=xhr.responseText||xhr.statusText||'未知错误';try{var data=JSON.parse(xhr.responseText);if(data.message)msg=data.message;}catch(e){}status.textContent='推送失败: '+msg;}}};xhr.open('POST','/upload');var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
             "</script></body></html>";
 
-    private ServerSocket serverSocket;
-    private Thread serverThread;
     private final Context context;
     private final Handler mainHandler;
-    private final ExecutorService executor;
     private OnPushListener listener;
 
     public interface OnPushListener {
@@ -81,58 +81,251 @@ public class RemotePushServer {
     }
 
     public RemotePushServer(Context context) {
+        super(PORT);
         this.context = context.getApplicationContext();
         this.mainHandler = new Handler(Looper.getMainLooper());
-        this.executor = Executors.newCachedThreadPool();
     }
 
     public void setListener(OnPushListener listener) {
         this.listener = listener;
     }
 
-    public void start() {
-        if (serverThread != null && serverThread.isAlive()) {
-            return;
+    public void startServer() {
+        try {
+            start();
+            notifyServerStarted(getServerUrl());
+        } catch (IOException e) {
+            notifyServerError("启动失败: " + e.getMessage());
         }
-        serverThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    serverSocket = new ServerSocket(PORT);
-                    notifyServerStarted(getServerUrl());
-                    while (!Thread.currentThread().isInterrupted()) {
-                        try {
-                            Socket client = serverSocket.accept();
-                            executor.submit(new ClientHandler(client));
-                        } catch (SocketException e) {
-                            break;
-                        }
-                    }
-                } catch (IOException e) {
-                    notifyServerError(e.getMessage());
-                }
-            }
-        });
-        serverThread.start();
     }
 
-    public void stop() {
-        if (serverThread != null) {
-            serverThread.interrupt();
-        }
-        try {
-            if (serverSocket != null && !serverSocket.isClosed()) {
-                serverSocket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        executor.shutdownNow();
+    public void stopServer() {
+        stop();
         notifyServerStopped();
     }
 
     public String getServerUrl() {
         return "http://" + getLocalIpAddress() + ":" + PORT;
+    }
+
+    @Override
+    public Response serve(IHTTPSession session) {
+        String uri = session.getUri();
+        Method method = session.getMethod();
+
+        if (Method.GET.equals(method) && "/".equals(uri)) {
+            return newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", INDEX_HTML);
+        }
+
+        if (Method.POST.equals(method) && "/upload".equals(uri)) {
+            return handleUpload(session);
+        }
+
+        return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "Not Found");
+    }
+
+    private Response handleUpload(IHTTPSession session) {
+        notifyPushStarted();
+
+        // 1. 先让 NanoHTTPD 把 multipart 数据解析到临时文件
+        Map<String, String> files = new java.util.HashMap<>();
+        try {
+            session.parseBody(files);
+        } catch (Exception e) {
+            android.util.Log.e("RemotePushServer", "parseBody 失败: " + e.getMessage(), e);
+            return jsonResponse(false, "解析上传数据失败: " + e.getMessage(), Response.Status.INTERNAL_ERROR);
+        }
+
+        if (files.isEmpty()) {
+            return jsonResponse(false, "没有收到文件", Response.Status.BAD_REQUEST);
+        }
+
+        // 2. 取第一个上传的文件
+        Map.Entry<String, String> entry = files.entrySet().iterator().next();
+        String tempPath = entry.getValue();
+
+        File tempFile = new File(tempPath);
+        if (!tempFile.exists() || tempFile.length() == 0) {
+            return jsonResponse(false, "上传文件为空", Response.Status.BAD_REQUEST);
+        }
+
+        // 3. 确定真实文件名
+        String fileName = extractFileName(session, entry.getKey());
+        if (fileName == null || fileName.isEmpty()) {
+            fileName = "push_" + System.currentTimeMillis();
+        }
+
+        // 4. 移动到根目录"星河助手"文件夹
+        File destDir = getXingheDir();
+        if (destDir == null) {
+            return jsonResponse(false, "无法获取存储目录，请检查存储权限", Response.Status.INTERNAL_ERROR);
+        }
+
+        File destFile = new File(destDir, fileName);
+        // 如果同名，追加时间戳重命名
+        if (destFile.exists()) {
+            int dot = fileName.lastIndexOf('.');
+            String name = dot > 0 ? fileName.substring(0, dot) : fileName;
+            String ext = dot > 0 ? fileName.substring(dot) : "";
+            destFile = new File(destDir, name + "_" + System.currentTimeMillis() + ext);
+        }
+
+        try {
+            copyFile(tempFile, destFile);
+        } catch (IOException e) {
+            android.util.Log.e("RemotePushServer", "保存文件失败: " + e.getMessage(), e);
+            return jsonResponse(false, "保存文件失败: " + e.getMessage(), Response.Status.INTERNAL_ERROR);
+        } finally {
+            // 清理 NanoHTTPD 生成的临时文件
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
+        }
+
+        if (!destFile.exists() || destFile.length() == 0) {
+            return jsonResponse(false, "保存后文件为空", Response.Status.INTERNAL_ERROR);
+        }
+
+        boolean isApk = destFile.getName().toLowerCase(Locale.US).endsWith(".apk");
+        notifyPushCompleted(destFile, isApk);
+        return jsonResponse(true, "上传成功", Response.Status.OK);
+    }
+
+    private String extractFileName(IHTTPSession session, String key) {
+        String contentDisposition = getHeaderIgnoreCase(session.getHeaders(), "content-disposition");
+        if (contentDisposition != null) {
+            int idx = contentDisposition.toLowerCase(Locale.US).indexOf("filename=\"");
+            if (idx >= 0) {
+                int start = idx + 10;
+                int end = contentDisposition.indexOf("\"", start);
+                if (end > start) {
+                    return sanitizeFileName(contentDisposition.substring(start, end));
+                }
+            }
+            // 兼容 filename*=UTF-8''xxx 这种编码
+            int starIdx = contentDisposition.toLowerCase(Locale.US).indexOf("filename*=");
+            if (starIdx >= 0) {
+                String value = contentDisposition.substring(starIdx + 10).trim();
+                int encodingEnd = value.indexOf("'");
+                if (encodingEnd > 0) {
+                    int nameStart = value.indexOf("'", encodingEnd + 1);
+                    if (nameStart > 0) {
+                        value = value.substring(nameStart + 1);
+                    }
+                }
+                try {
+                    value = java.net.URLDecoder.decode(value, "UTF-8");
+                } catch (Exception ignored) {
+                }
+                return sanitizeFileName(value);
+            }
+        }
+
+        // NanoHTTPD 的 getParms 可能包含原始文件名（部分版本）
+        String rawName = session.getParms().get(key);
+        if (rawName != null && !rawName.isEmpty() && !rawName.startsWith("NanoHTTPD-")) {
+            return sanitizeFileName(rawName);
+        }
+
+        return null;
+    }
+
+    private String getHeaderIgnoreCase(Map<String, String> headers, String name) {
+        for (Map.Entry<String, String> e : headers.entrySet()) {
+            if (e.getKey() != null && e.getKey().equalsIgnoreCase(name)) {
+                return e.getValue();
+            }
+        }
+        return null;
+    }
+
+    private String sanitizeFileName(String name) {
+        if (name == null) return null;
+        // 去除路径前缀
+        int lastSep = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        if (lastSep >= 0) {
+            name = name.substring(lastSep + 1);
+        }
+        // 尝试用 UTF-8 重新解码（防止 ISO-8859-1 编码的中文乱码）
+        try {
+            byte[] bytes = name.getBytes(StandardCharsets.ISO_8859_1);
+            String decoded = new String(bytes, StandardCharsets.UTF_8);
+            if (decoded.contains("\u00") || decoded.contains("?")) {
+                // 解码失败，保持原样
+            } else {
+                name = decoded;
+            }
+        } catch (Exception ignored) {
+        }
+        return name.trim();
+    }
+
+    private void copyFile(File src, File dst) throws IOException {
+        InputStream in = null;
+        FileOutputStream out = null;
+        try {
+            in = new FileInputStream(src);
+            out = new FileOutputStream(dst);
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = in.read(buffer)) != -1) {
+                out.write(buffer, 0, len);
+            }
+            out.flush();
+        } finally {
+            if (in != null) in.close();
+            if (out != null) out.close();
+        }
+    }
+
+    private File getXingheDir() {
+        File xingheDir;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                xingheDir = new File(Environment.getExternalStorageDirectory(), "星河助手");
+            } else {
+                // 没有所有文件访问权限时，只能写到应用外部存储
+                File externalFiles = context.getExternalFilesDir(null);
+                xingheDir = externalFiles != null ? new File(externalFiles, "星河助手") : null;
+            }
+        } else {
+            xingheDir = new File(Environment.getExternalStorageDirectory(), "星河助手");
+        }
+
+        if (xingheDir != null && !xingheDir.exists()) {
+            xingheDir.mkdirs();
+        }
+
+        if (xingheDir != null && xingheDir.exists() && xingheDir.canWrite()) {
+            android.util.Log.d("RemotePushServer", "getXingheDir: " + xingheDir.getAbsolutePath());
+            return xingheDir;
+        }
+
+        // 兜底：应用外部存储
+        File fallback = context.getExternalFilesDir(null);
+        if (fallback != null) {
+            File dir = new File(fallback, "星河助手");
+            if (!dir.exists()) dir.mkdirs();
+            return dir;
+        }
+
+        return context.getCacheDir();
+    }
+
+    private Response jsonResponse(boolean success, String message, Response.Status status) {
+        String json = "{\"success\":" + success + ",\"message\":\"" + escapeJson(message) + "\"}";
+        Response resp = newFixedLengthResponse(status, "application/json; charset=UTF-8", json);
+        resp.addHeader("Access-Control-Allow-Origin", "*");
+        return resp;
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     private String getLocalIpAddress() {
@@ -151,7 +344,7 @@ public class RemotePushServer {
         } catch (Exception ignored) {
         }
 
-        // 2. 遍历所有网络接口，找到内网 IPv4 地址（支持有线/无线/热点）
+        // 2. 遍历所有网络接口，找到内网 IPv4 地址
         try {
             java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
@@ -160,7 +353,6 @@ public class RemotePushServer {
                     continue;
                 }
                 String name = ni.getName().toLowerCase(Locale.US);
-                // 排除常见的虚拟/移动网络接口
                 if (name.contains("lo") || name.contains("dummy") || name.contains("p2p")
                         || name.contains("tun") || name.contains("ppp") || name.contains("rmnet")) {
                     continue;
@@ -174,9 +366,7 @@ public class RemotePushServer {
                     }
                     String host = addr.getHostAddress();
                     if (host == null) continue;
-                    // 只取 IPv4
                     if (host.contains(":")) continue;
-                    // 优先返回内网地址
                     if (isPrivateIpv4(host)) {
                         return host;
                     }
@@ -204,11 +394,8 @@ public class RemotePushServer {
         try {
             int a = Integer.parseInt(parts[0]);
             int b = Integer.parseInt(parts[1]);
-            // 10.x.x.x
             if (a == 10) return true;
-            // 172.16-31.x.x
             if (a == 172 && b >= 16 && b <= 31) return true;
-            // 192.168.x.x
             if (a == 192 && b == 168) return true;
         } catch (NumberFormatException ignored) {
         }
@@ -258,344 +445,5 @@ public class RemotePushServer {
                 if (listener != null) listener.onPushCompleted(file, isApk);
             }
         });
-    }
-
-    private void notifyPushFailed(final String error) {
-        mainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (listener != null) listener.onPushFailed(error);
-            }
-        });
-    }
-
-    private class ClientHandler implements Runnable {
-        private final Socket client;
-
-        ClientHandler(Socket client) {
-            this.client = client;
-        }
-
-        @Override
-        public void run() {
-            InputStream input = null;
-            OutputStream output = null;
-            try {
-                client.setSoTimeout(60000);
-                input = client.getInputStream();
-                output = new BufferedOutputStream(client.getOutputStream());
-
-                // 1. 读取 HTTP 请求头，直到 \r\n\r\n，保持字节流完整
-                byte[] headerBytes = readHeader(input);
-                if (headerBytes == null || headerBytes.length == 0) {
-                    send400(output);
-                    return;
-                }
-                String header = new String(headerBytes, StandardCharsets.UTF_8);
-                String[] lines = header.split("\r\n");
-                if (lines.length < 1) {
-                    send400(output);
-                    return;
-                }
-
-                // 2. 解析请求行
-                String[] parts = lines[0].split(" ");
-                if (parts.length < 2) {
-                    send400(output);
-                    return;
-                }
-                String method = parts[0];
-                String path = parts[1];
-
-                // 3. 解析 Content-Length / Content-Type
-                int contentLength = 0;
-                String contentType = null;
-                for (int i = 1; i < lines.length; i++) {
-                    String line = lines[i];
-                    if (line == null) continue;
-                    String lower = line.toLowerCase(Locale.US);
-                    if (lower.startsWith("content-length:")) {
-                        try {
-                            contentLength = Integer.parseInt(line.substring(15).trim());
-                        } catch (NumberFormatException ignored) {
-                        }
-                    } else if (lower.startsWith("content-type:")) {
-                        contentType = line.substring(13).trim();
-                    }
-                }
-
-                if ("GET".equalsIgnoreCase(method) && "/".equals(path)) {
-                    sendHtml(output, INDEX_HTML);
-                } else if ("POST".equalsIgnoreCase(method) && "/upload".equals(path)) {
-                    handleUpload(input, output, contentLength, contentType);
-                } else {
-                    send404(output);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    if (output != null) output.flush();
-                } catch (IOException ignored) {
-                }
-                try {
-                    client.close();
-                } catch (IOException ignored) {
-                }
-            }
-        }
-
-        /**
-         * 从输入流读取 HTTP 头，遇到 \r\n\r\n 停止。不破坏请求体字节流。
-         */
-        private byte[] readHeader(InputStream input) throws IOException {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
-            int b;
-            int state = 0; // 0:none, 1:\r, 2:\r\n, 3:\r\n\r
-            while ((b = input.read()) != -1) {
-                baos.write(b);
-                if (b == '\r') {
-                    state = (state == 2) ? 3 : 1;
-                } else if (b == '\n') {
-                    if (state == 1) {
-                        state = 2;
-                    } else if (state == 3) {
-                        return baos.toByteArray();
-                    } else {
-                        state = 0;
-                    }
-                } else {
-                    state = 0;
-                }
-            }
-            return baos.toByteArray();
-        }
-
-        private void handleUpload(InputStream input, OutputStream output, int contentLength, String contentType) throws IOException {
-            android.util.Log.d("RemotePushServer", "handleUpload: contentLength=" + contentLength + ", contentType=" + contentType);
-            
-            if (contentLength <= 0) {
-                sendJson(output, "{\"success\":false,\"message\":\"没有上传数据\"}", 400);
-                return;
-            }
-
-            notifyPushStarted();
-
-            byte[] body = readFully(input, contentLength);
-            if (body == null || body.length == 0) {
-                sendJson(output, "{\"success\":false,\"message\":\"读取上传数据失败\"}", 500);
-                notifyPushFailed("读取上传数据失败");
-                return;
-            }
-
-            android.util.Log.d("RemotePushServer", "读取到 " + body.length + " 字节");
-
-            File resultFile = null;
-
-            try {
-                if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
-                    resultFile = parseMultipart(body, contentType);
-                } else {
-                    // raw body，根据Content-Type判断后缀
-                    boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
-                    String fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
-                    resultFile = saveRawBody(body, fileName);
-                }
-            } catch (Exception e) {
-                android.util.Log.e("RemotePushServer", "保存失败: " + e.getMessage(), e);
-                sendJson(output, "{\"success\":false,\"message\":\"保存失败: " + e.getMessage() + "\"}", 500);
-                notifyPushFailed("保存失败: " + e.getMessage());
-                return;
-            }
-
-            if (resultFile != null && resultFile.exists() && resultFile.length() > 0) {
-                android.util.Log.d("RemotePushServer", "保存成功: " + resultFile.getAbsolutePath());
-                // 所有文件都保存到星河助手文件夹，不在这里安装
-                sendJson(output, "{\"success\":true,\"message\":\"上传成功\"}", 200);
-                notifyPushCompleted(resultFile, false);
-            } else {
-                sendJson(output, "{\"success\":false,\"message\":\"保存失败\"}", 500);
-                notifyPushFailed("保存文件失败");
-            }
-        }
-
-        private byte[] readFully(InputStream input, int length) throws IOException {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(length);
-            byte[] buffer = new byte[8192];
-            int total = 0;
-            int len;
-            while (total < length && (len = input.read(buffer, 0, Math.min(buffer.length, length - total))) != -1) {
-                baos.write(buffer, 0, len);
-                total += len;
-            }
-            return baos.toByteArray();
-        }
-
-        private File saveRawBody(byte[] body, String fileName) throws IOException {
-            // 所有文件统一保存到星河助手文件夹
-            File dir = getXingheDir();
-            if (dir == null) {
-                dir = context.getExternalCacheDir();
-                if (dir == null) dir = context.getCacheDir();
-            }
-            File file = new File(dir, fileName);
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(body);
-            fos.close();
-            return file;
-        }
-
-        private File getXingheDir() {
-            File externalDir = android.os.Environment.getExternalStorageDirectory();
-            File xingheDir = new File(externalDir, "星河助手");
-            
-            if (!xingheDir.exists()) {
-                xingheDir.mkdirs();
-            }
-            
-            if (xingheDir.exists() && xingheDir.canWrite()) {
-                android.util.Log.d("RemotePushServer", "getXingheDir: " + xingheDir.getAbsolutePath());
-                return xingheDir;
-            }
-            
-            // 尝试应用外部存储目录作为备选
-            File altDir = context.getExternalFilesDir(null);
-            if (altDir != null) {
-                File fallbackDir = new File(altDir, "星河助手");
-                if (!fallbackDir.exists()) {
-                    fallbackDir.mkdirs();
-                }
-                android.util.Log.d("RemotePushServer", "getXingheDir fallback: " + fallbackDir.getAbsolutePath());
-                return fallbackDir;
-            }
-            
-            return context.getCacheDir();
-        }
-
-        private File parseMultipart(byte[] body, String contentType) throws IOException {
-            String boundary = extractBoundary(contentType);
-            android.util.Log.d("RemotePushServer", "parseMultipart: boundary=" + boundary);
-            if (boundary == null) return null;
-
-            String text = new String(body, StandardCharsets.ISO_8859_1);
-            String boundaryMarker = "--" + boundary;
-
-            int firstBoundary = text.indexOf(boundaryMarker);
-            android.util.Log.d("RemotePushServer", "firstBoundary=" + firstBoundary);
-            if (firstBoundary < 0) return null;
-
-            int contentStart = text.indexOf("\r\n\r\n", firstBoundary);
-            android.util.Log.d("RemotePushServer", "contentStart=" + contentStart);
-            if (contentStart < 0) return null;
-            contentStart += 4;
-
-            int nextBoundary = text.indexOf("\r\n" + boundaryMarker, contentStart);
-            if (nextBoundary < 0) {
-                nextBoundary = text.indexOf("\r\n" + boundaryMarker + "--", contentStart);
-            }
-            if (nextBoundary < 0) {
-                nextBoundary = text.indexOf(boundaryMarker + "--", contentStart);
-            }
-            if (nextBoundary < 0) {
-                nextBoundary = body.length;
-            }
-            android.util.Log.d("RemotePushServer", "nextBoundary=" + nextBoundary + ", contentStart=" + contentStart + ", body.length=" + body.length);
-
-            String fileName = "push_" + System.currentTimeMillis() + ".apk";
-            String headerPart = text.substring(firstBoundary, contentStart);
-            android.util.Log.d("RemotePushServer", "headerPart=" + headerPart);
-            int filenameIdx = headerPart.toLowerCase(Locale.US).indexOf("filename=\"");
-            if (filenameIdx >= 0) {
-                int start = filenameIdx + 10;
-                int end = headerPart.indexOf("\"", start);
-                if (end > start) {
-                    fileName = headerPart.substring(start, end);
-                }
-            }
-            if (fileName.contains("\\") || fileName.contains("/")) {
-                int lastSep = Math.max(fileName.lastIndexOf('\\'), fileName.lastIndexOf('/'));
-                if (lastSep >= 0 && lastSep < fileName.length() - 1) {
-                    fileName = fileName.substring(lastSep + 1);
-                }
-            }
-            try {
-                fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-            } catch (Exception e) {
-                android.util.Log.e("RemotePushServer", "文件名解码失败: " + e.getMessage());
-            }
-            android.util.Log.d("RemotePushServer", "解析到的 fileName=" + fileName);
-
-            // 所有文件统一保存到星河助手文件夹
-            File dir = getXingheDir();
-            if (dir == null) {
-                dir = context.getExternalCacheDir();
-                if (dir == null) dir = context.getCacheDir();
-            }
-            android.util.Log.d("RemotePushServer", "保存目录=" + dir.getAbsolutePath());
-            File file = new File(dir, fileName);
-            int contentLength = nextBoundary - contentStart;
-            android.util.Log.d("RemotePushServer", "写入文件=" + file.getAbsolutePath() + ", size=" + contentLength);
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(body, contentStart, contentLength);
-            fos.flush();
-            fos.close();
-            android.util.Log.d("RemotePushServer", "文件写入完成, exists=" + file.exists() + ", length=" + file.length());
-            return file;
-        }
-
-        private String extractBoundary(String contentType) {
-            if (contentType == null) return null;
-            int idx = contentType.toLowerCase(Locale.US).indexOf("boundary=");
-            if (idx < 0) return null;
-            String boundary = contentType.substring(idx + 9);
-            // 去除可能的引号
-            if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
-                boundary = boundary.substring(1, boundary.length() - 1);
-            }
-            return boundary;
-        }
-
-        private void sendHtml(OutputStream output, String html) throws IOException {
-            byte[] data = html.getBytes(StandardCharsets.UTF_8);
-            String header = "HTTP/1.1 200 OK\r\n" +
-                    "Content-Type: text/html; charset=UTF-8\r\n" +
-                    "Content-Length: " + data.length + "\r\n" +
-                    "Connection: close\r\n\r\n";
-            output.write(header.getBytes(StandardCharsets.UTF_8));
-            output.write(data);
-        }
-
-        private void sendJson(OutputStream output, String json, int code) throws IOException {
-            byte[] data = json.getBytes(StandardCharsets.UTF_8);
-            String status = code == 200 ? "200 OK" : (code == 400 ? "400 Bad Request" : "500 Internal Server Error");
-            String header = "HTTP/1.1 " + status + "\r\n" +
-                    "Content-Type: application/json; charset=UTF-8\r\n" +
-                    "Content-Length: " + data.length + "\r\n" +
-                    "Connection: close\r\n\r\n";
-            output.write(header.getBytes(StandardCharsets.UTF_8));
-            output.write(data);
-        }
-
-        private void send400(OutputStream output) throws IOException {
-            String body = "Bad Request";
-            byte[] data = body.getBytes(StandardCharsets.UTF_8);
-            String header = "HTTP/1.1 400 Bad Request\r\n" +
-                    "Content-Type: text/plain; charset=UTF-8\r\n" +
-                    "Content-Length: " + data.length + "\r\n" +
-                    "Connection: close\r\n\r\n";
-            output.write(header.getBytes(StandardCharsets.UTF_8));
-            output.write(data);
-        }
-
-        private void send404(OutputStream output) throws IOException {
-            String body = "Not Found";
-            byte[] data = body.getBytes(StandardCharsets.UTF_8);
-            String header = "HTTP/1.1 404 Not Found\r\n" +
-                    "Content-Type: text/plain; charset=UTF-8\r\n" +
-                    "Content-Length: " + data.length + "\r\n" +
-                    "Connection: close\r\n\r\n";
-            output.write(header.getBytes(StandardCharsets.UTF_8));
-            output.write(data);
-        }
     }
 }

@@ -34,7 +34,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private TextView tvPushUrl;
-    private TextView tvPushStatus;
     private ImageView ivQrCode;
     private RemotePushServer pushServer;
 
@@ -47,7 +46,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         tvPushUrl = view.findViewById(R.id.tvPushUrl);
-        tvPushStatus = view.findViewById(R.id.tvPushStatus);
         ivQrCode = view.findViewById(R.id.ivQrCode);
 
         if (getContext() == null) return;
@@ -56,7 +54,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         pushServer.setListener(this);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ 需要MANAGE_EXTERNAL_STORAGE，通过系统设置开启
             if (!Environment.isExternalStorageManager()) {
                 ToastUtil.showShort(getContext(), "请开启\"所有文件访问权限\"以保存文件到根目录");
                 Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -107,27 +104,29 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
                     break;
                 }
             }
-            if (allGranted) {
-                startServer();
-            } else {
-                if (tvPushStatus != null) {
-                    tvPushStatus.setText("权限被拒绝，部分功能不可用");
-                }
-                startServer();
-            }
+            startServer();
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PERMISSION_REQUEST_CODE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // 用户从设置返回，重新尝试获取目录（权限可能已开启）
+            startServer();
         }
     }
 
     private void startServer() {
         if (pushServer != null) {
-            pushServer.start();
+            pushServer.startServer();
         }
     }
 
     @Override
     public void onDestroyView() {
         if (pushServer != null) {
-            pushServer.stop();
+            pushServer.stopServer();
             pushServer = null;
         }
         if (ivQrCode != null) {
@@ -144,9 +143,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         if (tvPushUrl != null) {
             tvPushUrl.setText(url);
         }
-        if (tvPushStatus != null) {
-            tvPushStatus.setText("等待推送...");
-        }
         if (ivQrCode != null) {
             Bitmap qrBitmap = QRCodeUtil.generateQRCodeWithBackground(url, 400, 400);
             if (qrBitmap != null) {
@@ -158,9 +154,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
 
     @Override
     public void onServerStopped() {
-        if (tvPushStatus != null) {
-            tvPushStatus.setText("服务已停止");
-        }
         if (ivQrCode != null) {
             ivQrCode.setVisibility(View.INVISIBLE);
             BitmapDrawable drawable = (BitmapDrawable) ivQrCode.getDrawable();
@@ -173,19 +166,12 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
 
     @Override
     public void onPushStarted() {
-        if (tvPushStatus != null) {
-            tvPushStatus.setText("正在接收文件...");
-        }
     }
 
     @Override
     public void onPushCompleted(final File file, final boolean isApk) {
-        if (tvPushStatus != null) {
-            tvPushStatus.setText("接收完成，已保存到星河助手文件夹");
-        }
         if (getContext() != null) {
             ToastUtil.showShort(getContext(), "文件已保存到星河助手文件夹");
-            // 检查是否是APK，如果是则自动安装
             checkAndInstallApk(file);
         }
     }
@@ -194,9 +180,6 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         if (file == null || !file.exists()) return;
         String name = file.getName().toLowerCase();
         if (name.endsWith(".apk")) {
-            if (tvPushStatus != null) {
-                tvPushStatus.setText("检测到APK，准备安装...");
-            }
             if (getContext() != null) {
                 ApkInstallUtil.installApk(getContext(), file);
             }
@@ -205,8 +188,8 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
 
     @Override
     public void onPushFailed(final String error) {
-        if (tvPushStatus != null) {
-            tvPushStatus.setText("推送失败: " + error);
+        if (getContext() != null) {
+            ToastUtil.showShort(getContext(), "推送失败: " + error);
         }
     }
 }
