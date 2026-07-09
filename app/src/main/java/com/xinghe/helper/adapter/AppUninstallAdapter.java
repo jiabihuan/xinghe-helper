@@ -2,7 +2,6 @@ package com.xinghe.helper.adapter;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,17 +57,25 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
         boolean isExpanded = position == expandedPosition;
         updateActionPanel(holder, isExpanded);
 
-        holder.layoutItem.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+        holder.layoutItem.setOnClickListener(v -> {
             int pos = holder.getAdapterPosition();
-            if (pos == RecyclerView.NO_POSITION) return false;
+            if (pos == RecyclerView.NO_POSITION) return;
 
-            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
-                    || keyCode == 23 || keyCode == 66) {
-                toggleExpanded(pos, holder);
-                return true;
+            if (expandedPosition == pos) {
+                expandedPosition = -1;
+                notifyItemChanged(pos);
+            } else {
+                int oldPos = expandedPosition;
+                expandedPosition = pos;
+                if (oldPos >= 0) {
+                    notifyItemChanged(oldPos);
+                }
+                notifyItemChanged(pos);
+
+                handler.postDelayed(() -> {
+                    holder.btnOpen.requestFocus();
+                }, 150);
             }
-            return false;
         });
 
         holder.btnOpen.setOnClickListener(v -> {
@@ -77,18 +84,13 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             }
         });
 
-        holder.btnOpen.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                holder.btnUninstall.requestFocus();
-                return true;
+        holder.btnOpen.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                if (expandedPosition == holder.getAdapterPosition()) {
+                    expandedPosition = -1;
+                    notifyItemChanged(holder.getAdapterPosition());
+                }
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_BACK) {
-                collapsePanel(holder);
-                return true;
-            }
-            return false;
         });
 
         holder.btnUninstall.setOnClickListener(v -> {
@@ -97,54 +99,23 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             }
         });
 
-        holder.btnUninstall.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                holder.btnOpen.requestFocus();
-                return true;
+        holder.btnUninstall.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                if (expandedPosition == holder.getAdapterPosition()) {
+                    expandedPosition = -1;
+                    notifyItemChanged(holder.getAdapterPosition());
+                }
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_BACK) {
-                collapsePanel(holder);
-                return true;
-            }
-            return false;
         });
-    }
-
-    private void toggleExpanded(int position, AppViewHolder holder) {
-        if (expandedPosition == position) {
-            collapsePanel(holder);
-        } else {
-            int oldPos = expandedPosition;
-            expandedPosition = position;
-            if (oldPos >= 0) {
-                notifyItemChanged(oldPos);
-            }
-            notifyItemChanged(position);
-        }
-    }
-
-    private void collapsePanel(AppViewHolder holder) {
-        if (expandedPosition == holder.getAdapterPosition()) {
-            expandedPosition = -1;
-            notifyItemChanged(holder.getAdapterPosition());
-        }
     }
 
     private void updateActionPanel(AppViewHolder holder, boolean visible) {
         holder.layoutActions.setVisibility(visible ? View.VISIBLE : View.GONE);
-        
+
         holder.btnOpen.setFocusable(visible);
         holder.btnOpen.setFocusableInTouchMode(visible);
         holder.btnUninstall.setFocusable(visible);
         holder.btnUninstall.setFocusableInTouchMode(visible);
-
-        if (visible) {
-            handler.postDelayed(() -> {
-                holder.btnOpen.requestFocus();
-            }, 100);
-        }
     }
 
     @Override

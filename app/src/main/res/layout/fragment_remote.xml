@@ -55,35 +55,18 @@
             android:gravity="center_horizontal"
             android:paddingRight="@dimen/dp20">
 
-            <LinearLayout
-                android:layout_width="200dp"
-                android:layout_height="120dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/selector_app_item"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:padding="@dimen/dp10">
-
-                <ImageView
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_marginBottom="@dimen/dp8"
-                    android:src="@drawable/ic_browser" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="浏览器访问"
-                    android:textColor="@color/home_text_primary"
-                    android:textSize="@dimen/sp16"
-                    android:textStyle="bold" />
-            </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="浏览器访问"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp16"
+                android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/dp12"
+                android:layout_marginTop="@dimen/dp8"
                 android:text="在浏览器中输入下方地址"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
@@ -95,7 +78,7 @@
                 android:layout_marginTop="@dimen/dp16"
                 android:text="正在启动服务..."
                 android:textColor="@color/accent"
-                android:textSize="@dimen/sp18"
+                android:textSize="@dimen/sp20"
                 android:textStyle="bold" />
 
             <TextView
@@ -110,7 +93,7 @@
 
         <View
             android:layout_width="1dp"
-            android:layout_height="280dp"
+            android:layout_height="180dp"
             android:background="#3a4a6a" />
 
         <LinearLayout
@@ -121,35 +104,18 @@
             android:gravity="center_horizontal"
             android:paddingLeft="@dimen/dp20">
 
-            <LinearLayout
-                android:layout_width="200dp"
-                android:layout_height="120dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/selector_app_item"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:padding="@dimen/dp10">
-
-                <ImageView
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_marginBottom="@dimen/dp8"
-                    android:src="@drawable/ic_qr_scan" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="扫描二维码"
-                    android:textColor="@color/home_text_primary"
-                    android:textSize="@dimen/sp16"
-                    android:textStyle="bold" />
-            </LinearLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="扫描二维码"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp16"
+                android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/dp12"
+                android:layout_marginTop="@dimen/dp8"
                 android:text="使用手机扫描下方二维码"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
