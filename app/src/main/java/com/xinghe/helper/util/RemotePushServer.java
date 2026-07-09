@@ -14,26 +14,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
-/**
- * 远程推送 HTTP 服务器（基于 NanoHTTPD）
- * 参考开源方案：
- * - matan-h/Transfer：使用 NanoHTTPD 在 Android 上搭建本地文件服务器
- * - WPSeven/Android-Http-File-Server：使用 NanoHTTPD 流式上传大文件
- * 改造点：
- * 1. 用成熟的 NanoHTTPD 替代手写 HTTP 解析，避免协议解析错误导致的"未知错误"。
- * 2. 使用 NanoHTTPD 内置的 multipart/form-data 解析，稳定可靠。
- * 3. 上传文件先落到缓存，再移动到根目录"星河助手"文件夹，避免写入失败损坏文件。
- * 4. APK 文件保存后自动拉起安装，其它文件仅保存。
- */
 public class RemotePushServer extends NanoHTTPD {
 
-    private static final int PORT = 8080;
+    private static final int DEFAULT_PORT = 12345;
+    private int actualPort = DEFAULT_PORT;
 
     private static final String INDEX_HTML = "<!DOCTYPE html>" +
             "<html>" +
@@ -81,7 +72,7 @@ public class RemotePushServer extends NanoHTTPD {
     }
 
     public RemotePushServer(Context context) {
-        super(PORT);
+        super(DEFAULT_PORT);
         this.context = context.getApplicationContext();
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
@@ -91,6 +82,17 @@ public class RemotePushServer extends NanoHTTPD {
     }
 
     public void startServer() {
+        actualPort = findAvailablePort(DEFAULT_PORT);
+        if (actualPort <= 0) {
+            notifyServerError("启动失败: 找不到可用端口");
+            return;
+        }
+        try {
+            java.lang.reflect.Field field = NanoHTTPD.class.getDeclaredField("myPort");
+            field.setAccessible(true);
+            field.setInt(this, actualPort);
+        } catch (Exception ignored) {
+        }
         try {
             start();
             notifyServerStarted(getServerUrl());
@@ -105,7 +107,34 @@ public class RemotePushServer extends NanoHTTPD {
     }
 
     public String getServerUrl() {
-        return "http://" + getLocalIpAddress() + ":" + PORT;
+        return "http://" + getLocalIpAddress() + ":" + actualPort;
+    }
+
+    private int findAvailablePort(int startPort) {
+        for (int port = startPort; port < startPort + 20; port++) {
+            if (isPortAvailable(port)) {
+                return port;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isPortAvailable(int port) {
+        ServerSocket socket = null;
+        try {
+            socket = new ServerSocket(port);
+            socket.setReuseAddress(true);
+            return true;
+        } catch (IOException e) {
+            return false;
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
     }
 
     @Override
@@ -127,7 +156,6 @@ public class RemotePushServer extends NanoHTTPD {
     private Response handleUpload(IHTTPSession session) {
         notifyPushStarted();
 
-        // 1. 先让 NanoHTTPD 把 multipart 数据解析到临时文件
         Map<String, String> files = new java.util.HashMap<>();
         try {
             session.parseBody(files);
@@ -140,7 +168,6 @@ public class RemotePushServer extends NanoHTTPD {
             return jsonResponse(false, "没有收到文件", Response.Status.BAD_REQUEST);
         }
 
-        // 2. 取第一个上传的文件
         Map.Entry<String, String> entry = files.entrySet().iterator().next();
         String tempPath = entry.getValue();
 
@@ -149,20 +176,19 @@ public class RemotePushServer extends NanoHTTPD {
             return jsonResponse(false, "上传文件为空", Response.Status.BAD_REQUEST);
         }
 
-        // 3. 确定真实文件名
+        android.util.Log.d("RemotePushServer", "收到文件，临时路径: " + tempPath + ", 大小: " + tempFile.length());
+
         String fileName = extractFileName(session, entry.getKey());
         if (fileName == null || fileName.isEmpty()) {
             fileName = "push_" + System.currentTimeMillis();
         }
 
-        // 4. 移动到根目录"星河助手"文件夹
         File destDir = getXingheDir();
         if (destDir == null) {
             return jsonResponse(false, "无法获取存储目录，请检查存储权限", Response.Status.INTERNAL_ERROR);
         }
 
         File destFile = new File(destDir, fileName);
-        // 如果同名，追加时间戳重命名
         if (destFile.exists()) {
             int dot = fileName.lastIndexOf('.');
             String name = dot > 0 ? fileName.substring(0, dot) : fileName;
@@ -171,20 +197,21 @@ public class RemotePushServer extends NanoHTTPD {
         }
 
         try {
-            copyFile(tempFile, destFile);
+            boolean moved = tempFile.renameTo(destFile);
+            if (!moved) {
+                copyFile(tempFile, destFile);
+                tempFile.delete();
+            }
         } catch (IOException e) {
             android.util.Log.e("RemotePushServer", "保存文件失败: " + e.getMessage(), e);
             return jsonResponse(false, "保存文件失败: " + e.getMessage(), Response.Status.INTERNAL_ERROR);
-        } finally {
-            // 清理 NanoHTTPD 生成的临时文件
-            if (tempFile.exists()) {
-                tempFile.delete();
-            }
         }
 
         if (!destFile.exists() || destFile.length() == 0) {
             return jsonResponse(false, "保存后文件为空", Response.Status.INTERNAL_ERROR);
         }
+
+        android.util.Log.d("RemotePushServer", "文件已保存: " + destFile.getAbsolutePath() + ", 大小: " + destFile.length());
 
         boolean isApk = destFile.getName().toLowerCase(Locale.US).endsWith(".apk");
         notifyPushCompleted(destFile, isApk);
@@ -202,7 +229,6 @@ public class RemotePushServer extends NanoHTTPD {
                     return sanitizeFileName(contentDisposition.substring(start, end));
                 }
             }
-            // 兼容 filename*=UTF-8''xxx 这种编码
             int starIdx = contentDisposition.toLowerCase(Locale.US).indexOf("filename*=");
             if (starIdx >= 0) {
                 String value = contentDisposition.substring(starIdx + 10).trim();
@@ -221,7 +247,6 @@ public class RemotePushServer extends NanoHTTPD {
             }
         }
 
-        // NanoHTTPD 的 getParms 可能包含原始文件名（部分版本）
         String rawName = session.getParms().get(key);
         if (rawName != null && !rawName.isEmpty() && !rawName.startsWith("NanoHTTPD-")) {
             return sanitizeFileName(rawName);
@@ -241,12 +266,10 @@ public class RemotePushServer extends NanoHTTPD {
 
     private String sanitizeFileName(String name) {
         if (name == null) return null;
-        // 去除路径前缀
         int lastSep = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
         if (lastSep >= 0) {
             name = name.substring(lastSep + 1);
         }
-        // 尝试用 UTF-8 重新解码（防止 ISO-8859-1 编码的中文乱码）
         try {
             byte[] bytes = name.getBytes(StandardCharsets.ISO_8859_1);
             String decoded = new String(bytes, StandardCharsets.UTF_8);
@@ -283,7 +306,6 @@ public class RemotePushServer extends NanoHTTPD {
             if (Environment.isExternalStorageManager()) {
                 xingheDir = new File(Environment.getExternalStorageDirectory(), "星河助手");
             } else {
-                // 没有所有文件访问权限时，只能写到应用外部存储
                 File externalFiles = context.getExternalFilesDir(null);
                 xingheDir = externalFiles != null ? new File(externalFiles, "星河助手") : null;
             }
@@ -300,7 +322,6 @@ public class RemotePushServer extends NanoHTTPD {
             return xingheDir;
         }
 
-        // 兜底：应用外部存储
         File fallback = context.getExternalFilesDir(null);
         if (fallback != null) {
             File dir = new File(fallback, "星河助手");
@@ -328,7 +349,6 @@ public class RemotePushServer extends NanoHTTPD {
     }
 
     private String getLocalIpAddress() {
-        // 1. 优先从 WiFi 获取
         try {
             WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             if (wm != null) {
@@ -343,7 +363,6 @@ public class RemotePushServer extends NanoHTTPD {
         } catch (Exception ignored) {
         }
 
-        // 2. 遍历所有网络接口，找到内网 IPv4 地址
         try {
             java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
             while (interfaces.hasMoreElements()) {
@@ -374,7 +393,6 @@ public class RemotePushServer extends NanoHTTPD {
         } catch (Exception ignored) {
         }
 
-        // 3. 兜底：localhost
         try {
             String localhost = InetAddress.getLocalHost().getHostAddress();
             if (localhost != null && !localhost.startsWith("127.")) {
