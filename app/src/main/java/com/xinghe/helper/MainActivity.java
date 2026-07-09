@@ -6,16 +6,26 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+
 import com.xinghe.helper.activity.AppListActivity;
-import com.xinghe.helper.activity.AppManagerActivity;
 import com.xinghe.helper.activity.BasicTransNavActivity;
-import com.xinghe.helper.activity.RemoteActivity;
+import com.xinghe.helper.fragments.InstallFragment;
+import com.xinghe.helper.fragments.ManagerFragment;
+import com.xinghe.helper.fragments.RemoteFragment;
 
 public class MainActivity extends BasicTransNavActivity {
 
     private TextView navInstall;
     private TextView navRemote;
     private TextView navManager;
+
+    private FragmentManager fragmentManager;
+    private Fragment installFragment;
+    private Fragment remoteFragment;
+    private Fragment managerFragment;
+    private Fragment currentFragment;
 
     private long lastBackPressTime = 0;
     private static final long BACK_PRESS_INTERVAL = 2000;
@@ -25,25 +35,29 @@ public class MainActivity extends BasicTransNavActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        fragmentManager = getSupportFragmentManager();
+
         navInstall = findViewById(R.id.nav_install);
         navRemote = findViewById(R.id.nav_remote);
         navManager = findViewById(R.id.nav_manager);
 
+        installFragment = new InstallFragment();
+        remoteFragment = new RemoteFragment();
+        managerFragment = new ManagerFragment();
+
         navInstall.setOnClickListener(v -> {
             updateNav(0);
-            Intent intent = new Intent(MainActivity.this, AppListActivity.class);
-            intent.putExtra("code", "");
-            startActivity(intent);
+            switchFragment(installFragment);
         });
 
         navRemote.setOnClickListener(v -> {
             updateNav(1);
-            startActivity(new Intent(MainActivity.this, RemoteActivity.class));
+            switchFragment(remoteFragment);
         });
 
         navManager.setOnClickListener(v -> {
             updateNav(2);
-            startActivity(new Intent(MainActivity.this, AppManagerActivity.class));
+            switchFragment(managerFragment);
         });
 
         View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
@@ -59,7 +73,17 @@ public class MainActivity extends BasicTransNavActivity {
         navManager.setOnFocusChangeListener(navFocusListener);
 
         updateNav(0);
+        switchFragment(installFragment);
         navInstall.requestFocus();
+    }
+
+    private void switchFragment(Fragment targetFragment) {
+        if (currentFragment == targetFragment) return;
+
+        fragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, targetFragment)
+                .commit();
+        currentFragment = targetFragment;
     }
 
     @Override
