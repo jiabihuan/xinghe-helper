@@ -399,7 +399,9 @@ public class RemotePushServer {
                 if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
                     android.util.Log.d("RemotePushServer", "解析 multipart 数据");
                     resultFile = parseMultipart(body, contentType);
-                    fileName = extractFileNameFromMultipart(body, contentType);
+                    if (resultFile != null) {
+                        fileName = resultFile.getName();
+                    }
                 } else {
                     android.util.Log.d("RemotePushServer", "解析 raw body 数据");
                     boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
@@ -429,42 +431,6 @@ public class RemotePushServer {
                 sendJson(output, "{\"success\":false,\"message\":\"保存失败\"}", 500);
                 notifyPushFailed("保存文件失败");
             }
-        }
-
-        private String extractFileNameFromMultipart(byte[] body, String contentType) {
-            String boundary = extractBoundary(contentType);
-            if (boundary == null) return "push_" + System.currentTimeMillis() + ".apk";
-
-            String text = new String(body, StandardCharsets.ISO_8859_1);
-            String boundaryMarker = "--" + boundary;
-            int firstBoundary = text.indexOf(boundaryMarker);
-            if (firstBoundary < 0) return "push_" + System.currentTimeMillis() + ".apk";
-
-            int contentStart = text.indexOf("\r\n\r\n", firstBoundary);
-            if (contentStart < 0) return "push_" + System.currentTimeMillis() + ".apk";
-
-            String headerPart = text.substring(firstBoundary, contentStart);
-            int filenameIdx = headerPart.toLowerCase(Locale.US).indexOf("filename=\"");
-            if (filenameIdx < 0) return "push_" + System.currentTimeMillis() + ".apk";
-
-            int start = filenameIdx + 10;
-            int end = headerPart.indexOf("\"", start);
-            if (end < 0) return "push_" + System.currentTimeMillis() + ".apk";
-
-            String fileName = headerPart.substring(start, end);
-            // 去除路径前缀
-            if (fileName.contains("\\") || fileName.contains("/")) {
-                int lastSep = Math.max(fileName.lastIndexOf('\\'), fileName.lastIndexOf('/'));
-                if (lastSep >= 0 && lastSep < fileName.length() - 1) {
-                    fileName = fileName.substring(lastSep + 1);
-                }
-            }
-            // UTF-8重新解码，解决中文乱码
-            try {
-                fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-            } catch (Exception ignored) {
-            }
-            return fileName;
         }
 
         private byte[] readFully(InputStream input, int length) throws IOException {
@@ -539,12 +505,15 @@ public class RemotePushServer {
 
             int nextBoundary = text.indexOf("\r\n" + boundaryMarker, contentStart);
             if (nextBoundary < 0) {
-                nextBoundary = text.indexOf("--" + boundaryMarker, contentStart);
+                nextBoundary = text.indexOf("\r\n" + boundaryMarker + "--", contentStart);
+            }
+            if (nextBoundary < 0) {
+                nextBoundary = text.indexOf(boundaryMarker + "--", contentStart);
             }
             if (nextBoundary < 0) {
                 nextBoundary = body.length;
             }
-            android.util.Log.d("RemotePushServer", "nextBoundary=" + nextBoundary + ", contentStart=" + contentStart);
+            android.util.Log.d("RemotePushServer", "nextBoundary=" + nextBoundary + ", contentStart=" + contentStart + ", body.length=" + body.length);
 
             String fileName = "push_" + System.currentTimeMillis() + ".apk";
             String headerPart = text.substring(firstBoundary, contentStart);
@@ -557,14 +526,12 @@ public class RemotePushServer {
                     fileName = headerPart.substring(start, end);
                 }
             }
-            // 修复1：浏览器发送的filename可能带路径前缀（如C:\fakepath\xxx），只取文件名部分
             if (fileName.contains("\\") || fileName.contains("/")) {
                 int lastSep = Math.max(fileName.lastIndexOf('\\'), fileName.lastIndexOf('/'));
                 if (lastSep >= 0 && lastSep < fileName.length() - 1) {
                     fileName = fileName.substring(lastSep + 1);
                 }
             }
-            // 修复2：文件名用UTF-8重新解码，解决中文乱码
             try {
                 fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
             } catch (Exception e) {
@@ -582,9 +549,11 @@ public class RemotePushServer {
             android.util.Log.d("RemotePushServer", "保存目录=" + (dir != null ? dir.getAbsolutePath() : "null"));
             if (dir == null) return null;
             File file = new File(dir, fileName);
-            android.util.Log.d("RemotePushServer", "写入文件=" + file.getAbsolutePath() + ", size=" + (nextBoundary - contentStart));
+            int contentLength = nextBoundary - contentStart;
+            android.util.Log.d("RemotePushServer", "写入文件=" + file.getAbsolutePath() + ", size=" + contentLength);
             FileOutputStream fos = new FileOutputStream(file);
-            fos.write(body, contentStart, nextBoundary - contentStart);
+            fos.write(body, contentStart, contentLength);
+            fos.flush();
             fos.close();
             android.util.Log.d("RemotePushServer", "文件写入完成, exists=" + file.exists() + ", length=" + file.length());
             return file;
