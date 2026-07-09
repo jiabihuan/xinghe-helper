@@ -1,5 +1,7 @@
 package com.xinghe.helper.adapter;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,6 +23,7 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
     private final List<InstalledApp> apps = new ArrayList<>();
     private final OnAppActionListener listener;
     private int expandedPosition = -1;
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     public interface OnAppActionListener {
         void onAppOpen(InstalledApp app);
@@ -55,10 +58,6 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
         boolean isExpanded = position == expandedPosition;
         updateActionPanel(holder, isExpanded);
 
-        holder.layoutItem.setOnClickListener(v -> {
-            toggleExpanded(holder.getAdapterPosition(), holder);
-        });
-
         holder.layoutItem.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             int pos = holder.getAdapterPosition();
@@ -78,12 +77,6 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             }
         });
 
-        holder.btnUninstall.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onAppUninstall(app);
-            }
-        });
-
         holder.btnOpen.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
@@ -96,6 +89,12 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
                 return true;
             }
             return false;
+        });
+
+        holder.btnUninstall.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onAppUninstall(app);
+            }
         });
 
         holder.btnUninstall.setOnKeyListener((v, keyCode, event) -> {
@@ -122,25 +121,30 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             if (oldPos >= 0) {
                 notifyItemChanged(oldPos);
             }
-            updateActionPanel(holder, true);
-            holder.btnOpen.requestFocus();
+            notifyItemChanged(position);
         }
     }
 
     private void collapsePanel(AppViewHolder holder) {
         if (expandedPosition == holder.getAdapterPosition()) {
             expandedPosition = -1;
-            updateActionPanel(holder, false);
-            holder.layoutItem.requestFocus();
+            notifyItemChanged(holder.getAdapterPosition());
         }
     }
 
     private void updateActionPanel(AppViewHolder holder, boolean visible) {
-        holder.layoutActions.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+        holder.layoutActions.setVisibility(visible ? View.VISIBLE : View.GONE);
+        
         holder.btnOpen.setFocusable(visible);
         holder.btnOpen.setFocusableInTouchMode(visible);
         holder.btnUninstall.setFocusable(visible);
         holder.btnUninstall.setFocusableInTouchMode(visible);
+
+        if (visible) {
+            handler.postDelayed(() -> {
+                holder.btnOpen.requestFocus();
+            }, 100);
+        }
     }
 
     @Override

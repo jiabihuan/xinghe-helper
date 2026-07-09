@@ -11,53 +11,19 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp">
+        android:paddingLeft="@dimen/dp20"
+        android:paddingRight="@dimen/dp20"
+        android:paddingTop="@dimen/dp16"
+        android:paddingBottom="@dimen/dp8">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvCodeInfo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
-
-            <HorizontalScrollView
-                android:id="@+id/categoryScroll"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:focusable="false"
-                android:focusableInTouchMode="false">
-
-                <LinearLayout
-                    android:id="@+id/categoryTabs"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:focusable="false"
-                    android:focusableInTouchMode="false" />
-            </HorizontalScrollView>
-
-            <TextView
-                android:id="@+id/tvCodeInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="口令"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14"
-                android:focusable="false" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="选择应用"
-            android:textColor="@color/home_text_primary"
-            android:textSize="@dimen/sp24"
+            android:text="口令"
+            android:textColor="#4CAF50"
+            android:textSize="@dimen/sp20"
             android:textStyle="bold"
             android:focusable="false" />
 
@@ -71,15 +37,35 @@
             android:focusable="false" />
     </LinearLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/categoryScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:paddingLeft="@dimen/dp20"
+        android:paddingRight="@dimen/dp20"
+        android:paddingBottom="@dimen/dp8">
+
+        <LinearLayout
+            android:id="@+id/categoryTabs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:focusable="false"
+            android:focusableInTouchMode="false" />
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/appRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingLeft="20dp"
-        android:paddingRight="20dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingLeft="@dimen/dp20"
+        android:paddingRight="@dimen/dp20"
+        android:paddingTop="@dimen/dp8"
+        android:paddingBottom="@dimen/dp8"
         android:scrollbars="vertical"
         android:clipToPadding="false"
         android:descendantFocusability="afterDescendants" />
@@ -89,8 +75,8 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingTop="8dp"
-        android:paddingBottom="20dp">
+        android:paddingTop="@dimen/dp8"
+        android:paddingBottom="@dimen/dp20">
 
         <TextView
             android:id="@+id/btnDownload"

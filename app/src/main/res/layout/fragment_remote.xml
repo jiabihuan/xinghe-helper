@@ -3,65 +3,181 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:padding="40dp">
+    android:padding="@dimen/dp20">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="@dimen/dp20">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/title_remote"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvPushStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/accent"
+            android:textSize="@dimen/sp16" />
+    </LinearLayout>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/title_remote"
-        android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp24"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp8"
+        android:layout_marginBottom="@dimen/dp30"
         android:text="电视和手机/电脑连接同一个WiFi"
         android:textColor="@color/home_text_hint"
         android:textSize="@dimen/sp14" />
 
-    <TextView
-        android:id="@+id/tvPushUrl"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp40"
-        android:text="正在启动服务..."
-        android:textColor="@color/accent"
-        android:textSize="@dimen/sp18" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingLeft="@dimen/dp20"
+        android:paddingRight="@dimen/dp20">
 
-    <ImageView
-        android:id="@+id/ivQrCode"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:layout_marginTop="@dimen/dp20"
-        android:visibility="invisible"
-        android:background="#FFFFFF" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingRight="@dimen/dp20">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp12"
-        android:text="扫描二维码快速访问"
-        android:textColor="@color/home_text_hint"
-        android:textSize="@dimen/sp14" />
+            <LinearLayout
+                android:layout_width="200dp"
+                android:layout_height="120dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/selector_app_item"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:padding="@dimen/dp10">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp8"
-        android:text="或用浏览器访问上方地址，上传APK文件"
-        android:textColor="@color/home_text_hint"
-        android:textSize="@dimen/sp14" />
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="@dimen/dp8"
+                    android:src="@drawable/ic_browser" />
 
-    <TextView
-        android:id="@+id/tvPushStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp40"
-        android:text=""
-        android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp16" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="浏览器访问"
+                    android:textColor="@color/home_text_primary"
+                    android:textSize="@dimen/sp16"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp12"
+                android:text="在浏览器中输入下方地址"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+            <TextView
+                android:id="@+id/tvPushUrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp16"
+                android:text="正在启动服务..."
+                android:textColor="@color/accent"
+                android:textSize="@dimen/sp18"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="上传APK文件即可安装"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="280dp"
+            android:background="#3a4a6a" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingLeft="@dimen/dp20">
+
+            <LinearLayout
+                android:layout_width="200dp"
+                android:layout_height="120dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/selector_app_item"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:padding="@dimen/dp10">
+
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginBottom="@dimen/dp8"
+                    android:src="@drawable/ic_qr_scan" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="扫描二维码"
+                    android:textColor="@color/home_text_primary"
+                    android:textSize="@dimen/sp16"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp12"
+                android:text="使用手机扫描下方二维码"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp16"
+                android:background="#FFFFFF"
+                android:padding="@dimen/dp4">
+
+                <ImageView
+                    android:id="@+id/ivQrCode"
+                    android:layout_width="180dp"
+                    android:layout_height="180dp"
+                    android:visibility="invisible" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="快速跳转到推送页面"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

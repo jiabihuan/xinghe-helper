@@ -53,7 +53,6 @@ public class AppListActivity extends AppCompatActivity {
     private int currentCategoryIndex = 0;
     private Set<Long> selectedAppIds = new HashSet<>();
 
-    private TextView tvTitle;
     private TextView tvCodeInfo;
     private LinearLayout categoryTabs;
     private HorizontalScrollView categoryScroll;
@@ -78,7 +77,6 @@ public class AppListActivity extends AppCompatActivity {
         code = getIntent().getStringExtra("code");
         if (code == null) code = "";
 
-        tvTitle = findViewById(R.id.tvTitle);
         tvCodeInfo = findViewById(R.id.tvCodeInfo);
         categoryTabs = findViewById(R.id.categoryTabs);
         categoryScroll = findViewById(R.id.categoryScroll);
@@ -269,11 +267,9 @@ public class AppListActivity extends AppCompatActivity {
 
     private void setupUI() {
         if (allApps.size() == 1) {
-            tvTitle.setText("确认下载");
             categoryTabs.setVisibility(View.GONE);
             filteredApps.addAll(allApps);
         } else {
-            tvTitle.setText("选择应用");
             setupCategoryTabs();
             filterByCategory(0);
         }
