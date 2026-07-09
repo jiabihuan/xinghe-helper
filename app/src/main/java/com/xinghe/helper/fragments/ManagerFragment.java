@@ -420,14 +420,16 @@ public class ManagerFragment extends Fragment {
 
                 if (succeeded) successCount++;
 
+                final boolean finalSucceeded = succeeded;
+                final String finalMsg = msg;
                 mainHandler.post(() -> {
-                    if (succeeded) {
+                    if (finalSucceeded) {
                         tvStatus.setText("卸载成功");
                         tvStatus.setTextColor(getResources().getColor(R.color.success));
                         tvResult.setText("✓");
                         tvResult.setTextColor(getResources().getColor(R.color.success));
                     } else {
-                        tvStatus.setText(msg);
+                        tvStatus.setText(finalMsg);
                         tvStatus.setTextColor(getResources().getColor(R.color.error));
                         tvResult.setText("✗");
                         tvResult.setTextColor(getResources().getColor(R.color.error));
