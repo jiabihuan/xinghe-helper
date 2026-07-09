@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -342,17 +343,45 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
         Context context = getContext();
         if (context == null || app == null) return;
         try {
-            Uri packageUri = Uri.parse("package:" + app.getPackageName());
-            if (startIntent(new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri))) {
-                // do nothing
-            } else if (startIntent(new Intent(Intent.ACTION_DELETE, packageUri))) {
-                // do nothing
+            String packageName = app.getPackageName();
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                uninstallWithPackageInstaller(context, packageName);
             } else {
-                ToastUtil.showShort(context, "请在设置中卸载");
-                openAppDetails(packageUri);
+                Uri packageUri = Uri.parse("package:" + packageName);
+                if (startIntent(new Intent(Intent.ACTION_DELETE, packageUri))) {
+                    return;
+                } else if (startIntent(new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri))) {
+                    return;
+                } else {
+                    ToastUtil.showShort(context, "请在设置中卸载");
+                    openAppDetails(packageUri);
+                }
             }
         } catch (Exception e) {
             ToastUtil.showShort(context, "卸载失败");
+        }
+    }
+
+    private void uninstallWithPackageInstaller(Context context, String packageName) {
+        try {
+            android.content.pm.PackageInstaller packageInstaller = context.getPackageManager().getPackageInstaller();
+            
+            Intent intent = new Intent(context, UninstallReceiver.class);
+            intent.putExtra("packageName", packageName);
+            
+            int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ?
+                    android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT :
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+            
+            android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
+                    context, 0, intent, flags);
+            
+            packageInstaller.uninstall(packageName, pendingIntent.getIntentSender());
+        } catch (Exception e) {
+            ToastUtil.showShort(context, "卸载失败: " + e.getMessage());
+            Uri packageUri = Uri.parse("package:" + packageName);
+            openAppDetails(packageUri);
         }
     }
 
