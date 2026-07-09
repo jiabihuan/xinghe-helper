@@ -2,11 +2,14 @@ package com.xinghe.helper.fragments;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -15,6 +18,7 @@ import androidx.fragment.app.Fragment;
 
 import com.xinghe.helper.R;
 import com.xinghe.helper.util.ApkInstallUtil;
+import com.xinghe.helper.util.QRCodeUtil;
 import com.xinghe.helper.util.RemotePushServer;
 import com.xinghe.helper.util.ToastUtil;
 
@@ -26,6 +30,7 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
 
     private TextView tvPushUrl;
     private TextView tvPushStatus;
+    private ImageView ivQrCode;
     private RemotePushServer pushServer;
 
     @Override
@@ -38,6 +43,7 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         super.onViewCreated(view, savedInstanceState);
         tvPushUrl = view.findViewById(R.id.tvPushUrl);
         tvPushStatus = view.findViewById(R.id.tvPushStatus);
+        ivQrCode = view.findViewById(R.id.ivQrCode);
 
         if (getContext() == null) return;
 
@@ -77,6 +83,12 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
             pushServer.stop();
             pushServer = null;
         }
+        if (ivQrCode != null) {
+            BitmapDrawable drawable = (BitmapDrawable) ivQrCode.getDrawable();
+            if (drawable != null && drawable.getBitmap() != null) {
+                drawable.getBitmap().recycle();
+            }
+        }
         super.onDestroyView();
     }
 
@@ -88,12 +100,27 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
         if (tvPushStatus != null) {
             tvPushStatus.setText("等待推送...");
         }
+        if (ivQrCode != null) {
+            Bitmap qrBitmap = QRCodeUtil.generateQRCodeWithBackground(url, 400, 400);
+            if (qrBitmap != null) {
+                ivQrCode.setImageBitmap(qrBitmap);
+                ivQrCode.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
     @Override
     public void onServerStopped() {
         if (tvPushStatus != null) {
             tvPushStatus.setText("服务已停止");
+        }
+        if (ivQrCode != null) {
+            ivQrCode.setVisibility(View.INVISIBLE);
+            BitmapDrawable drawable = (BitmapDrawable) ivQrCode.getDrawable();
+            if (drawable != null && drawable.getBitmap() != null) {
+                drawable.getBitmap().recycle();
+            }
+            ivQrCode.setImageBitmap(null);
         }
     }
 

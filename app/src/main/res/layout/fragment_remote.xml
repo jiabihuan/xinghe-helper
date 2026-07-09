@@ -31,11 +31,27 @@
         android:textColor="@color/accent"
         android:textSize="@dimen/sp18" />
 
+    <ImageView
+        android:id="@+id/ivQrCode"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="@dimen/dp20"
+        android:visibility="invisible"
+        android:background="#FFFFFF" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/dp12"
-        android:text="用浏览器访问上方地址，上传APK文件"
+        android:text="扫描二维码快速访问"
+        android:textColor="@color/home_text_hint"
+        android:textSize="@dimen/sp14" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dp8"
+        android:text="或用浏览器访问上方地址，上传APK文件"
         android:textColor="@color/home_text_hint"
         android:textSize="@dimen/sp14" />
 
