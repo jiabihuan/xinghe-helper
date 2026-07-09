@@ -66,21 +66,29 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             if (pos == RecyclerView.NO_POSITION) return;
 
             if (expandedPosition == pos) {
+                updateActionPanel(holder, false);
                 expandedPosition = -1;
-                notifyItemChanged(pos);
             } else {
                 int oldPos = expandedPosition;
                 expandedPosition = pos;
+                
                 if (oldPos >= 0) {
-                    notifyItemChanged(oldPos);
+                    View oldView = findViewByPosition(findRecyclerView(v), oldPos);
+                    if (oldView != null) {
+                        LinearLayout oldActions = oldView.findViewById(R.id.layoutActions);
+                        if (oldActions != null) {
+                            oldActions.setVisibility(View.INVISIBLE);
+                        }
+                    }
                 }
-                notifyItemChanged(pos);
+                
+                updateActionPanel(holder, true);
 
                 handler.postDelayed(() -> {
                     if (expandedPosition == pos) {
                         holder.btnOpen.requestFocus();
                     }
-                }, 100);
+                }, 50);
             }
         });
 
@@ -97,7 +105,9 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             int span = lm.getSpanCount();
 
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                v.performClick();
+                if (expandedPosition != pos) {
+                    v.performClick();
+                }
                 return true;
             }
 
@@ -260,6 +270,15 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
                 return (RecyclerView) parent;
             }
             parent = parent.getParent();
+        }
+        return null;
+    }
+
+    private View findViewByPosition(RecyclerView recyclerView, int position) {
+        if (recyclerView == null) return null;
+        RecyclerView.LayoutManager lm = recyclerView.getLayoutManager();
+        if (lm != null) {
+            return lm.findViewByPosition(position);
         }
         return null;
     }
