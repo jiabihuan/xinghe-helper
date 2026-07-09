@@ -250,8 +250,7 @@ public class RemotePushServer extends NanoHTTPD {
         try {
             byte[] bytes = name.getBytes(StandardCharsets.ISO_8859_1);
             String decoded = new String(bytes, StandardCharsets.UTF_8);
-            if (decoded.contains("\u00") || decoded.contains("?")) {
-                // 解码失败，保持原样
+            if (decoded.matches(".*[\\u0000-\\u001F\\uFFFD].*")) {
             } else {
                 name = decoded;
             }
