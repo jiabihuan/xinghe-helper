@@ -62,7 +62,7 @@ public class RemotePushServer {
             "<script>" +
             "var file=null;" +
             "function onFileSelected(){file=document.getElementById('file').files[0];if(file){document.querySelector('.select').textContent='已选择: '+file.name;document.getElementById('pushBtn').style.display='block';}}" +
-            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{status.textContent='推送失败: '+xhr.responseText;}}};xhr.open('POST','/upload');xhr.send(file);}" +
+            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{status.textContent='推送失败: '+xhr.responseText;}}};xhr.open('POST','/upload');var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
             "</script></body></html>";
 
     private ServerSocket serverSocket;
@@ -392,7 +392,8 @@ public class RemotePushServer {
                 resultFile = parseMultipart(body, contentType);
                 fileName = extractFileNameFromMultipart(body, contentType);
             } else {
-                fileName = "push_" + System.currentTimeMillis() + ".apk";
+                boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
+                fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
                 resultFile = saveRawBody(body, fileName);
             }
 
