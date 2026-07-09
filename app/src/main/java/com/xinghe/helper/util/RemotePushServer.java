@@ -375,7 +375,6 @@ public class RemotePushServer {
             android.util.Log.d("RemotePushServer", "handleUpload: contentLength=" + contentLength + ", contentType=" + contentType);
             
             if (contentLength <= 0) {
-                android.util.Log.e("RemotePushServer", "没有上传数据");
                 sendJson(output, "{\"success\":false,\"message\":\"没有上传数据\"}", 400);
                 return;
             }
@@ -384,7 +383,6 @@ public class RemotePushServer {
 
             byte[] body = readFully(input, contentLength);
             if (body == null || body.length == 0) {
-                android.util.Log.e("RemotePushServer", "读取上传数据失败");
                 sendJson(output, "{\"success\":false,\"message\":\"读取上传数据失败\"}", 500);
                 notifyPushFailed("读取上传数据失败");
                 return;
@@ -393,41 +391,29 @@ public class RemotePushServer {
             android.util.Log.d("RemotePushServer", "读取到 " + body.length + " 字节");
 
             File resultFile = null;
-            String fileName = null;
 
             try {
                 if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
-                    android.util.Log.d("RemotePushServer", "解析 multipart 数据");
                     resultFile = parseMultipart(body, contentType);
-                    if (resultFile != null) {
-                        fileName = resultFile.getName();
-                    }
                 } else {
-                    android.util.Log.d("RemotePushServer", "解析 raw body 数据");
+                    // raw body，根据Content-Type判断后缀
                     boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
-                    fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
+                    String fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
                     resultFile = saveRawBody(body, fileName);
                 }
-                android.util.Log.d("RemotePushServer", "fileName=" + fileName + ", resultFile=" + (resultFile != null ? resultFile.getAbsolutePath() : "null"));
-            } catch (IOException e) {
-                android.util.Log.e("RemotePushServer", "保存文件失败: " + e.getMessage(), e);
-                sendJson(output, "{\"success\":false,\"message\":\"保存文件失败: " + e.getMessage() + "\"}", 500);
-                notifyPushFailed("保存文件失败: " + e.getMessage());
-                return;
             } catch (Exception e) {
-                android.util.Log.e("RemotePushServer", "处理文件失败: " + e.getMessage(), e);
-                sendJson(output, "{\"success\":false,\"message\":\"处理文件失败: " + e.getMessage() + "\"}", 500);
-                notifyPushFailed("处理文件失败: " + e.getMessage());
+                android.util.Log.e("RemotePushServer", "保存失败: " + e.getMessage(), e);
+                sendJson(output, "{\"success\":false,\"message\":\"保存失败: " + e.getMessage() + "\"}", 500);
+                notifyPushFailed("保存失败: " + e.getMessage());
                 return;
             }
 
             if (resultFile != null && resultFile.exists() && resultFile.length() > 0) {
-                boolean isApk = fileName != null && fileName.toLowerCase(Locale.US).endsWith(".apk");
-                android.util.Log.d("RemotePushServer", "上传成功, isApk=" + isApk);
+                android.util.Log.d("RemotePushServer", "保存成功: " + resultFile.getAbsolutePath());
+                // 所有文件都保存到星河助手文件夹，不在这里安装
                 sendJson(output, "{\"success\":true,\"message\":\"上传成功\"}", 200);
-                notifyPushCompleted(resultFile, isApk);
+                notifyPushCompleted(resultFile, false);
             } else {
-                android.util.Log.e("RemotePushServer", "保存失败: resultFile=" + (resultFile != null ? resultFile.getAbsolutePath() : "null"));
                 sendJson(output, "{\"success\":false,\"message\":\"保存失败\"}", 500);
                 notifyPushFailed("保存文件失败");
             }
@@ -446,14 +432,12 @@ public class RemotePushServer {
         }
 
         private File saveRawBody(byte[] body, String fileName) throws IOException {
-            File dir;
-            if (fileName.toLowerCase(Locale.US).endsWith(".apk")) {
+            // 所有文件统一保存到星河助手文件夹
+            File dir = getXingheDir();
+            if (dir == null) {
                 dir = context.getExternalCacheDir();
                 if (dir == null) dir = context.getCacheDir();
-            } else {
-                dir = getXingheDir();
             }
-            if (dir == null) return null;
             File file = new File(dir, fileName);
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(body);
@@ -541,15 +525,13 @@ public class RemotePushServer {
             }
             android.util.Log.d("RemotePushServer", "解析到的 fileName=" + fileName);
 
-            File dir;
-            if (fileName.toLowerCase(Locale.US).endsWith(".apk")) {
+            // 所有文件统一保存到星河助手文件夹
+            File dir = getXingheDir();
+            if (dir == null) {
                 dir = context.getExternalCacheDir();
                 if (dir == null) dir = context.getCacheDir();
-            } else {
-                dir = getXingheDir();
             }
-            android.util.Log.d("RemotePushServer", "保存目录=" + (dir != null ? dir.getAbsolutePath() : "null"));
-            if (dir == null) return null;
+            android.util.Log.d("RemotePushServer", "保存目录=" + dir.getAbsolutePath());
             File file = new File(dir, fileName);
             int contentLength = nextBoundary - contentStart;
             android.util.Log.d("RemotePushServer", "写入文件=" + file.getAbsolutePath() + ", size=" + contentLength);
