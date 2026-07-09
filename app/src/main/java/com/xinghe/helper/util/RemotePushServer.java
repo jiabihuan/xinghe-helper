@@ -52,9 +52,9 @@ public class RemotePushServer {
             "<body>" +
             "<div class=\"container\">" +
             "<h1>星河助手远程推送</h1>" +
-            "<p class=\"tip\">选择APK文件推送到电视</p>" +
-            "<input type=\"file\" id=\"file\" accept=\".apk\" onchange=\"onFileSelected()\">" +
-            "<button class=\"btn select\" onclick=\"document.getElementById('file').click()\">选择APK文件</button>" +
+            "<p class=\"tip\">选择文件推送到电视（APK自动安装，其他文件保存到星河助手文件夹</p>" +
+            "<input type=\"file\" id=\"file\" onchange=\"onFileSelected()\">" +
+            "<button class=\"btn select\" onclick=\"document.getElementById('file').click()\">选择文件</button>" +
             "<button class=\"btn push\" id=\"pushBtn\" onclick=\"upload()\">推送到电视</button>" +
             "<div class=\"progress\" id=\"progress\"><div class=\"bar\" id=\"bar\"></div></div>" +
             "<p class=\"status\" id=\"status\"></p>" +
@@ -62,7 +62,7 @@ public class RemotePushServer {
             "<script>" +
             "var file=null;" +
             "function onFileSelected(){file=document.getElementById('file').files[0];if(file){document.querySelector('.select').textContent='已选择: '+file.name;document.getElementById('pushBtn').style.display='block';}}" +
-            "function upload(){if(!file){alert('请先选择APK文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功，电视正在安装';bar.style.width='100%';}else{status.textContent='推送失败: '+xhr.responseText;}}};xhr.open('POST','/upload');xhr.send(file);}" +
+            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{status.textContent='推送失败: '+xhr.responseText;}}};xhr.open('POST','/upload');xhr.send(file);}" +
             "</script></body></html>";
 
     private ServerSocket serverSocket;
@@ -76,7 +76,7 @@ public class RemotePushServer {
         void onServerStarted(String url);
         void onServerStopped();
         void onPushStarted();
-        void onPushCompleted(File apkFile);
+        void onPushCompleted(File file, boolean isApk);
         void onPushFailed(String error);
     }
 
@@ -251,11 +251,11 @@ public class RemotePushServer {
         });
     }
 
-    private void notifyPushCompleted(final File apkFile) {
+    private void notifyPushCompleted(final File file, final boolean isApk) {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (listener != null) listener.onPushCompleted(apkFile);
+                if (listener != null) listener.onPushCompleted(file, isApk);
             }
         });
     }
@@ -386,20 +386,47 @@ public class RemotePushServer {
                 return;
             }
 
-            File apkFile;
+            File resultFile;
+            String fileName;
             if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
-                apkFile = parseMultipart(body, contentType);
+                resultFile = parseMultipart(body, contentType);
+                fileName = extractFileNameFromMultipart(body, contentType);
             } else {
-                apkFile = saveRawBody(body);
+                fileName = "push_" + System.currentTimeMillis() + ".apk";
+                resultFile = saveRawBody(body, fileName);
             }
 
-            if (apkFile != null && apkFile.exists() && apkFile.length() > 0) {
+            if (resultFile != null && resultFile.exists() && resultFile.length() > 0) {
+                boolean isApk = fileName.toLowerCase(Locale.US).endsWith(".apk");
                 sendJson(output, "{\"success\":true,\"message\":\"上传成功\"}", 200);
-                notifyPushCompleted(apkFile);
+                notifyPushCompleted(resultFile, isApk);
             } else {
                 sendJson(output, "{\"success\":false,\"message\":\"保存失败\"}", 500);
                 notifyPushFailed("保存文件失败");
             }
+        }
+
+        private String extractFileNameFromMultipart(byte[] body, String contentType) {
+            String boundary = extractBoundary(contentType);
+            if (boundary == null) return "push_" + System.currentTimeMillis() + ".apk";
+
+            String text = new String(body, StandardCharsets.ISO_8859_1);
+            String boundaryMarker = "--" + boundary;
+            int firstBoundary = text.indexOf(boundaryMarker);
+            if (firstBoundary < 0) return "push_" + System.currentTimeMillis() + ".apk";
+
+            int contentStart = text.indexOf("\r\n\r\n", firstBoundary);
+            if (contentStart < 0) return "push_" + System.currentTimeMillis() + ".apk";
+
+            String headerPart = text.substring(firstBoundary, contentStart);
+            int filenameIdx = headerPart.toLowerCase(Locale.US).indexOf("filename=\"");
+            if (filenameIdx < 0) return "push_" + System.currentTimeMillis() + ".apk";
+
+            int start = filenameIdx + 10;
+            int end = headerPart.indexOf("\"", start);
+            if (end < 0) return "push_" + System.currentTimeMillis() + ".apk";
+
+            return headerPart.substring(start, end);
         }
 
         private byte[] readFully(InputStream input, int length) throws IOException {
@@ -414,22 +441,41 @@ public class RemotePushServer {
             return baos.toByteArray();
         }
 
-        private File saveRawBody(byte[] body) throws IOException {
-            File dir = context.getExternalCacheDir();
-            if (dir == null) dir = context.getCacheDir();
-            File file = new File(dir, "push_" + System.currentTimeMillis() + ".apk");
+        private File saveRawBody(byte[] body, String fileName) throws IOException {
+            File dir;
+            if (fileName.toLowerCase(Locale.US).endsWith(".apk")) {
+                dir = context.getExternalCacheDir();
+                if (dir == null) dir = context.getCacheDir();
+            } else {
+                dir = getXingheDir();
+            }
+            if (dir == null) return null;
+            File file = new File(dir, fileName);
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(body);
             fos.close();
             return file;
         }
 
+        private File getXingheDir() {
+            try {
+                File externalDir = android.os.Environment.getExternalStorageDirectory();
+                File xingheDir = new File(externalDir, "星河助手");
+                if (!xingheDir.exists()) {
+                    xingheDir.mkdirs();
+                }
+                return xingheDir;
+            } catch (Exception e) {
+                File cacheDir = context.getExternalCacheDir();
+                if (cacheDir == null) cacheDir = context.getCacheDir();
+                return cacheDir;
+            }
+        }
+
         private File parseMultipart(byte[] body, String contentType) throws IOException {
             String boundary = extractBoundary(contentType);
             if (boundary == null) return null;
 
-            // multipart 文件内容在第一个 \r\n\r\n 和下一个 boundary 之间
-            // 用 ISO-8859-1 查找边界位置，避免 UTF-8 多字节问题
             String text = new String(body, StandardCharsets.ISO_8859_1);
             String boundaryMarker = "--" + boundary;
 
@@ -448,9 +494,26 @@ public class RemotePushServer {
                 nextBoundary = body.length;
             }
 
-            File dir = context.getExternalCacheDir();
-            if (dir == null) dir = context.getCacheDir();
-            File file = new File(dir, "push_" + System.currentTimeMillis() + ".apk");
+            String fileName = "push_" + System.currentTimeMillis() + ".apk";
+            String headerPart = text.substring(firstBoundary, contentStart);
+            int filenameIdx = headerPart.toLowerCase(Locale.US).indexOf("filename=\"");
+            if (filenameIdx >= 0) {
+                int start = filenameIdx + 10;
+                int end = headerPart.indexOf("\"", start);
+                if (end > start) {
+                    fileName = headerPart.substring(start, end);
+                }
+            }
+
+            File dir;
+            if (fileName.toLowerCase(Locale.US).endsWith(".apk")) {
+                dir = context.getExternalCacheDir();
+                if (dir == null) dir = context.getCacheDir();
+            } else {
+                dir = getXingheDir();
+            }
+            if (dir == null) return null;
+            File file = new File(dir, fileName);
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(body, contentStart, nextBoundary - contentStart);
             fos.close();

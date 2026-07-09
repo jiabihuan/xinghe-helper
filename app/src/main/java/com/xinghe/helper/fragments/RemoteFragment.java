@@ -132,13 +132,21 @@ public class RemoteFragment extends Fragment implements RemotePushServer.OnPushL
     }
 
     @Override
-    public void onPushCompleted(final File apkFile) {
+    public void onPushCompleted(final File file, final boolean isApk) {
         if (tvPushStatus != null) {
-            tvPushStatus.setText("接收完成，准备安装");
+            if (isApk) {
+                tvPushStatus.setText("接收完成，准备安装");
+            } else {
+                tvPushStatus.setText("接收完成，已保存到星河助手文件夹");
+            }
         }
         if (getContext() != null) {
-            ToastUtil.showShort(getContext(), "远程推送成功，开始安装");
-            ApkInstallUtil.installApk(getContext(), apkFile);
+            if (isApk) {
+                ToastUtil.showShort(getContext(), "远程推送成功，开始安装");
+                ApkInstallUtil.installApk(getContext(), file);
+            } else {
+                ToastUtil.showShort(getContext(), "文件已保存到星河助手文件夹");
+            }
         }
     }
 

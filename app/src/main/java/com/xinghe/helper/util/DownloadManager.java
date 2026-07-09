@@ -228,14 +228,26 @@ public class DownloadManager {
 
             boolean adbAvailable = AdbInstallUtil.isAdbAvailable();
             if (adbAvailable) {
+                final boolean[] installSuccess = {false};
                 final CountDownLatch latch = new CountDownLatch(1);
                 AdbInstallUtil.install(context, apkFile, (success, message) -> {
+                    installSuccess[0] = success;
                     latch.countDown();
                 });
                 try {
                     latch.await();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
+                }
+                if (!installSuccess[0]) {
+                    mainHandler.post(() -> {
+                        ApkInstallUtil.installApk(context, apkFile);
+                    });
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             } else {
                 mainHandler.post(() -> {
