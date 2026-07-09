@@ -10,26 +10,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="top"
-        android:paddingLeft="24dp"
-        android:paddingRight="24dp"
+        android:gravity="center_vertical"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
         android:paddingTop="16dp"
-        android:paddingBottom="8dp">
+        android:paddingBottom="12dp">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/tvAppName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="星河助手"
-                android:textColor="@color/home_text_primary"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:focusable="false" />
 
             <HorizontalScrollView
                 android:id="@+id/categoryScroll"
@@ -37,8 +28,7 @@
                 android:layout_height="wrap_content"
                 android:scrollbars="none"
                 android:focusable="false"
-                android:focusableInTouchMode="false"
-                android:layout_marginTop="8dp">
+                android:focusableInTouchMode="false">
 
                 <LinearLayout
                     android:id="@+id/categoryTabs"
@@ -53,25 +43,23 @@
                 android:id="@+id/tvCodeInfo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
                 android:text="口令"
                 android:textColor="@color/home_text_hint"
-                android:textSize="13sp"
-                android:focusable="false"
-                android:layout_marginTop="6dp" />
+                android:textSize="@dimen/sp14"
+                android:focusable="false" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvTitle"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:gravity="center"
             android:text="选择应用"
             android:textColor="@color/home_text_primary"
-            android:textSize="24sp"
+            android:textSize="@dimen/sp24"
             android:textStyle="bold"
-            android:focusable="false"
-            android:layout_marginTop="8dp" />
+            android:focusable="false" />
 
         <TextView
             android:id="@+id/tvSelectedCount"
@@ -79,9 +67,8 @@
             android:layout_height="wrap_content"
             android:text="已选 0 个"
             android:textColor="@color/home_text_hint"
-            android:textSize="14sp"
-            android:focusable="false"
-            android:layout_marginTop="12dp" />
+            android:textSize="@dimen/sp16"
+            android:focusable="false" />
     </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -89,10 +76,10 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
         android:paddingTop="8dp"
-        android:paddingBottom="4dp"
+        android:paddingBottom="8dp"
         android:scrollbars="vertical"
         android:clipToPadding="false"
         android:descendantFocusability="afterDescendants" />
@@ -102,8 +89,6 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingLeft="24dp"
-        android:paddingRight="24dp"
         android:paddingTop="8dp"
         android:paddingBottom="20dp">
 
@@ -115,7 +100,7 @@
             android:gravity="center"
             android:text="立即下载"
             android:textColor="#4CAF50"
-            android:textSize="18sp"
+            android:textSize="@dimen/sp18"
             android:focusable="true"
             android:focusableInTouchMode="true" />
     </LinearLayout>

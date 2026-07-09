@@ -14,7 +14,6 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
@@ -42,8 +41,6 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private RecyclerView recyclerApps;
     private TextView tvState;
-    private PopupWindow actionPopup;
-    private View lastFocusedView;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -66,7 +63,6 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
 
     @Override
     public void onDestroyView() {
-        dismissActionPopup();
         cancelLoadApps();
         mainHandler.removeCallbacksAndMessages(null);
         if (recyclerApps != null) {
@@ -169,161 +165,16 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
     }
 
     @Override
-    public void onAppClicked(InstalledApp app, View itemView) {
-        showActionPopup(app, itemView);
+    public void onAppOpen(InstalledApp app) {
+        onOpenAppInternal(app);
     }
 
-    private void showActionPopup(final InstalledApp app, View anchorView) {
-        dismissActionPopup();
-        lastFocusedView = anchorView;
-
-        View popupView = LayoutInflater.from(getContext()).inflate(R.layout.popup_app_actions, null);
-        final TextView btnOpen = popupView.findViewById(R.id.btnOpen);
-        final TextView btnUninstall = popupView.findViewById(R.id.btnUninstall);
-
-        btnOpen.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dismissActionPopup();
-                onOpenApp(app);
-            }
-        });
-
-        btnUninstall.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dismissActionPopup();
-                onUninstallApp(app);
-            }
-        });
-
-        btnOpen.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
-                        || keyCode == 23 || keyCode == 66) {
-                    v.performClick();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    btnUninstall.requestFocus();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    dismissActionPopup();
-                    if (lastFocusedView != null) {
-                        lastFocusedView.requestFocus();
-                    }
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        btnUninstall.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
-                        || keyCode == 23 || keyCode == 66) {
-                    v.performClick();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    btnOpen.requestFocus();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    dismissActionPopup();
-                    if (lastFocusedView != null) {
-                        lastFocusedView.requestFocus();
-                    }
-                    return true;
-                }
-                return false;
-            }
-        });
-
-        btnOpen.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    btnOpen.setTextColor(0xFFFFFFFF);
-                } else {
-                    btnOpen.setTextColor(getResources().getColor(R.color.home_text_primary));
-                }
-            }
-        });
-
-        btnUninstall.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    btnUninstall.setTextColor(0xFFFFFFFF);
-                } else {
-                    btnUninstall.setTextColor(0xFFFF5252);
-                }
-            }
-        });
-
-        actionPopup = new PopupWindow(popupView,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                true);
-        actionPopup.setFocusable(true);
-        actionPopup.setOutsideTouchable(true);
-        actionPopup.setOnDismissListener(new PopupWindow.OnDismissListener() {
-            @Override
-            public void onDismiss() {
-                actionPopup = null;
-            }
-        });
-
-        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int popupWidth = popupView.getMeasuredWidth();
-        int popupHeight = popupView.getMeasuredHeight();
-
-        int[] location = new int[2];
-        anchorView.getLocationInWindow(location);
-        int anchorX = location[0];
-        int anchorY = location[1];
-        int anchorWidth = anchorView.getWidth();
-        int anchorHeight = anchorView.getHeight();
-
-        int x = anchorX + (anchorWidth - popupWidth) / 2;
-        int y = anchorY + anchorHeight + 10;
-
-        View rootView = getView();
-        if (rootView != null) {
-            int screenWidth = rootView.getWidth();
-            if (x < 20) x = 20;
-            if (x + popupWidth > screenWidth - 20) {
-                x = screenWidth - popupWidth - 20;
-            }
-        }
-
-        final View finalAnchorView = anchorView;
-        actionPopup.showAtLocation(anchorView, Gravity.NO_GRAVITY, x, y);
-
-        mainHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (actionPopup != null && actionPopup.isShowing()) {
-                    btnOpen.requestFocus();
-                }
-            }
-        }, 50);
+    @Override
+    public void onAppUninstall(InstalledApp app) {
+        onUninstallAppInternal(app);
     }
 
-    private void dismissActionPopup() {
-        if (actionPopup != null && actionPopup.isShowing()) {
-            actionPopup.dismiss();
-        }
-        actionPopup = null;
-    }
-
-    private void onOpenApp(InstalledApp app) {
+    private void onOpenAppInternal(InstalledApp app) {
         Context context = getContext();
         if (context == null || app == null) return;
         try {
@@ -339,7 +190,7 @@ public class ManagerFragment extends Fragment implements AppUninstallAdapter.OnA
         }
     }
 
-    private void onUninstallApp(InstalledApp app) {
+    private void onUninstallAppInternal(InstalledApp app) {
         Context context = getContext();
         if (context == null || app == null) return;
         try {
