@@ -16,10 +16,10 @@
 
         <ImageView
             android:id="@+id/ivIcon"
-            android:layout_width="@dimen/dp64"
-            android:layout_height="@dimen/dp64"
+            android:layout_width="@dimen/dp80"
+            android:layout_height="@dimen/dp80"
             android:scaleType="fitCenter"
-            android:padding="@dimen/dp4" />
+            android:padding="@dimen/dp2" />
 
         <TextView
             android:id="@+id/tvCheck"
@@ -44,7 +44,7 @@
         android:ellipsize="end"
         android:gravity="center"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp14" />
+        android:textSize="@dimen/sp16" />
 
     <TextView
         android:id="@+id/tvSize"

@@ -191,7 +191,19 @@ public class InstallFragment extends Fragment {
     }
 
     public boolean handleBackPress() {
-        return false;
+        // 口令页返回键逻辑：删除口令，从最后一位删起
+        if (getCurrentCode().length() > 0) {
+            deletePreviousCode();
+            return true;
+        }
+        // 口令为空且键盘已收起，让 Activity 处理退出提示
+        if (!keyboardVisible) {
+            return false;
+        }
+        // 口令为空但键盘还显示着，先收起键盘
+        updateKeyboardVisibility(false, true);
+        focusFirstCodeView();
+        return true;
     }
 
     @Override
@@ -273,6 +285,11 @@ public class InstallFragment extends Fragment {
         } else if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (getCurrentCode().length() > 0) {
                 deletePreviousCode();
+                return true;
+            }
+            if (keyboardVisible) {
+                updateKeyboardVisibility(false, true);
+                focusFirstCodeView();
                 return true;
             }
             return false;
@@ -394,7 +411,10 @@ public class InstallFragment extends Fragment {
                         deleteCodeFromKeyboard();
                         return true;
                     }
-                    return false;
+                    // 口令为空，收起键盘
+                    updateKeyboardVisibility(false, true);
+                    focusFirstCodeView();
+                    return true;
                 } else if (keyCode == 23 || keyCode == 66 || keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
                     v.performClick();
                     return true;

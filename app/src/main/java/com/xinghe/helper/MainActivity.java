@@ -97,11 +97,25 @@ public class MainActivity extends BasicTransNavActivity {
                 if (((ManagerFragment) currentFragment).handleBackPress()) {
                     return;
                 }
+                // 应用管理：返回键回到导航栏
+                focusNav();
+                lastBackPressTime = 0;
+                return;
             }
             if (currentFragment instanceof InstallFragment) {
                 if (((InstallFragment) currentFragment).handleBackPress()) {
                     return;
                 }
+                // 口令页：handleBackPress 返回 false 说明口令已空且键盘已收起
+                // 直接走退出提示逻辑
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastBackPressTime < BACK_PRESS_INTERVAL) {
+                    super.onBackPressed();
+                } else {
+                    lastBackPressTime = currentTime;
+                    Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show();
+                }
+                return;
             }
             focusNav();
             lastBackPressTime = 0;
