@@ -6,24 +6,16 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.xinghe.helper.activity.AppListActivity;
+import com.xinghe.helper.activity.AppManagerActivity;
 import com.xinghe.helper.activity.BasicTransNavActivity;
-import com.xinghe.helper.fragments.InstallFragment;
-import com.xinghe.helper.fragments.ManagerFragment;
-import com.xinghe.helper.fragments.RemoteFragment;
-
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
+import com.xinghe.helper.activity.RemoteActivity;
 
 public class MainActivity extends BasicTransNavActivity {
 
     private TextView navInstall;
     private TextView navRemote;
     private TextView navManager;
-
-    private Fragment installFragment;
-    private Fragment remoteFragment;
-    private Fragment managerFragment;
-    private Fragment currentFragment;
 
     private long lastBackPressTime = 0;
     private static final long BACK_PRESS_INTERVAL = 2000;
@@ -37,42 +29,28 @@ public class MainActivity extends BasicTransNavActivity {
         navRemote = findViewById(R.id.nav_remote);
         navManager = findViewById(R.id.nav_manager);
 
-        installFragment = new InstallFragment();
-        remoteFragment = new RemoteFragment();
-        managerFragment = new ManagerFragment();
-
-        navInstall.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                switchFragment(installFragment);
-                updateNav(0);
-            }
+        navInstall.setOnClickListener(v -> {
+            updateNav(0);
+            Intent intent = new Intent(MainActivity.this, AppListActivity.class);
+            intent.putExtra("code", "");
+            startActivity(intent);
         });
 
-        navRemote.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                switchFragment(remoteFragment);
-                updateNav(1);
-            }
+        navRemote.setOnClickListener(v -> {
+            updateNav(1);
+            startActivity(new Intent(MainActivity.this, RemoteActivity.class));
         });
 
-        navManager.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                switchFragment(managerFragment);
-                updateNav(2);
-            }
+        navManager.setOnClickListener(v -> {
+            updateNav(2);
+            startActivity(new Intent(MainActivity.this, AppManagerActivity.class));
         });
 
-        View.OnFocusChangeListener navFocusListener = new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                if (hasFocus) {
-                    if (v == navInstall) updateNav(0);
-                    else if (v == navRemote) updateNav(1);
-                    else if (v == navManager) updateNav(2);
-                }
+        View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
+            if (hasFocus) {
+                if (v == navInstall) updateNav(0);
+                else if (v == navRemote) updateNav(1);
+                else if (v == navManager) updateNav(2);
             }
         };
 
@@ -80,31 +58,12 @@ public class MainActivity extends BasicTransNavActivity {
         navRemote.setOnFocusChangeListener(navFocusListener);
         navManager.setOnFocusChangeListener(navFocusListener);
 
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.fragmentContainer, installFragment)
-                    .commit();
-            currentFragment = installFragment;
-            updateNav(0);
-        }
+        updateNav(0);
+        navInstall.requestFocus();
     }
 
     @Override
     public void onBackPressed() {
-        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-            getSupportFragmentManager().popBackStack();
-            lastBackPressTime = 0;
-            return;
-        }
-
-        if (currentFragment instanceof InstallFragment) {
-            boolean handled = ((InstallFragment) currentFragment).onBackPressed();
-            if (handled) {
-                lastBackPressTime = 0;
-                return;
-            }
-        }
-
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastBackPressTime < BACK_PRESS_INTERVAL) {
             super.onBackPressed();
@@ -112,18 +71,6 @@ public class MainActivity extends BasicTransNavActivity {
             lastBackPressTime = currentTime;
             Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void switchFragment(Fragment fragment) {
-        if (currentFragment == fragment) return;
-
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        if (!fragment.isAdded()) {
-            transaction.add(R.id.fragmentContainer, fragment);
-        }
-        transaction.hide(currentFragment).show(fragment).commit();
-        currentFragment = fragment;
-        lastBackPressTime = 0;
     }
 
     private void updateNav(int index) {

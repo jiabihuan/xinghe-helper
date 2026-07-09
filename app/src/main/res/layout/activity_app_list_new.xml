@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootAppList"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_main_gradient">
+
+    <LinearLayout
+        android:id="@+id/layoutPassword"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.6" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/password_title"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp24"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/layoutPin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp20"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etCode0"
+                android:layout_width="@dimen/dp108"
+                android:layout_height="@dimen/dp108"
+                android:background="@drawable/bg_code_digit"
+                android:gravity="center"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:inputType="textCapCharacters"
+                android:maxLength="1"
+                android:textColor="#333333"
+                android:textSize="@dimen/sp40"
+                android:textStyle="bold"
+                android:imeOptions="flagNoExtractUi"
+                android:nextFocusRight="@id/etCode1"
+                android:nextFocusLeft="@id/etCode0"
+                android:nextFocusDown="@id/layoutKeyboard"
+                android:importantForAutofill="no" />
+
+            <EditText
+                android:id="@+id/etCode1"
+                android:layout_width="@dimen/dp108"
+                android:layout_height="@dimen/dp108"
+                android:layout_marginStart="@dimen/dp16"
+                android:background="@drawable/bg_code_digit"
+                android:gravity="center"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:inputType="textCapCharacters"
+                android:maxLength="1"
+                android:textColor="#333333"
+                android:textSize="@dimen/sp40"
+                android:textStyle="bold"
+                android:imeOptions="flagNoExtractUi"
+                android:nextFocusRight="@id/etCode2"
+                android:nextFocusLeft="@id/etCode0"
+                android:nextFocusDown="@id/layoutKeyboard"
+                android:importantForAutofill="no" />
+
+            <EditText
+                android:id="@+id/etCode2"
+                android:layout_width="@dimen/dp108"
+                android:layout_height="@dimen/dp108"
+                android:layout_marginStart="@dimen/dp16"
+                android:background="@drawable/bg_code_digit"
+                android:gravity="center"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:inputType="textCapCharacters"
+                android:maxLength="1"
+                android:textColor="#333333"
+                android:textSize="@dimen/sp40"
+                android:textStyle="bold"
+                android:imeOptions="flagNoExtractUi"
+                android:nextFocusRight="@id/etCode3"
+                android:nextFocusLeft="@id/etCode1"
+                android:nextFocusDown="@id/layoutKeyboard"
+                android:importantForAutofill="no" />
+
+            <EditText
+                android:id="@+id/etCode3"
+                android:layout_width="@dimen/dp108"
+                android:layout_height="@dimen/dp108"
+                android:layout_marginStart="@dimen/dp16"
+                android:background="@drawable/bg_code_digit"
+                android:gravity="center"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:inputType="textCapCharacters"
+                android:maxLength="1"
+                android:textColor="#333333"
+                android:textSize="@dimen/sp40"
+                android:textStyle="bold"
+                android:imeOptions="flagNoExtractUi"
+                android:nextFocusRight="@id/etCode3"
+                android:nextFocusLeft="@id/etCode2"
+                android:nextFocusDown="@id/layoutKeyboard"
+                android:importantForAutofill="no" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layoutKeyboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp16"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="visible" />
+
+        <TextView
+            android:id="@+id/btnDownload"
+            android:layout_width="200dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="@dimen/dp16"
+            android:background="@drawable/selector_download"
+            android:gravity="center"
+            android:text="立即下载"
+            android:textColor="#4CAF50"
+            android:textSize="@dimen/sp18"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:nextFocusUp="@id/layoutKeyboard"
+            android:visibility="invisible" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutAppList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingLeft="@dimen/dp20"
+            android:paddingRight="@dimen/dp20"
+            android:paddingTop="@dimen/dp16"
+            android:paddingBottom="@dimen/dp8">
+
+            <TextView
+                android:id="@+id/tvCodeInfo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="口令"
+                android:textColor="#4CAF50"
+                android:textSize="@dimen/sp20"
+                android:textStyle="bold"
+                android:focusable="false" />
+
+            <TextView
+                android:id="@+id/tvSelectedCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已选 0 个"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp16"
+                android:focusable="false" />
+        </LinearLayout>
+
+        <HorizontalScrollView
+            android:id="@+id/categoryScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:paddingLeft="@dimen/dp20"
+            android:paddingRight="@dimen/dp20"
+            android:paddingBottom="@dimen/dp8">
+
+            <LinearLayout
+                android:id="@+id/categoryTabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:focusable="false"
+                android:focusableInTouchMode="false" />
+        </HorizontalScrollView>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/appRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingLeft="@dimen/dp20"
+            android:paddingRight="@dimen/dp20"
+            android:paddingTop="@dimen/dp8"
+            android:paddingBottom="@dimen/dp8"
+            android:scrollbars="vertical"
+            android:clipToPadding="false"
+            android:descendantFocusability="afterDescendants" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="@dimen/dp8"
+            android:paddingBottom="@dimen/dp20">
+
+            <TextView
+                android:id="@+id/btnDownloadList"
+                android:layout_width="240dp"
+                android:layout_height="52dp"
+                android:background="@drawable/selector_download"
+                android:gravity="center"
+                android:text="立即下载"
+                android:textColor="#4CAF50"
+                android:textSize="@dimen/sp18"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

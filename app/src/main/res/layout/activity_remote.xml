@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_main_gradient">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="@dimen/dp20"
+        android:paddingRight="@dimen/dp20"
+        android:paddingTop="@dimen/dp16"
+        android:paddingBottom="@dimen/dp8">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/nav_remote"
+            android:textColor="@color/home_text_primary"
+            android:textSize="@dimen/sp20"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tvPushStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/accent"
+            android:textSize="@dimen/sp16" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="@dimen/dp20"
+        android:layout_marginBottom="@dimen/dp30"
+        android:text="电视和手机/电脑连接同一个WiFi"
+        android:textColor="@color/home_text_hint"
+        android:textSize="@dimen/sp14" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingLeft="@dimen/dp40"
+        android:paddingRight="@dimen/dp40">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingRight="@dimen/dp20">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="浏览器访问"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp16"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="在浏览器中输入下方地址"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+            <TextView
+                android:id="@+id/tvPushUrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp16"
+                android:text="正在启动服务..."
+                android:textColor="@color/accent"
+                android:textSize="@dimen/sp20"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="上传APK文件即可安装"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="180dp"
+            android:background="#3a4a6a" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingLeft="@dimen/dp20">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="扫描二维码"
+                android:textColor="@color/home_text_primary"
+                android:textSize="@dimen/sp16"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="使用手机扫描下方二维码"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp16"
+                android:background="#FFFFFF"
+                android:padding="@dimen/dp4">
+
+                <ImageView
+                    android:id="@+id/ivQrCode"
+                    android:layout_width="180dp"
+                    android:layout_height="180dp"
+                    android:visibility="invisible" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp8"
+                android:text="快速跳转到推送页面"
+                android:textColor="@color/home_text_hint"
+                android:textSize="@dimen/sp14" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
