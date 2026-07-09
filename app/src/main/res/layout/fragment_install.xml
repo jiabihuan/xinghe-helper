@@ -10,9 +10,10 @@
     android:paddingRight="16dp">
 
     <View
+        android:id="@+id/spacerTop"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.6" />
+        android:layout_weight="1" />
 
     <TextView
         android:id="@+id/tvTitle"
@@ -20,14 +21,14 @@
         android:layout_height="wrap_content"
         android:text="@string/password_title"
         android:textColor="@color/home_text_primary"
-        android:textSize="@dimen/sp24"
+        android:textSize="@dimen/sp28"
         android:textStyle="bold" />
 
     <LinearLayout
         android:id="@+id/layoutPin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp20"
+        android:layout_marginTop="@dimen/dp24"
         android:orientation="horizontal">
 
         <EditText
@@ -41,7 +42,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp40"
+            android:textSize="@dimen/sp56"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode1"
@@ -61,7 +62,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp40"
+            android:textSize="@dimen/sp56"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode2"
@@ -81,7 +82,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp40"
+            android:textSize="@dimen/sp56"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode3"
@@ -101,7 +102,7 @@
             android:inputType="textCapCharacters"
             android:maxLength="1"
             android:textColor="#333333"
-            android:textSize="@dimen/sp40"
+            android:textSize="@dimen/sp56"
             android:textStyle="bold"
             android:imeOptions="flagNoExtractUi"
             android:nextFocusRight="@id/etCode3"
@@ -115,10 +116,10 @@
         android:id="@+id/layoutKeyboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/dp16"
+        android:layout_marginTop="@dimen/dp20"
         android:gravity="center"
         android:orientation="vertical"
-        android:visibility="visible" />
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/btnDownload"
@@ -136,6 +137,7 @@
         android:visibility="invisible" />
 
     <View
+        android:id="@+id/spacerBottom"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />

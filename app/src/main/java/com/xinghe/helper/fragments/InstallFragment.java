@@ -59,6 +59,8 @@ public class InstallFragment extends Fragment {
     private View keyboardOkKey;
     private LinearLayout layoutKeyboard;
     private TextView btnDownload;
+    private View spacerTop;
+    private View spacerBottom;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService requestExecutor = Executors.newCachedThreadPool();
     private Future<?> requestFuture;
@@ -82,14 +84,17 @@ public class InstallFragment extends Fragment {
         };
         layoutKeyboard = view.findViewById(R.id.layoutKeyboard);
         btnDownload = view.findViewById(R.id.btnDownload);
+        spacerTop = view.findViewById(R.id.spacerTop);
+        spacerBottom = view.findViewById(R.id.spacerBottom);
 
         initCodeInputs();
         initCustomKeyboard();
         updateCodeCursor();
-        keyboardVisible = true;
+        keyboardVisible = false;
         animatingKeyboard = false;
         updateDownloadButton(false);
         updateCodeBoxBackgrounds();
+        updateKeyboardVisibility(false, false);
 
         // 默认让第一个输入框获得焦点但不弹出键盘，给用户提示感
         View firstCode = codeViews[0];
@@ -276,12 +281,12 @@ public class InstallFragment extends Fragment {
             if (getCurrentCode().length() == 4) {
                 submitCode();
             } else {
-                focusKeyboard();
+                showKeyboardAndFocus();
             }
             return true;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
             // 下键：跳到键盘
-            focusKeyboard();
+            showKeyboardAndFocus();
             return true;
         } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
             // 左键：左移一个输入框
@@ -559,6 +564,11 @@ public class InstallFragment extends Fragment {
     private void inputCodeValue(String value) {
         if (value == null || value.length() == 0) return;
 
+        // 输入第一个字符时显示键盘
+        if (getCurrentCode().length() == 0) {
+            updateKeyboardVisibility(true, true);
+        }
+
         int index = currentCodeIndex;
         if (index < 0 || index >= 4 || codeViews[index].getText().length() > 0) {
             index = getFirstEmptyCodeIndex();
@@ -598,6 +608,11 @@ public class InstallFragment extends Fragment {
         updateDownloadButton(true);
 
         codeViews[lastIndex].requestFocus();
+
+        // 删除最后一个字符后隐藏键盘
+        if (getCurrentCode().length() == 0) {
+            updateKeyboardVisibility(false, true);
+        }
     }
 
     private void focusFirstCodeView() {
@@ -623,6 +638,8 @@ public class InstallFragment extends Fragment {
         updateCodeCursor();
         updateCodeBoxBackgrounds();
         updateDownloadButton(true);
+        // 清空后隐藏键盘
+        updateKeyboardVisibility(false, true);
         if (codeViews != null && codeViews.length > 0) {
             mainHandler.postDelayed(new Runnable() {
                 @Override
@@ -921,14 +938,54 @@ public class InstallFragment extends Fragment {
         });
     }
 
-    private void focusKeyboard() {
+    private void showKeyboardAndFocus() {
         if (layoutKeyboard != null && layoutKeyboard.getVisibility() != View.VISIBLE) {
+            updateKeyboardVisibility(true, true);
+        }
+        mainHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (keyboardFirstKey != null) {
+                    keyboardFirstKey.requestFocus();
+                }
+            }
+        }, 200);
+    }
+
+    private void updateKeyboardVisibility(boolean show, boolean animate) {
+        if (layoutKeyboard == null) return;
+        boolean isVisible = layoutKeyboard.getVisibility() == View.VISIBLE;
+        if (show == isVisible) return;
+
+        if (show) {
             layoutKeyboard.setVisibility(View.VISIBLE);
             keyboardVisible = true;
+            // 键盘显示时，调整上下间距权重，让内容整体上移
+            if (spacerTop != null && spacerBottom != null) {
+                LinearLayout.LayoutParams topParams = (LinearLayout.LayoutParams) spacerTop.getLayoutParams();
+                topParams.weight = 0.4f;
+                spacerTop.setLayoutParams(topParams);
+                LinearLayout.LayoutParams bottomParams = (LinearLayout.LayoutParams) spacerBottom.getLayoutParams();
+                bottomParams.weight = 0.6f;
+                spacerBottom.setLayoutParams(bottomParams);
+            }
+        } else {
+            layoutKeyboard.setVisibility(View.GONE);
+            keyboardVisible = false;
+            // 键盘隐藏时，上下间距权重相等，内容垂直居中
+            if (spacerTop != null && spacerBottom != null) {
+                LinearLayout.LayoutParams topParams = (LinearLayout.LayoutParams) spacerTop.getLayoutParams();
+                topParams.weight = 1f;
+                spacerTop.setLayoutParams(topParams);
+                LinearLayout.LayoutParams bottomParams = (LinearLayout.LayoutParams) spacerBottom.getLayoutParams();
+                bottomParams.weight = 1f;
+                spacerBottom.setLayoutParams(bottomParams);
+            }
         }
-        if (keyboardFirstKey != null) {
-            keyboardFirstKey.requestFocus();
-        }
+    }
+
+    private void focusKeyboard() {
+        showKeyboardAndFocus();
     }
 
     private void focusLastKeyOfKeyboard() {
