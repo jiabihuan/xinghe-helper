@@ -4,8 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.xinghe.helper.R;
 import com.xinghe.helper.model.InstalledApp;
+import com.xinghe.helper.util.AdbUninstallUtil;
 import com.xinghe.helper.util.ToastUtil;
 
 import java.util.ArrayList;
@@ -50,6 +49,11 @@ public class ManagerFragment extends Fragment {
 
     private final Set<String> selectedPackages = new HashSet<>();
     private final List<InstalledApp> apps = new ArrayList<>();
+
+    private View uninstallPopupView;
+    private LinearLayout uninstallContainer;
+    private android.widget.PopupWindow uninstallPopup;
+    private ExecutorService uninstallExecutor;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -106,6 +110,11 @@ public class ManagerFragment extends Fragment {
     @Override
     public void onDestroyView() {
         cancelLoadApps();
+        dismissUninstallPopup();
+        if (uninstallExecutor != null) {
+            uninstallExecutor.shutdownNow();
+            uninstallExecutor = null;
+        }
         mainHandler.removeCallbacksAndMessages(null);
         if (recyclerApps != null) {
             recyclerApps.setAdapter(null);
@@ -232,57 +241,150 @@ public class ManagerFragment extends Fragment {
             }
         }
         if (toUninstall.isEmpty()) return;
-        uninstallApp(toUninstall.get(0));
+        showUninstallPopup(toUninstall);
     }
 
-    private void uninstallApp(InstalledApp app) {
-        Context context = getContext();
-        if (context == null || app == null) return;
-        try {
-            String packageName = app.getPackageName();
-            Uri packageUri = Uri.parse("package:" + packageName);
+    private void showUninstallPopup(List<InstalledApp> toUninstall) {
+        if (getContext() == null) return;
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                Intent intent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE);
-                intent.setData(packageUri);
-                if (startIntent(intent)) return;
+        uninstallPopupView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_uninstall, null);
+        uninstallContainer = uninstallPopupView.findViewById(R.id.uninstallContainer);
+        TextView tvTitle = uninstallPopupView.findViewById(R.id.tvTitle);
+        TextView tvSubtitle = uninstallPopupView.findViewById(R.id.tvSubtitle);
+        TextView btnClose = uninstallPopupView.findViewById(R.id.btnClose);
+
+        tvTitle.setText("正在卸载");
+        tvSubtitle.setText("共 " + toUninstall.size() + " 个应用");
+
+        List<View> itemViews = new ArrayList<>();
+        for (int i = 0; i < toUninstall.size(); i++) {
+            final int index = i;
+            InstalledApp app = toUninstall.get(i);
+            View itemView = LayoutInflater.from(getContext()).inflate(R.layout.item_uninstall, uninstallContainer, false);
+            ImageView ivIcon = itemView.findViewById(R.id.ivAppIcon);
+            TextView tvName = itemView.findViewById(R.id.tvAppName);
+            TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+            TextView tvResult = itemView.findViewById(R.id.tvResult);
+
+            ivIcon.setImageDrawable(app.getIcon());
+            tvName.setText(app.getAppName());
+            tvStatus.setText("等待中...");
+            tvStatus.setTextColor(getResources().getColor(R.color.home_text_hint));
+            tvResult.setText("");
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) params.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
+            uninstallContainer.addView(itemView, params);
+            itemViews.add(itemView);
+        }
+
+        btnClose.setOnClickListener(v -> {
+            dismissUninstallPopup();
+            selectedPackages.clear();
+            loadApps();
+        });
+
+        btnClose.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN &&
+                    (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                v.performClick();
+                return true;
+            }
+            return false;
+        });
+
+        uninstallPopup = new android.widget.PopupWindow(uninstallPopupView,
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);
+        uninstallPopup.setOutsideTouchable(false);
+        uninstallPopup.setFocusable(true);
+
+        uninstallPopupView.setFocusableInTouchMode(true);
+        uninstallPopupView.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
+                return true;
+            }
+            return false;
+        });
+
+        View root = getActivity().getWindow().getDecorView().findViewById(android.R.id.content);
+        root.post(() -> {
+            if (uninstallPopup != null && uninstallPopupView != null) {
+                uninstallPopup.showAtLocation(root, Gravity.CENTER, 0, 0);
+                startUninstallTasks(toUninstall, itemViews, btnClose, tvSubtitle);
+            }
+        });
+    }
+
+    private void startUninstallTasks(List<InstalledApp> toUninstall, List<View> itemViews, TextView btnClose, TextView tvSubtitle) {
+        if (uninstallExecutor == null || uninstallExecutor.isShutdown()) {
+            uninstallExecutor = Executors.newSingleThreadExecutor();
+        }
+
+        uninstallExecutor.submit(() -> {
+            int successCount = 0;
+            for (int i = 0; i < toUninstall.size(); i++) {
+                final int index = i;
+                InstalledApp app = toUninstall.get(i);
+                View itemView = itemViews.get(i);
+                TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+                TextView tvResult = itemView.findViewById(R.id.tvResult);
+
+                mainHandler.post(() -> {
+                    tvStatus.setText("卸载中...");
+                    tvStatus.setTextColor(getResources().getColor(R.color.accent));
+                });
+
+                final boolean[] success = {false};
+                final String[] message = {""};
+
+                AdbUninstallUtil.uninstall(app.getPackageName(), (packageName, result, msg) -> {
+                    success[0] = result;
+                    message[0] = msg;
+                });
+
+                final boolean succeeded = success[0];
+                final String msg = message[0];
+
+                if (succeeded) successCount++;
+
+                mainHandler.post(() -> {
+                    if (succeeded) {
+                        tvStatus.setText("卸载成功");
+                        tvStatus.setTextColor(getResources().getColor(R.color.success));
+                        tvResult.setText("✓");
+                        tvResult.setTextColor(getResources().getColor(R.color.success));
+                    } else {
+                        tvStatus.setText("卸载失败: " + msg);
+                        tvStatus.setTextColor(getResources().getColor(R.color.error));
+                        tvResult.setText("✗");
+                        tvResult.setTextColor(getResources().getColor(R.color.error));
+                    }
+                });
+
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
             }
 
-            Intent deleteIntent = new Intent(Intent.ACTION_DELETE);
-            deleteIntent.setData(packageUri);
-            if (startIntent(deleteIntent)) return;
-
-            ToastUtil.showShort(context, "请在设置中卸载");
-            openAppDetails(packageUri);
-        } catch (Exception e) {
-            ToastUtil.showShort(context, "卸载失败");
-        }
+            final int finalSuccessCount = successCount;
+            mainHandler.post(() -> {
+                tvSubtitle.setText("完成: " + finalSuccessCount + "/" + toUninstall.size() + " 成功");
+                btnClose.setVisibility(View.VISIBLE);
+                btnClose.requestFocus();
+            });
+        });
     }
 
-    private boolean startIntent(Intent intent) {
-        if (getContext() == null) return false;
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PackageManager packageManager = getContext().getPackageManager();
-        if (intent.resolveActivity(packageManager) == null) {
-            return false;
+    private void dismissUninstallPopup() {
+        if (uninstallPopup != null && uninstallPopup.isShowing()) {
+            uninstallPopup.dismiss();
         }
-        try {
-            startActivity(intent);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private void openAppDetails(Uri packageUri) {
-        if (getContext() == null) return;
-        Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            startActivity(intent);
-        } catch (Exception e) {
-            ToastUtil.showShort(getContext(), "卸载失败");
-        }
+        uninstallPopup = null;
+        uninstallPopupView = null;
+        uninstallContainer = null;
     }
 
     private void focusLastApp() {

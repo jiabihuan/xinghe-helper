@@ -53,7 +53,7 @@ public class DownloadManager {
 
     private static DownloadManager instance;
     private final List<DownloadTask> tasks = new ArrayList<>();
-    private final ExecutorService executor = Executors.newFixedThreadPool(3);
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private DownloadListener listener;
 
@@ -225,6 +225,12 @@ public class DownloadManager {
                 ApkInstallUtil.installApk(context, apkFile);
                 checkAllComplete();
             });
+
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         } else {
             throw new Exception("下载失败");
         }
