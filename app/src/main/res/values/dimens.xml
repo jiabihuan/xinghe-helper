@@ -12,6 +12,7 @@
     <dimen name="dp40">40dp</dimen>
     <dimen name="dp48">48dp</dimen>
     <dimen name="dp60">60dp</dimen>
+    <dimen name="dp64">64dp</dimen>
     <dimen name="dp72">72dp</dimen>
     <dimen name="dp108">108dp</dimen>
     <dimen name="dp54">54dp</dimen>
