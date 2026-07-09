@@ -62,7 +62,7 @@ public class RemotePushServer {
             "<script>" +
             "var file=null;" +
             "function onFileSelected(){file=document.getElementById('file').files[0];if(file){document.querySelector('.select').textContent='已选择: '+file.name;document.getElementById('pushBtn').style.display='block';}}" +
-            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{status.textContent='推送失败: '+xhr.responseText;}}};xhr.open('POST','/upload');var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
+            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{var msg=xhr.responseText||xhr.statusText||'未知错误';try{var data=JSON.parse(xhr.responseText);if(data.message)msg=data.message;}catch(e){}status.textContent='推送失败: '+msg;}}};xhr.open('POST','/upload');var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
             "</script></body></html>";
 
     private ServerSocket serverSocket;
@@ -372,7 +372,10 @@ public class RemotePushServer {
         }
 
         private void handleUpload(InputStream input, OutputStream output, int contentLength, String contentType) throws IOException {
+            android.util.Log.d("RemotePushServer", "handleUpload: contentLength=" + contentLength + ", contentType=" + contentType);
+            
             if (contentLength <= 0) {
+                android.util.Log.e("RemotePushServer", "没有上传数据");
                 sendJson(output, "{\"success\":false,\"message\":\"没有上传数据\"}", 400);
                 return;
             }
@@ -381,28 +384,36 @@ public class RemotePushServer {
 
             byte[] body = readFully(input, contentLength);
             if (body == null || body.length == 0) {
+                android.util.Log.e("RemotePushServer", "读取上传数据失败");
                 sendJson(output, "{\"success\":false,\"message\":\"读取上传数据失败\"}", 500);
                 notifyPushFailed("读取上传数据失败");
                 return;
             }
+
+            android.util.Log.d("RemotePushServer", "读取到 " + body.length + " 字节");
 
             File resultFile = null;
             String fileName = null;
 
             try {
                 if (contentType != null && contentType.toLowerCase(Locale.US).contains("multipart/form-data")) {
+                    android.util.Log.d("RemotePushServer", "解析 multipart 数据");
                     resultFile = parseMultipart(body, contentType);
                     fileName = extractFileNameFromMultipart(body, contentType);
                 } else {
+                    android.util.Log.d("RemotePushServer", "解析 raw body 数据");
                     boolean isApkContent = contentType != null && contentType.toLowerCase(Locale.US).contains("android.package-archive");
                     fileName = "push_" + System.currentTimeMillis() + (isApkContent ? ".apk" : ".bin");
                     resultFile = saveRawBody(body, fileName);
                 }
+                android.util.Log.d("RemotePushServer", "fileName=" + fileName + ", resultFile=" + (resultFile != null ? resultFile.getAbsolutePath() : "null"));
             } catch (IOException e) {
+                android.util.Log.e("RemotePushServer", "保存文件失败: " + e.getMessage(), e);
                 sendJson(output, "{\"success\":false,\"message\":\"保存文件失败: " + e.getMessage() + "\"}", 500);
                 notifyPushFailed("保存文件失败: " + e.getMessage());
                 return;
             } catch (Exception e) {
+                android.util.Log.e("RemotePushServer", "处理文件失败: " + e.getMessage(), e);
                 sendJson(output, "{\"success\":false,\"message\":\"处理文件失败: " + e.getMessage() + "\"}", 500);
                 notifyPushFailed("处理文件失败: " + e.getMessage());
                 return;
@@ -410,9 +421,11 @@ public class RemotePushServer {
 
             if (resultFile != null && resultFile.exists() && resultFile.length() > 0) {
                 boolean isApk = fileName != null && fileName.toLowerCase(Locale.US).endsWith(".apk");
+                android.util.Log.d("RemotePushServer", "上传成功, isApk=" + isApk);
                 sendJson(output, "{\"success\":true,\"message\":\"上传成功\"}", 200);
                 notifyPushCompleted(resultFile, isApk);
             } else {
+                android.util.Log.e("RemotePushServer", "保存失败: resultFile=" + (resultFile != null ? resultFile.getAbsolutePath() : "null"));
                 sendJson(output, "{\"success\":false,\"message\":\"保存失败\"}", 500);
                 notifyPushFailed("保存文件失败");
             }
@@ -496,15 +509,18 @@ public class RemotePushServer {
 
         private File parseMultipart(byte[] body, String contentType) throws IOException {
             String boundary = extractBoundary(contentType);
+            android.util.Log.d("RemotePushServer", "parseMultipart: boundary=" + boundary);
             if (boundary == null) return null;
 
             String text = new String(body, StandardCharsets.ISO_8859_1);
             String boundaryMarker = "--" + boundary;
 
             int firstBoundary = text.indexOf(boundaryMarker);
+            android.util.Log.d("RemotePushServer", "firstBoundary=" + firstBoundary);
             if (firstBoundary < 0) return null;
 
             int contentStart = text.indexOf("\r\n\r\n", firstBoundary);
+            android.util.Log.d("RemotePushServer", "contentStart=" + contentStart);
             if (contentStart < 0) return null;
             contentStart += 4;
 
@@ -515,9 +531,11 @@ public class RemotePushServer {
             if (nextBoundary < 0) {
                 nextBoundary = body.length;
             }
+            android.util.Log.d("RemotePushServer", "nextBoundary=" + nextBoundary + ", contentStart=" + contentStart);
 
             String fileName = "push_" + System.currentTimeMillis() + ".apk";
             String headerPart = text.substring(firstBoundary, contentStart);
+            android.util.Log.d("RemotePushServer", "headerPart=" + headerPart);
             int filenameIdx = headerPart.toLowerCase(Locale.US).indexOf("filename=\"");
             if (filenameIdx >= 0) {
                 int start = filenameIdx + 10;
@@ -526,6 +544,7 @@ public class RemotePushServer {
                     fileName = headerPart.substring(start, end);
                 }
             }
+            android.util.Log.d("RemotePushServer", "解析到的 fileName=" + fileName);
 
             File dir;
             if (fileName.toLowerCase(Locale.US).endsWith(".apk")) {
@@ -534,11 +553,14 @@ public class RemotePushServer {
             } else {
                 dir = getXingheDir();
             }
+            android.util.Log.d("RemotePushServer", "保存目录=" + (dir != null ? dir.getAbsolutePath() : "null"));
             if (dir == null) return null;
             File file = new File(dir, fileName);
+            android.util.Log.d("RemotePushServer", "写入文件=" + file.getAbsolutePath() + ", size=" + (nextBoundary - contentStart));
             FileOutputStream fos = new FileOutputStream(file);
             fos.write(body, contentStart, nextBoundary - contentStart);
             fos.close();
+            android.util.Log.d("RemotePushServer", "文件写入完成, exists=" + file.exists() + ", length=" + file.length());
             return file;
         }
 
