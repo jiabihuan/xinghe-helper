@@ -451,7 +451,20 @@ public class RemotePushServer {
             int end = headerPart.indexOf("\"", start);
             if (end < 0) return "push_" + System.currentTimeMillis() + ".apk";
 
-            return headerPart.substring(start, end);
+            String fileName = headerPart.substring(start, end);
+            // 去除路径前缀
+            if (fileName.contains("\\") || fileName.contains("/")) {
+                int lastSep = Math.max(fileName.lastIndexOf('\\'), fileName.lastIndexOf('/'));
+                if (lastSep >= 0 && lastSep < fileName.length() - 1) {
+                    fileName = fileName.substring(lastSep + 1);
+                }
+            }
+            // UTF-8重新解码，解决中文乱码
+            try {
+                fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+            }
+            return fileName;
         }
 
         private byte[] readFully(InputStream input, int length) throws IOException {
@@ -543,6 +556,19 @@ public class RemotePushServer {
                 if (end > start) {
                     fileName = headerPart.substring(start, end);
                 }
+            }
+            // 修复1：浏览器发送的filename可能带路径前缀（如C:\fakepath\xxx），只取文件名部分
+            if (fileName.contains("\\") || fileName.contains("/")) {
+                int lastSep = Math.max(fileName.lastIndexOf('\\'), fileName.lastIndexOf('/'));
+                if (lastSep >= 0 && lastSep < fileName.length() - 1) {
+                    fileName = fileName.substring(lastSep + 1);
+                }
+            }
+            // 修复2：文件名用UTF-8重新解码，解决中文乱码
+            try {
+                fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                android.util.Log.e("RemotePushServer", "文件名解码失败: " + e.getMessage());
             }
             android.util.Log.d("RemotePushServer", "解析到的 fileName=" + fileName);
 
