@@ -185,6 +185,10 @@ public class InstallFragment extends Fragment {
         super.onDestroyView();
     }
 
+    public boolean handleBackPress() {
+        return false;
+    }
+
     @Override
     public void onDestroy() {
         requestExecutor.shutdownNow();

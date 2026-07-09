@@ -372,9 +372,50 @@ public class ManagerFragment extends Fragment {
 
                     succeeded = success[0];
                     msg = message[0];
+
+                    if (!succeeded) {
+                        final boolean[] manualSuccess = {false};
+                        final CountDownLatch manualLatch = new CountDownLatch(1);
+                        mainHandler.post(() -> {
+                            tvStatus.setText("ADB卸载失败，请手动卸载...");
+                            tvStatus.setTextColor(getResources().getColor(R.color.accent));
+                            performManualUninstallWithCallback(app, new ManualUninstallCallback() {
+                                @Override
+                                public void onResult(boolean success) {
+                                    manualSuccess[0] = success;
+                                    manualLatch.countDown();
+                                }
+                            });
+                        });
+                        try {
+                            manualLatch.await();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                        succeeded = manualSuccess[0];
+                        msg = succeeded ? "卸载成功" : "卸载失败";
+                    }
                 } else {
-                    succeeded = performManualUninstall(app);
-                    msg = succeeded ? "卸载成功" : "等待用户确认";
+                    final boolean[] manualSuccess = {false};
+                    final CountDownLatch manualLatch = new CountDownLatch(1);
+                    mainHandler.post(() -> {
+                        performManualUninstallWithCallback(app, new ManualUninstallCallback() {
+                            @Override
+                            public void onResult(boolean success) {
+                                manualSuccess[0] = success;
+                                manualLatch.countDown();
+                            }
+                        });
+                    });
+                    try {
+                        manualLatch.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    succeeded = manualSuccess[0];
+                    msg = succeeded ? "卸载成功" : "卸载失败";
                 }
 
                 if (succeeded) successCount++;
@@ -394,7 +435,7 @@ public class ManagerFragment extends Fragment {
                 });
 
                 try {
-                    Thread.sleep(adbAvailable ? 500 : 2000);
+                    Thread.sleep(adbAvailable ? 500 : 1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -410,39 +451,71 @@ public class ManagerFragment extends Fragment {
         });
     }
 
-    private boolean performManualUninstall(InstalledApp app) {
-        if (getContext() == null) return false;
+    interface ManualUninstallCallback {
+        void onResult(boolean success);
+    }
 
+    private void performManualUninstallWithCallback(InstalledApp app, ManualUninstallCallback callback) {
+        if (getContext() == null) {
+            callback.onResult(false);
+            return;
+        }
+
+        String packageName = app.getPackageName();
+
+        final boolean[] waiting = {true};
+        final boolean[] result = {false};
+
+        Intent uninstallIntent;
         try {
-            String packageName = app.getPackageName();
             Uri packageUri = Uri.parse("package:" + packageName);
-
-            Intent uninstallIntent;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri);
                 uninstallIntent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
             } else {
                 uninstallIntent = new Intent(Intent.ACTION_DELETE, packageUri);
             }
-
             uninstallIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(uninstallIntent);
+        } catch (Exception e) {
+            callback.onResult(false);
+            return;
+        }
 
+        new Thread(() -> {
+            long startTime = System.currentTimeMillis();
             try {
-                Thread.sleep(3000);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
 
-            try {
-                getContext().getPackageManager().getPackageInfo(packageName, 0);
-                return false;
-            } catch (PackageManager.NameNotFoundException e) {
-                return true;
+            while (waiting[0]) {
+                if (System.currentTimeMillis() - startTime > 60000) {
+                    waiting[0] = false;
+                    break;
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                try {
+                    if (getContext() != null) {
+                        getContext().getPackageManager().getPackageInfo(packageName, 0);
+                    } else {
+                        break;
+                    }
+                } catch (PackageManager.NameNotFoundException e) {
+                    result[0] = true;
+                    waiting[0] = false;
+                    break;
+                }
             }
-        } catch (Exception e) {
-            return false;
-        }
+
+            mainHandler.post(() -> callback.onResult(result[0]));
+        }).start();
     }
 
     private void dismissUninstallPopup() {
@@ -452,6 +525,13 @@ public class ManagerFragment extends Fragment {
         uninstallPopup = null;
         uninstallPopupView = null;
         uninstallContainer = null;
+    }
+
+    public boolean handleBackPress() {
+        if (uninstallPopup != null && uninstallPopup.isShowing()) {
+            return false;
+        }
+        return false;
     }
 
     private void focusLastApp() {

@@ -29,6 +29,7 @@ public class MainActivity extends BasicTransNavActivity {
 
     private long lastBackPressTime = 0;
     private static final long BACK_PRESS_INTERVAL = 2000;
+    private boolean navFocused = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +89,25 @@ public class MainActivity extends BasicTransNavActivity {
 
     @Override
     public void onBackPressed() {
+        View focused = getCurrentFocus();
+        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager);
+
+        if (!isNavFocused) {
+            if (currentFragment instanceof ManagerFragment) {
+                if (((ManagerFragment) currentFragment).handleBackPress()) {
+                    return;
+                }
+            }
+            if (currentFragment instanceof InstallFragment) {
+                if (((InstallFragment) currentFragment).handleBackPress()) {
+                    return;
+                }
+            }
+            focusNav();
+            lastBackPressTime = 0;
+            return;
+        }
+
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastBackPressTime < BACK_PRESS_INTERVAL) {
             super.onBackPressed();
@@ -95,6 +115,13 @@ public class MainActivity extends BasicTransNavActivity {
             lastBackPressTime = currentTime;
             Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void focusNav() {
+        if (currentFragment == installFragment) navInstall.requestFocus();
+        else if (currentFragment == remoteFragment) navRemote.requestFocus();
+        else if (currentFragment == managerFragment) navManager.requestFocus();
+        else navInstall.requestFocus();
     }
 
     private void updateNav(int index) {
