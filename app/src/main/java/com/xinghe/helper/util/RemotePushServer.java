@@ -56,7 +56,7 @@ public class RemotePushServer extends NanoHTTPD {
             "<script>" +
             "var file=null;" +
             "function onFileSelected(){file=document.getElementById('file').files[0];if(file){document.querySelector('.select').textContent='已选择: '+file.name;document.getElementById('pushBtn').style.display='block';}}" +
-            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{var msg=xhr.responseText||xhr.statusText||'未知错误';try{var data=JSON.parse(xhr.responseText);if(data.message)msg=data.message;}catch(e){}status.textContent='推送失败: '+msg;}}};xhr.open('POST','/upload');var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
+            "function upload(){if(!file){alert('请先选择文件');return;}var xhr=new XMLHttpRequest();var progress=document.getElementById('progress');var bar=document.getElementById('bar');var status=document.getElementById('status');progress.style.display='block';status.textContent='上传中...';xhr.upload.onprogress=function(e){if(e.lengthComputable){bar.style.width=(e.loaded/e.total*100)+'%';}};xhr.onreadystatechange=function(){if(xhr.readyState===4){if(xhr.status===200){status.textContent='推送成功';bar.style.width='100%';}else{var msg=xhr.responseText||xhr.statusText||'未知错误';try{var data=JSON.parse(xhr.responseText);if(data.message)msg=data.message;}catch(e){}status.textContent='推送失败: '+msg;}}};xhr.open('POST','/upload?filename='+encodeURIComponent(file.name));var formData=new FormData();formData.append('file',file);xhr.send(formData);}" +
             "</script></body></html>";
 
     private final Context context;
@@ -178,7 +178,25 @@ public class RemotePushServer extends NanoHTTPD {
 
         android.util.Log.d("RemotePushServer", "收到文件，临时路径: " + tempPath + ", 大小: " + tempFile.length());
 
-        String fileName = extractFileName(session, entry.getKey());
+        // 优先从 URL 参数获取文件名（前端用 encodeURIComponent 编码，支持中文）
+        String fileName = null;
+        try {
+            java.util.Map<String, String> params = session.getParms();
+            if (params != null) {
+                String paramFileName = params.get("filename");
+                if (paramFileName != null && !paramFileName.isEmpty()) {
+                    fileName = paramFileName;
+                    android.util.Log.d("RemotePushServer", "从URL参数获取文件名: " + fileName);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // URL 参数没有，再从 content-disposition 提取
+        if (fileName == null || fileName.isEmpty()) {
+            fileName = extractFileName(session, entry.getKey());
+        }
+
         if (fileName == null || fileName.isEmpty()) {
             fileName = "push_" + System.currentTimeMillis();
         }
