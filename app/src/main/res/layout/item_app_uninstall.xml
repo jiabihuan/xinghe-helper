@@ -37,22 +37,18 @@
 
     <LinearLayout
         android:id="@+id/layoutActions"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="@dimen/dp8"
-        android:layout_marginLeft="@dimen/dp8"
-        android:layout_marginRight="@dimen/dp8"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:gravity="center"
         android:visibility="invisible">
 
         <TextView
             android:id="@+id/btnOpen"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="@dimen/dp4"
+            android:layout_width="68dp"
+            android:layout_height="28dp"
             android:gravity="center"
             android:text="打开"
             android:textColor="@color/white"
@@ -65,10 +61,9 @@
 
         <TextView
             android:id="@+id/btnUninstall"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:layout_marginStart="@dimen/dp4"
+            android:layout_width="68dp"
+            android:layout_height="28dp"
+            android:layout_marginTop="@dimen/dp4"
             android:gravity="center"
             android:text="卸载"
             android:textColor="@color/white"

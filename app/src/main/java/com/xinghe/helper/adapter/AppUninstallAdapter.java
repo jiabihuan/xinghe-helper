@@ -55,24 +55,21 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
         boolean isExpanded = position == expandedPosition;
         updateActionPanel(holder, isExpanded);
 
-        holder.layoutItem.setOnFocusChangeListener((v, hasFocus) -> {
-            int pos = holder.getAdapterPosition();
-            if (pos == RecyclerView.NO_POSITION) return;
+        holder.layoutItem.setOnClickListener(v -> {
+            toggleExpanded(holder.getAdapterPosition(), holder);
+        });
 
-            if (hasFocus) {
-                int oldExpanded = expandedPosition;
-                expandedPosition = pos;
-                if (oldExpanded != pos && oldExpanded >= 0) {
-                    notifyItemChanged(oldExpanded);
-                }
-                updateActionPanel(holder, true);
-            } else {
-                View focused = v.findFocus();
-                boolean focusInActions = focused == holder.btnOpen || focused == holder.btnUninstall;
-                if (!focusInActions && expandedPosition == pos) {
-                    updateActionPanel(holder, false);
-                }
+        holder.layoutItem.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+            int pos = holder.getAdapterPosition();
+            if (pos == RecyclerView.NO_POSITION) return false;
+
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                    || keyCode == 23 || keyCode == 66) {
+                toggleExpanded(pos, holder);
+                return true;
             }
+            return false;
         });
 
         holder.btnOpen.setOnClickListener(v -> {
@@ -87,56 +84,55 @@ public class AppUninstallAdapter extends RecyclerView.Adapter<AppUninstallAdapte
             }
         });
 
-        holder.btnOpen.setOnKeyListener((v, keyCode, event) -> handleActionKey(holder, keyCode, event));
-        holder.btnUninstall.setOnKeyListener((v, keyCode, event) -> handleActionKey(holder, keyCode, event));
-
-        holder.layoutItem.setOnKeyListener((v, keyCode, event) -> {
+        holder.btnOpen.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
 
-            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
-                    || keyCode == 23 || keyCode == 66) {
-                // 按 OK 直接打开应用
-                if (listener != null) {
-                    listener.onAppOpen(app);
-                }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                holder.btnUninstall.requestFocus();
                 return true;
             }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_BACK) {
+                collapsePanel(holder);
+                return true;
+            }
+            return false;
+        });
 
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+        holder.btnUninstall.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+
+            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 holder.btnOpen.requestFocus();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_BACK) {
+                collapsePanel(holder);
                 return true;
             }
             return false;
         });
     }
 
-    private boolean handleActionKey(AppViewHolder holder, int keyCode, KeyEvent event) {
-        if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
-                || keyCode == 23 || keyCode == 66) {
-            return false; // 让 OnClickListener 处理
+    private void toggleExpanded(int position, AppViewHolder holder) {
+        if (expandedPosition == position) {
+            collapsePanel(holder);
+        } else {
+            int oldPos = expandedPosition;
+            expandedPosition = position;
+            if (oldPos >= 0) {
+                notifyItemChanged(oldPos);
+            }
+            updateActionPanel(holder, true);
+            holder.btnOpen.requestFocus();
         }
+    }
 
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+    private void collapsePanel(AppViewHolder holder) {
+        if (expandedPosition == holder.getAdapterPosition()) {
+            expandedPosition = -1;
+            updateActionPanel(holder, false);
             holder.layoutItem.requestFocus();
-            return true;
         }
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-            if (holder.btnUninstall.hasFocus()) {
-                holder.btnOpen.requestFocus();
-                return true;
-            }
-        }
-
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (holder.btnOpen.hasFocus()) {
-                holder.btnUninstall.requestFocus();
-                return true;
-            }
-        }
-        return false;
     }
 
     private void updateActionPanel(AppViewHolder holder, boolean visible) {
