@@ -345,7 +345,7 @@ public class ManagerFragment extends Fragment {
                 TextView tvResult = itemView.findViewById(R.id.tvResult);
 
                 mainHandler.post(() -> {
-                    tvStatus.setText("卸载中...");
+                    tvStatus.setText("正在卸载...");
                     tvStatus.setTextColor(getResources().getColor(R.color.accent));
                 });
 
@@ -424,7 +424,7 @@ public class ManagerFragment extends Fragment {
                 final String finalMsg = msg;
                 mainHandler.post(() -> {
                     if (finalSucceeded) {
-                        tvStatus.setText("卸载成功");
+                        tvStatus.setText("已卸载");
                         tvStatus.setTextColor(getResources().getColor(R.color.success));
                         tvResult.setText("✓");
                         tvResult.setTextColor(getResources().getColor(R.color.success));

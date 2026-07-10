@@ -1,6 +1,7 @@
 package com.xinghe.helper;
 
-import android.content.Intent;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -9,11 +10,11 @@ import android.widget.Toast;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.xinghe.helper.activity.AppListActivity;
 import com.xinghe.helper.activity.BasicTransNavActivity;
 import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
+import com.xinghe.helper.util.AdbStatusManager;
 
 public class MainActivity extends BasicTransNavActivity {
 
@@ -76,6 +77,35 @@ public class MainActivity extends BasicTransNavActivity {
         updateNav(0);
         switchFragment(installFragment);
         navInstall.requestFocus();
+
+        checkAdbConnection();
+    }
+
+    private void checkAdbConnection() {
+        AdbStatusManager.getInstance().checkAdbStatus(new AdbStatusManager.AdbCheckCallback() {
+            @Override
+            public void onAdbAvailable() {
+                showAdbConnectedDialog();
+            }
+
+            @Override
+            public void onAdbUnavailable() {
+            }
+        });
+    }
+
+    private void showAdbConnectedDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("ADB已连接");
+        builder.setMessage("检测到ADB连接，将使用ADB方式安装和卸载应用，无需手动确认。");
+        builder.setPositiveButton("知道了", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
 
     private void switchFragment(Fragment targetFragment) {

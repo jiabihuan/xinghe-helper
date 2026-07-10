@@ -26,6 +26,8 @@ public class DownloadManager {
         void onError(int index, String error);
         void onCancelled(int index);
         void onAllComplete();
+        void onInstallStart(int index);
+        void onInstallResult(int index, boolean success, String message);
     }
 
     public static class DownloadTask {
@@ -223,15 +225,21 @@ public class DownloadManager {
                 if (listener != null) {
                     listener.onComplete(index, apkFile);
                 }
-                checkAllComplete();
             });
 
             boolean adbAvailable = AdbInstallUtil.isAdbAvailable();
             if (adbAvailable) {
+                mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onInstallStart(index);
+                    }
+                });
                 final boolean[] installSuccess = {false};
+                final String[] installMsg = {""};
                 final CountDownLatch latch = new CountDownLatch(1);
                 AdbInstallUtil.install(context, apkFile, (success, message) -> {
                     installSuccess[0] = success;
+                    installMsg[0] = message;
                     latch.countDown();
                 });
                 try {
@@ -239,6 +247,14 @@ public class DownloadManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+                final boolean success = installSuccess[0];
+                final String msg = installMsg[0];
+                mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onInstallResult(index, success, msg);
+                    }
+                    checkAllComplete();
+                });
                 if (!installSuccess[0]) {
                     mainHandler.post(() -> {
                         ApkInstallUtil.installApk(context, apkFile);
@@ -258,6 +274,9 @@ public class DownloadManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
+                mainHandler.post(() -> {
+                    checkAllComplete();
+                });
             }
         } else {
             throw new Exception("下载失败");

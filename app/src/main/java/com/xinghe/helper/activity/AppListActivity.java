@@ -1029,6 +1029,8 @@ public class AppListActivity extends AppCompatActivity {
             @Override public void onError(int index, String error) { updateProgressItemError(index, "下载失败"); }
             @Override public void onCancelled(int index) { updateProgressItemCancelled(index); }
             @Override public void onAllComplete() { mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000); }
+            @Override public void onInstallStart(int index) { updateInstallStart(index); }
+            @Override public void onInstallResult(int index, boolean success, String message) { updateInstallResult(index, success, message); }
         });
         dm.addTasks(apps, this);
     }
@@ -1191,6 +1193,55 @@ public class AppListActivity extends AppCompatActivity {
         tvStatus.setTextColor(getResources().getColor(R.color.home_text_hint));
         if (btnCancel != null) btnCancel.setVisibility(View.GONE);
         if (progressBar != null) progressBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xFF888888));
+    }
+
+    private void updateInstallStart(int index) {
+        if (downloadsContainer == null) return;
+        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
+        View itemView = downloadsContainer.getChildAt(index);
+        if (itemView == null) return;
+
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        TextView btnCancel = itemView.findViewById(R.id.btnCancel);
+        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+        tvStatus.setText("正在安装...");
+        tvStatus.setTextColor(getResources().getColor(R.color.accent));
+        if (tvPercent != null) tvPercent.setText("安装中");
+        if (progressBar != null) {
+            progressBar.setIndeterminate(true);
+            progressBar.setProgressTintList(getResources().getColorStateList(R.color.accent));
+        }
+        if (btnCancel != null) btnCancel.setVisibility(View.GONE);
+    }
+
+    private void updateInstallResult(int index, boolean success, String message) {
+        if (downloadsContainer == null) return;
+        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
+        View itemView = downloadsContainer.getChildAt(index);
+        if (itemView == null) return;
+
+        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
+        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
+        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
+        if (success) {
+            tvStatus.setText("已安装");
+            tvStatus.setTextColor(getResources().getColor(R.color.success));
+            if (tvPercent != null) tvPercent.setText("✓");
+            if (progressBar != null) {
+                progressBar.setIndeterminate(false);
+                progressBar.setProgress(100);
+                progressBar.setProgressTintList(getResources().getColorStateList(R.color.success));
+            }
+        } else {
+            tvStatus.setText("安装失败: " + message);
+            tvStatus.setTextColor(getResources().getColor(R.color.error));
+            if (tvPercent != null) tvPercent.setText("✗");
+            if (progressBar != null) {
+                progressBar.setIndeterminate(false);
+                progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
+            }
+        }
     }
 
     private void dismissDownloadPopup() {
