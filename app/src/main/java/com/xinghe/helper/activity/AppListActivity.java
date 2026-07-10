@@ -10,6 +10,7 @@ import android.text.Editable;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.text.TextWatcher;
+import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -51,7 +52,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -89,7 +89,8 @@ public class AppListActivity extends AppCompatActivity {
     private TextView tvSelectedCount;
     private TextView btnDownloadList;
 
-    private final ConcurrentHashMap<String, Bitmap> iconCache = new ConcurrentHashMap<>();
+    private LruCache<String, Bitmap> iconCache;
+    private final ExecutorService iconLoaderExecutor = Executors.newFixedThreadPool(8);
     private AppAdapter adapter;
 
     private View downloadPopupView;
@@ -691,6 +692,17 @@ public class AppListActivity extends AppCompatActivity {
         tvSelectedCount = findViewById(R.id.tvSelectedCount);
         btnDownloadList = findViewById(R.id.btnDownloadList);
 
+        if (iconCache == null) {
+            int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+            int cacheSize = maxMemory / 8;
+            iconCache = new LruCache<String, Bitmap>(cacheSize) {
+                @Override
+                protected int sizeOf(String key, Bitmap bitmap) {
+                    return bitmap.getByteCount() / 1024;
+                }
+            };
+        }
+
         tvCodeInfo.setText("口令: " + code);
 
         btnDownloadList.setOnClickListener(v -> {
@@ -1282,6 +1294,11 @@ public class AppListActivity extends AppCompatActivity {
         cancelRequest();
         mainHandler.removeCallbacksAndMessages(null);
         requestExecutor.shutdownNow();
+        iconLoaderExecutor.shutdownNow();
+        if (iconCache != null) {
+            iconCache.evictAll();
+            iconCache = null;
+        }
         super.onDestroy();
     }
 
@@ -1405,7 +1422,7 @@ public class AppListActivity extends AppCompatActivity {
                 return;
             }
             imageView.setTag(url);
-            requestExecutor.submit(() -> {
+            iconLoaderExecutor.submit(() -> {
                 HttpURLConnection conn = null;
                 try {
                     String fullUrl = url;
@@ -1413,24 +1430,53 @@ public class AppListActivity extends AppCompatActivity {
                     URL u = new URL(fullUrl);
                     conn = (HttpURLConnection) u.openConnection();
                     conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(5000);
-                    conn.setReadTimeout(5000);
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
                     if (conn.getResponseCode() == 200) {
                         InputStream is = conn.getInputStream();
-                        Bitmap bmp = BitmapFactory.decodeStream(is);
+                        byte[] data = readAllBytes(is);
                         is.close();
-                        if (bmp != null) {
-                            iconCache.put(url, bmp);
-                            mainHandler.post(() -> {
-                                Object tag = imageView.getTag();
-                                if (tag != null && tag.equals(url)) imageView.setImageBitmap(bmp);
-                            });
+                        if (data != null && data.length > 0) {
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inJustDecodeBounds = true;
+                            BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+                            int reqSize = dpToPx(80);
+                            int inSampleSize = 1;
+                            if (opts.outWidth > reqSize || opts.outHeight > reqSize) {
+                                int halfWidth = opts.outWidth / 2;
+                                int halfHeight = opts.outHeight / 2;
+                                while ((halfWidth / inSampleSize) >= reqSize
+                                        && (halfHeight / inSampleSize) >= reqSize) {
+                                    inSampleSize *= 2;
+                                }
+                            }
+                            opts.inJustDecodeBounds = false;
+                            opts.inSampleSize = inSampleSize;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+                            if (bmp != null) {
+                                iconCache.put(url, bmp);
+                                mainHandler.post(() -> {
+                                    Object tag = imageView.getTag();
+                                    if (tag != null && tag.equals(url)) imageView.setImageBitmap(bmp);
+                                });
+                            }
                         }
                     }
                 } catch (Exception e) {} finally {
                     if (conn != null) conn.disconnect();
                 }
             });
+        }
+
+        private byte[] readAllBytes(InputStream is) throws java.io.IOException {
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                buf.write(buffer, 0, len);
+            }
+            return buf.toByteArray();
         }
 
         @Override
