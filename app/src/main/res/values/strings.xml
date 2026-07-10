@@ -42,7 +42,7 @@
     <string name="about_title">关于星河助手</string>
     <string name="about_version">版本 1.7.0</string>
     <string name="about_desc">让大屏应用安装更简单</string>
-    <string name="server_url_default">http://zhushou.itv666.cc</string>
+    <string name="server_url_default">https://api.xinghe.app</string>
     <string name="app_list_loading">加载中...</string>
     <string name="app_list_empty">暂无应用</string>
     <string name="open_failed">打开失败</string>
