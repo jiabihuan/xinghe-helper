@@ -227,13 +227,19 @@ public class DownloadManager {
                 }
             });
 
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
             boolean adbAvailable = AdbInstallUtil.isAdbAvailable();
+            mainHandler.post(() -> {
+                if (listener != null) {
+                    listener.onInstallStart(index);
+                }
+            });
             if (adbAvailable) {
-                mainHandler.post(() -> {
-                    if (listener != null) {
-                        listener.onInstallStart(index);
-                    }
-                });
                 final boolean[] installSuccess = {false};
                 final String[] installMsg = {""};
                 final CountDownLatch latch = new CountDownLatch(1);
@@ -275,6 +281,9 @@ public class DownloadManager {
                     Thread.currentThread().interrupt();
                 }
                 mainHandler.post(() -> {
+                    if (listener != null) {
+                        listener.onInstallResult(index, false, "手动安装中");
+                    }
                     checkAllComplete();
                 });
             }

@@ -14,16 +14,39 @@ public class AdbInstallUtil {
 
     public static boolean isAdbAvailable() {
         try {
-            Process process = Runtime.getRuntime().exec(new String[]{"pm", "list", "packages", "-f"});
+            Process process = Runtime.getRuntime().exec(new String[]{"pm", "list", "packages"});
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             StringBuilder output = new StringBuilder();
+            StringBuilder errorOutput = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line);
-                if (output.length() > 100) break;
+                if (output.length() > 50) break;
             }
-            process.waitFor();
-            return output.length() > 0;
+            while ((line = errorReader.readLine()) != null) {
+                errorOutput.append(line);
+            }
+            int exitCode = process.waitFor();
+            reader.close();
+            errorReader.close();
+            if (exitCode == 0 && output.length() > 0) {
+                return true;
+            }
+            try {
+                Process suProcess = Runtime.getRuntime().exec(new String[]{"su", "-c", "pm list packages"});
+                BufferedReader suReader = new BufferedReader(new InputStreamReader(suProcess.getInputStream()));
+                StringBuilder suOutput = new StringBuilder();
+                while ((line = suReader.readLine()) != null) {
+                    suOutput.append(line);
+                    if (suOutput.length() > 50) break;
+                }
+                int suExitCode = suProcess.waitFor();
+                suReader.close();
+                return suExitCode == 0 && suOutput.length() > 0;
+            } catch (Exception e) {
+                return false;
+            }
         } catch (Exception e) {
             return false;
         }

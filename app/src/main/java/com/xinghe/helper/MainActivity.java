@@ -82,29 +82,32 @@ public class MainActivity extends BasicTransNavActivity {
     }
 
     private void checkAdbConnection() {
-        AdbStatusManager.getInstance().checkAdbStatus(new AdbStatusManager.AdbCheckCallback() {
-            @Override
-            public void onAdbAvailable() {
-                showAdbConnectedDialog();
-            }
+        navInstall.postDelayed(() -> {
+            AdbStatusManager.getInstance().checkAdbStatus(new AdbStatusManager.AdbCheckCallback() {
+                @Override
+                public void onAdbAvailable() {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "ADB已连接，将使用静默安装模式", Toast.LENGTH_LONG).show();
+                        showAdbConnectedDialog();
+                    });
+                }
 
-            @Override
-            public void onAdbUnavailable() {
-            }
-        });
+                @Override
+                public void onAdbUnavailable() {
+                    runOnUiThread(() -> {
+                        Toast.makeText(MainActivity.this, "未检测到ADB权限，将使用普通安装模式", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+        }, 500);
     }
 
     private void showAdbConnectedDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("ADB已连接");
         builder.setMessage("检测到ADB连接，将使用ADB方式安装和卸载应用，无需手动确认。");
-        builder.setPositiveButton("知道了", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-            }
-        });
-        AlertDialog dialog = builder.create();
+        builder.setPositiveButton("知道了", (dialog, which) -> dialog.dismiss());
+        android.app.AlertDialog dialog = builder.create();
         dialog.show();
     }
 

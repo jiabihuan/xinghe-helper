@@ -521,7 +521,6 @@ public class AppListFragment extends Fragment {
 
             @Override
             public void onComplete(int index, java.io.File apkFile) {
-                updateProgressItem(index, 100, 0, 0, true);
             }
 
             @Override
@@ -788,12 +787,18 @@ public class AppListFragment extends Fragment {
                 progressBar.setProgressTintList(getResources().getColorStateList(R.color.success));
             }
         } else {
-            tvStatus.setText("安装失败: " + message);
-            tvStatus.setTextColor(getResources().getColor(R.color.error));
-            if (tvPercent != null) tvPercent.setText("✗");
-            if (progressBar != null) {
-                progressBar.setIndeterminate(false);
-                progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
+            if ("手动安装中".equals(message)) {
+                tvStatus.setText("正在安装...");
+                tvStatus.setTextColor(getResources().getColor(R.color.accent));
+                if (tvPercent != null) tvPercent.setText("安装中");
+            } else {
+                tvStatus.setText("安装失败: " + message);
+                tvStatus.setTextColor(getResources().getColor(R.color.error));
+                if (tvPercent != null) tvPercent.setText("✗");
+                if (progressBar != null) {
+                    progressBar.setIndeterminate(false);
+                    progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
+                }
             }
         }
     }

@@ -1025,7 +1025,7 @@ public class AppListActivity extends AppCompatActivity {
         dm.clearTasks();
         dm.setListener(new DownloadManager.DownloadListener() {
             @Override public void onProgress(int index, int percent, long downloaded, long total) { updateProgressItem(index, percent, downloaded, total, false); }
-            @Override public void onComplete(int index, java.io.File apkFile) { updateProgressItem(index, 100, 0, 0, true); }
+            @Override public void onComplete(int index, java.io.File apkFile) { }
             @Override public void onError(int index, String error) { updateProgressItemError(index, "下载失败"); }
             @Override public void onCancelled(int index) { updateProgressItemCancelled(index); }
             @Override public void onAllComplete() { mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000); }
@@ -1234,12 +1234,18 @@ public class AppListActivity extends AppCompatActivity {
                 progressBar.setProgressTintList(getResources().getColorStateList(R.color.success));
             }
         } else {
-            tvStatus.setText("安装失败: " + message);
-            tvStatus.setTextColor(getResources().getColor(R.color.error));
-            if (tvPercent != null) tvPercent.setText("✗");
-            if (progressBar != null) {
-                progressBar.setIndeterminate(false);
-                progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
+            if ("手动安装中".equals(message)) {
+                tvStatus.setText("正在安装...");
+                tvStatus.setTextColor(getResources().getColor(R.color.accent));
+                if (tvPercent != null) tvPercent.setText("安装中");
+            } else {
+                tvStatus.setText("安装失败: " + message);
+                tvStatus.setTextColor(getResources().getColor(R.color.error));
+                if (tvPercent != null) tvPercent.setText("✗");
+                if (progressBar != null) {
+                    progressBar.setIndeterminate(false);
+                    progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
+                }
             }
         }
     }
