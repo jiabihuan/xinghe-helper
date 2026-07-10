@@ -564,14 +564,17 @@ public class InstallFragment extends Fragment {
     }
 
     private void handleKeyboardKey(TextView keyView) {
-        keyView.requestFocus();
         Object action = keyView.getTag();
         if (KEY_ACTION_BACKSPACE.equals(action)) {
             deletePreviousCode();
-            keyView.requestFocus();
+            // 如果删除后还有内容，保持焦点在退格键上；如果清空了，焦点回到输入框
+            if (getCurrentCode().length() > 0 && keyboardVisible) {
+                keyView.requestFocus();
+            }
         } else if (KEY_ACTION_CLEAR.equals(action)) {
             clearCode();
-            keyView.requestFocus();
+            // 清空后焦点回到第一个输入框，不要留在键盘按钮上（防止闪烁）
+            focusFirstCodeView();
         } else if (KEY_ACTION_OK.equals(action)) {
             if (getCurrentCode().length() == 4) {
                 submitCode();
@@ -589,12 +592,10 @@ public class InstallFragment extends Fragment {
             updateKeyboardVisibility(true, true);
         }
 
-        int index = currentCodeIndex;
-        if (index < 0 || index >= 4 || codeViews[index].getText().length() > 0) {
-            index = getFirstEmptyCodeIndex();
-        }
+        // 总是从第一个空格开始输入
+        int index = getFirstEmptyCodeIndex();
         if (index < 0) {
-            index = 3;
+            return;
         }
 
         changingText = true;
@@ -772,12 +773,11 @@ public class InstallFragment extends Fragment {
     }
 
     private void submitCode() {
+        if (codeViews == null || getContext() == null || getActivity() == null) return;
         String code = getCurrentCode();
         if (code.length() < 4) {
-            if (getContext() != null) {
-                ToastUtil.showShort(getContext(), R.string.password_empty);
-            }
-        } else if (getContext() != null) {
+            ToastUtil.showShort(getContext(), R.string.password_empty);
+        } else {
             makeRequest(code);
         }
     }

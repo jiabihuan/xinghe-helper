@@ -81,9 +81,16 @@ public class MainActivity extends BasicTransNavActivity {
     private void switchFragment(Fragment targetFragment) {
         if (currentFragment == targetFragment) return;
 
-        fragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, targetFragment)
-                .commit();
+        androidx.fragment.app.FragmentTransaction transaction = fragmentManager.beginTransaction();
+        if (currentFragment != null) {
+            transaction.hide(currentFragment);
+        }
+        if (!targetFragment.isAdded()) {
+            transaction.add(R.id.fragmentContainer, targetFragment);
+        } else {
+            transaction.show(targetFragment);
+        }
+        transaction.commit();
         currentFragment = targetFragment;
     }
 
