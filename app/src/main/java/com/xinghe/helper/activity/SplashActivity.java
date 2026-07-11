@@ -10,11 +10,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.xinghe.helper.MainActivity;
 import com.xinghe.helper.R;
+import com.xinghe.helper.util.DensityUtil;
 
 public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 

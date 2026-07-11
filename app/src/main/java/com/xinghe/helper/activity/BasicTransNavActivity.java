@@ -7,10 +7,12 @@ import android.view.Window;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.xinghe.helper.R;
+import com.xinghe.helper.util.DensityUtil;
 
 public class BasicTransNavActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         if (Build.VERSION.SDK_INT >= 21) {
             Window window = getWindow();

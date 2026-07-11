@@ -36,6 +36,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
+import com.xinghe.helper.util.DensityUtil;
 import com.xinghe.helper.util.DownloadManager;
 
 import org.json.JSONArray;
@@ -102,6 +103,7 @@ public class AppListActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_list_new);
 
