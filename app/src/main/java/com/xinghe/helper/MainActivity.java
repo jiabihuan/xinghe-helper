@@ -51,10 +51,21 @@ public class MainActivity extends BasicTransNavActivity {
         navManager = findViewById(R.id.nav_manager);
         navSystem = findViewById(R.id.nav_system);
 
-        installFragment = new InstallFragment();
-        remoteFragment = new RemoteFragment();
-        managerFragment = new ManagerFragment();
-        systemFragment = new SystemFragment();
+        if (savedInstanceState == null) {
+            installFragment = new InstallFragment();
+            remoteFragment = new RemoteFragment();
+            managerFragment = new ManagerFragment();
+            systemFragment = new SystemFragment();
+        } else {
+            installFragment = fragmentManager.findFragmentByTag("install");
+            remoteFragment = fragmentManager.findFragmentByTag("remote");
+            managerFragment = fragmentManager.findFragmentByTag("manager");
+            systemFragment = fragmentManager.findFragmentByTag("system");
+            if (installFragment == null) installFragment = new InstallFragment();
+            if (remoteFragment == null) remoteFragment = new RemoteFragment();
+            if (managerFragment == null) managerFragment = new ManagerFragment();
+            if (systemFragment == null) systemFragment = new SystemFragment();
+        }
 
         navInstall.setOnClickListener(v -> {
             updateNav(0);
@@ -194,12 +205,21 @@ public class MainActivity extends BasicTransNavActivity {
             transaction.hide(currentFragment);
         }
         if (!targetFragment.isAdded()) {
-            transaction.add(R.id.fragmentContainer, targetFragment);
+            String tag = getFragmentTag(targetFragment);
+            transaction.add(R.id.fragmentContainer, targetFragment, tag);
         } else {
             transaction.show(targetFragment);
         }
         transaction.commit();
         currentFragment = targetFragment;
+    }
+
+    private String getFragmentTag(Fragment fragment) {
+        if (fragment instanceof InstallFragment) return "install";
+        if (fragment instanceof RemoteFragment) return "remote";
+        if (fragment instanceof ManagerFragment) return "manager";
+        if (fragment instanceof SystemFragment) return "system";
+        return "";
     }
 
     @Override
