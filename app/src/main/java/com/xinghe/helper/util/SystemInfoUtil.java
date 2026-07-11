@@ -2,6 +2,8 @@ package com.xinghe.helper.util;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.opengl.GLES10;
+import android.opengl.GLES20;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
@@ -10,9 +12,15 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Locale;
 
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+
 public class SystemInfoUtil {
 
-    // 通过 getprop 获取系统属性（最准确的底层读取方式）
+    private static String cachedGpuInfo = null;
+
     private static String getProp(String propName) {
         try {
             Process process = Runtime.getRuntime().exec("getprop " + propName);
@@ -24,12 +32,10 @@ public class SystemInfoUtil {
                 return line.trim();
             }
         } catch (Exception e) {
-            // ignore
         }
         return "";
     }
 
-    // 通过 shell 命令获取信息
     private static String execShell(String command) {
         try {
             Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
@@ -80,7 +86,7 @@ public class SystemInfoUtil {
     public static int getAndroidSdk() {
         String prop = getProp("ro.build.version.sdk");
         if (!prop.isEmpty()) {
-            try { return Integer.parseInt(prop); } catch (NumberFormatException e) { /* ignore */ }
+            try { return Integer.parseInt(prop); } catch (NumberFormatException e) { }
         }
         return Build.VERSION.SDK_INT;
     }
@@ -125,7 +131,6 @@ public class SystemInfoUtil {
                 return metrics.widthPixels + " × " + metrics.heightPixels;
             }
         } catch (Exception e) {
-            // ignore
         }
         return "未知";
     }
@@ -148,30 +153,33 @@ public class SystemInfoUtil {
                 return dpi + "dpi (" + category + ")";
             }
         } catch (Exception e) {
-            // ignore
         }
         return "未知";
     }
 
     public static String getCpuInfo() {
-        // 优先通过 getprop 获取 SoC 信息
         String socManu = getProp("ro.soc.manufacturer");
         String socModel = getProp("ro.soc.model");
         if (!socManu.isEmpty() || !socModel.isEmpty()) {
             return (socManu.isEmpty() ? "" : socManu + " ") + socModel;
         }
-        // 回退到 cpuinfo
+        String hardware = getProp("ro.hardware");
+        String chipname = getProp("ro.chipname");
+        if (!chipname.isEmpty()) return chipname;
         try {
-            String cpuInfo = execShell("cat /proc/cpuinfo | head -20");
+            String cpuInfo = execShell("cat /proc/cpuinfo | head -30");
             if (!cpuInfo.isEmpty()) {
                 StringBuilder result = new StringBuilder();
                 for (String line : cpuInfo.split("\n")) {
                     if (line.contains("Hardware") || line.contains("Processor") ||
                         line.contains("model name") || line.contains("CPU implementer") ||
-                        line.contains("CPU part")) {
+                        line.contains("CPU part") || line.contains("cpu model")) {
                         String[] parts = line.split(":", 2);
                         if (parts.length >= 2) {
-                            result.append(parts[1].trim()).append("  ");
+                            String val = parts[1].trim();
+                            if (!result.toString().contains(val)) {
+                                result.append(val).append("  ");
+                            }
                         }
                     }
                 }
@@ -179,7 +187,6 @@ public class SystemInfoUtil {
                 if (!r.isEmpty()) return r;
             }
         } catch (Exception e) {
-            // ignore
         }
         return Build.HARDWARE;
     }
@@ -206,7 +213,119 @@ public class SystemInfoUtil {
                     return String.format(Locale.getDefault(), "%d MHz", khz / 1000);
                 }
             } catch (NumberFormatException e) {
-                // ignore
+            }
+        }
+        String[] paths = {
+            "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
+            "/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_max_freq",
+            "/sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_max_freq"
+        };
+        for (String path : paths) {
+            String f = execShell("cat " + path);
+            if (!f.isEmpty()) {
+                try {
+                    long khz = Long.parseLong(f.trim());
+                    if (khz > 0) {
+                        if (khz >= 1000000) {
+                            return String.format(Locale.getDefault(), "%.2f GHz", khz / 1000000.0);
+                        } else {
+                            return String.format(Locale.getDefault(), "%d MHz", khz / 1000);
+                        }
+                    }
+                } catch (Exception e) {
+                }
+            }
+        }
+        return "未知";
+    }
+
+    public static String getGpuInfo() {
+        if (cachedGpuInfo != null) return cachedGpuInfo;
+        try {
+            EGL10 egl = (EGL10) EGLContext.getEGL();
+            EGLDisplay display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
+            if (display == null || display == EGL10.EGL_NO_DISPLAY) {
+                return getGpuInfoFromSystem();
+            }
+            int[] version = new int[2];
+            if (!egl.eglInitialize(display, version)) {
+                return getGpuInfoFromSystem();
+            }
+            int[] configAttribs = {
+                EGL10.EGL_RED_SIZE, 4,
+                EGL10.EGL_GREEN_SIZE, 4,
+                EGL10.EGL_BLUE_SIZE, 4,
+                EGL10.EGL_RENDERABLE_TYPE, 4,
+                EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT,
+                EGL10.EGL_NONE
+            };
+            EGLConfig[] configs = new EGLConfig[1];
+            int[] numConfigs = new int[1];
+            if (!egl.eglChooseConfig(display, configAttribs, configs, 1, numConfigs) || numConfigs[0] == 0) {
+                egl.eglTerminate(display);
+                return getGpuInfoFromSystem();
+            }
+            int[] attrib_list = {EGL10.EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE};
+            EGLContext context = egl.eglCreateContext(display, configs[0], EGL10.EGL_NO_CONTEXT, attrib_list);
+            if (context == null || context == EGL10.EGL_NO_CONTEXT) {
+                int[] attrib_list1 = {EGL10.EGL_NONE};
+                context = egl.eglCreateContext(display, configs[0], EGL10.EGL_NO_CONTEXT, attrib_list1);
+                if (context == null || context == EGL10.EGL_NO_CONTEXT) {
+                    egl.eglTerminate(display);
+                    return getGpuInfoFromSystem();
+                }
+            }
+            EGLConfig[] surfConfig = {configs[0]};
+            int[] surAttribs = {EGL10.EGL_WIDTH, 1, EGL10.EGL_HEIGHT, 1, EGL10.EGL_NONE};
+            javax.microedition.khronos.egl.EGLSurface surface = egl.eglCreatePbufferSurface(display, surfConfig[0], surAttribs);
+            if (surface == null || surface == EGL10.EGL_NO_SURFACE) {
+                egl.eglDestroyContext(display, context);
+                egl.eglTerminate(display);
+                return getGpuInfoFromSystem();
+            }
+            if (!egl.eglMakeCurrent(display, surface, surface, context)) {
+                egl.eglDestroySurface(display, surface);
+                egl.eglDestroyContext(display, context);
+                egl.eglTerminate(display);
+                return getGpuInfoFromSystem();
+            }
+            String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
+            String vendor = GLES20.glGetString(GLES20.GL_VENDOR);
+            String version = GLES20.glGetString(GLES20.GL_VERSION);
+            egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
+            egl.eglDestroySurface(display, surface);
+            egl.eglDestroyContext(display, context);
+            egl.eglTerminate(display);
+            String result = "";
+            if (vendor != null && !vendor.isEmpty()) result += vendor + " ";
+            if (renderer != null && !renderer.isEmpty()) result += renderer;
+            if (result.isEmpty()) {
+                result = getGpuInfoFromSystem();
+            }
+            cachedGpuInfo = result;
+            return result;
+        } catch (Exception e) {
+            cachedGpuInfo = getGpuInfoFromSystem();
+            return cachedGpuInfo;
+        }
+    }
+
+    private static String getGpuInfoFromSystem() {
+        String prop = getProp("ro.hardware.egl");
+        if (!prop.isEmpty()) return prop;
+        prop = getProp("ro.vendor.extension_library");
+        if (!prop.isEmpty()) return prop;
+        String gpu = execShell("cat /sys/class/kgsl/kgsl-3d0/gpu_model");
+        if (!gpu.isEmpty()) return gpu;
+        gpu = execShell("cat /sys/devices/platform/soc/*.gpu/device/of_node/compatible 2>/dev/null | head -1");
+        if (!gpu.isEmpty()) return gpu;
+        gpu = execShell("cat /proc/mali 2>/dev/null | head -5");
+        if (!gpu.isEmpty()) {
+            for (String line : gpu.split("\n")) {
+                if (line.contains("GPU") || line.contains("model")) {
+                    String[] parts = line.split(":", 2);
+                    if (parts.length >= 2) return parts[1].trim();
+                }
             }
         }
         return "未知";
@@ -226,7 +345,21 @@ public class SystemInfoUtil {
                 }
             }
         } catch (Exception e) {
-            // ignore
+        }
+        String mem = execShell("cat /proc/meminfo | grep MemTotal");
+        if (!mem.isEmpty()) {
+            try {
+                String[] parts = mem.split("\\s+");
+                if (parts.length >= 2) {
+                    long kb = Long.parseLong(parts[1]);
+                    long mb = kb / 1024;
+                    if (mb >= 1024) {
+                        return String.format(Locale.getDefault(), "%.1f GB", mb / 1024.0);
+                    }
+                    return mb + " MB";
+                }
+            } catch (Exception e) {
+            }
         }
         return "未知";
     }
@@ -245,7 +378,6 @@ public class SystemInfoUtil {
                 }
             }
         } catch (Exception e) {
-            // ignore
         }
         return "未知";
     }
@@ -265,7 +397,6 @@ public class SystemInfoUtil {
                     return String.format(Locale.getDefault(), "%d / %d MB", usedKb / 1024, totalKb / 1024);
                 }
             } catch (NumberFormatException e) {
-                // ignore
             }
         }
         return "未知";
@@ -274,10 +405,8 @@ public class SystemInfoUtil {
     public static String getKernelVersion() {
         String prop = getProp("ro.kernel.version");
         if (!prop.isEmpty()) return prop;
-        // 回退到 uname
         String uname = execShell("uname -r");
         if (!uname.isEmpty()) return uname;
-        // 最后回退到 /proc/version
         String procVer = execShell("cat /proc/version");
         if (!procVer.isEmpty() && procVer.length() > 80) {
             return procVer.substring(0, 80) + "...";
@@ -332,7 +461,6 @@ public class SystemInfoUtil {
 
     public static String getUptime() {
         try {
-            long uptimeMs = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
             long uptimeSec = android.os.SystemClock.elapsedRealtime() / 1000;
             long days = uptimeSec / 86400;
             long hours = (uptimeSec % 86400) / 3600;
@@ -347,5 +475,43 @@ public class SystemInfoUtil {
         } catch (Exception e) {
             return "未知";
         }
+    }
+
+    public static String getRootStatus() {
+        String su = execShell("which su");
+        if (su != null && !su.isEmpty()) return "已ROOT";
+        String test = execShell("su -c 'id'");
+        if (test != null && test.contains("uid=0")) return "已ROOT";
+        return "未ROOT";
+    }
+
+    public static String getBootloaderStatus() {
+        String prop = getProp("ro.boot.verifiedbootstate");
+        if (!prop.isEmpty()) {
+            if ("green".equalsIgnoreCase(prop)) return "已锁定";
+            if ("orange".equalsIgnoreCase(prop)) return "已解锁";
+            return prop;
+        }
+        prop = getProp("ro.boot.flash.locked");
+        if (!prop.isEmpty()) {
+            return "1".equals(prop) ? "已锁定" : "已解锁";
+        }
+        return "未知";
+    }
+
+    public static String getSystemVersion() {
+        String prop = getProp("ro.build.version.incremental");
+        if (!prop.isEmpty()) return prop;
+        prop = getProp("ro.system.build.version.incremental");
+        if (!prop.isEmpty()) return prop;
+        return "未知";
+    }
+
+    public static String getBluetoothMac() {
+        String prop = getProp("ro.boot.btmacaddr");
+        if (!prop.isEmpty()) return prop;
+        prop = getProp("persist.service.bdroid.bdaddr");
+        if (!prop.isEmpty()) return prop;
+        return "未知";
     }
 }
