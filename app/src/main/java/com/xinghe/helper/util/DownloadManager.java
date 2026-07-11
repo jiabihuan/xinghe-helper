@@ -253,16 +253,20 @@ public class DownloadManager {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                final boolean success = installSuccess[0];
-                final String msg = installMsg[0];
-                mainHandler.post(() -> {
-                    if (listener != null) {
-                        listener.onInstallResult(index, success, msg);
-                    }
-                    checkAllComplete();
-                });
-                if (!installSuccess[0]) {
+                if (installSuccess[0]) {
+                    final boolean success = installSuccess[0];
+                    final String msg = installMsg[0];
                     mainHandler.post(() -> {
+                        if (listener != null) {
+                            listener.onInstallResult(index, success, msg);
+                        }
+                        checkAllComplete();
+                    });
+                } else {
+                    mainHandler.post(() -> {
+                        if (listener != null) {
+                            listener.onInstallResult(index, false, "手动安装中");
+                        }
                         ApkInstallUtil.installApk(context, apkFile);
                     });
                     try {
@@ -270,6 +274,7 @@ public class DownloadManager {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
+                    mainHandler.post(() -> checkAllComplete());
                 }
             } else {
                 mainHandler.post(() -> {
