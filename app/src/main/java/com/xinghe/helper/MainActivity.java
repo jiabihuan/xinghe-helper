@@ -135,6 +135,32 @@ public class MainActivity extends BasicTransNavActivity {
             finish();
         });
 
+        btnConfirm.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    btnCancel.requestFocus();
+                    return true;
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+                    btnCancel.requestFocus();
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        btnCancel.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    btnConfirm.requestFocus();
+                    return true;
+                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+                    btnConfirm.requestFocus();
+                    return true;
+                }
+            }
+            return false;
+        });
+
         dialog.show();
         btnConfirm.requestFocus();
     }
