@@ -103,6 +103,12 @@ public class MainActivity extends BasicTransNavActivity {
         checkAdbConnection();
     }
 
+    public void switchToInstall() {
+        updateNav(0);
+        switchFragment(installFragment);
+        navInstall.requestFocus();
+    }
+
     private void checkAdbConnection() {
         navInstall.postDelayed(() -> {
             AdbStatusManager.getInstance().checkAdbStatus(new AdbStatusManager.AdbCheckCallback() {

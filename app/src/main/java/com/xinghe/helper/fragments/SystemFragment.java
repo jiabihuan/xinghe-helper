@@ -1,6 +1,7 @@
 package com.xinghe.helper.fragments;
 
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,7 @@ import android.widget.TextView;
 
 import androidx.fragment.app.Fragment;
 
+import com.xinghe.helper.MainActivity;
 import com.xinghe.helper.R;
 import com.xinghe.helper.util.SystemInfoUtil;
 
@@ -17,6 +19,36 @@ public class SystemFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_system, container, false);
         bindInfo(view);
+
+        TextView btnClose = view.findViewById(R.id.btnClose);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).switchToInstall();
+                }
+            });
+
+            btnClose.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    btnClose.setBackgroundResource(R.drawable.bg_dialog_button_focus);
+                } else {
+                    btnClose.setBackgroundResource(R.drawable.bg_dialog_button);
+                }
+            });
+
+            btnClose.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == 23 || keyCode == 66) {
+                        v.performClick();
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            btnClose.requestFocus();
+        }
+
         return view;
     }
 

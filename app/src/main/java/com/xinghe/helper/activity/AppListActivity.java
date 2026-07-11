@@ -1055,6 +1055,7 @@ public class AppListActivity extends AppCompatActivity {
         for (int i = 0; i < apps.size(); i++) {
             final int index = i;
             View itemView = LayoutInflater.from(this).inflate(R.layout.item_download_big, downloadsContainer, false);
+            ImageView ivIcon = itemView.findViewById(R.id.ivAppIcon);
             TextView tvName = itemView.findViewById(R.id.tvAppName);
             TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
             TextView tvPercent = itemView.findViewById(R.id.tvPercent);
@@ -1067,6 +1068,11 @@ public class AppListActivity extends AppCompatActivity {
             tvPercent.setText("0%");
             progressBar.setProgress(0);
             tvStatus.setText("等待中...");
+
+            String iconUrl = apps.get(i).getIconUrl();
+            if (iconUrl != null && iconUrl.length() > 0) {
+                loadIcon(iconUrl, ivIcon);
+            }
 
             btnCancel.setOnClickListener(v -> {
                 DownloadManager dm = DownloadManager.getInstance();
