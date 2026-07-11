@@ -1,210 +1,292 @@
 package com.xinghe.helper.util;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Locale;
 
 public class SystemInfoUtil {
 
+    // 通过 getprop 获取系统属性（最准确的底层读取方式）
+    private static String getProp(String propName) {
+        try {
+            Process process = Runtime.getRuntime().exec("getprop " + propName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line = reader.readLine();
+            reader.close();
+            process.waitFor();
+            if (line != null && !line.trim().isEmpty()) {
+                return line.trim();
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return "";
+    }
+
+    // 通过 shell 命令获取信息
+    private static String execShell(String command) {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"sh", "-c", command});
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            StringBuilder result = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                result.append(line).append("\n");
+            }
+            reader.close();
+            process.waitFor();
+            return result.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     public static String getDeviceBrand() {
-        return Build.BRAND;
+        String prop = getProp("ro.product.brand");
+        return prop.isEmpty() ? Build.BRAND : prop;
     }
 
     public static String getDeviceModel() {
-        return Build.MODEL;
+        String prop = getProp("ro.product.model");
+        return prop.isEmpty() ? Build.MODEL : prop;
     }
 
     public static String getDeviceManufacturer() {
-        return Build.MANUFACTURER;
+        String prop = getProp("ro.product.manufacturer");
+        return prop.isEmpty() ? Build.MANUFACTURER : prop;
+    }
+
+    public static String getProductName() {
+        String prop = getProp("ro.product.name");
+        return prop.isEmpty() ? Build.PRODUCT : prop;
+    }
+
+    public static String getDeviceName() {
+        String prop = getProp("ro.product.device");
+        return prop.isEmpty() ? Build.DEVICE : prop;
     }
 
     public static String getAndroidVersion() {
-        return Build.VERSION.RELEASE;
+        String prop = getProp("ro.build.version.release");
+        return prop.isEmpty() ? Build.VERSION.RELEASE : prop;
     }
 
     public static int getAndroidSdk() {
+        String prop = getProp("ro.build.version.sdk");
+        if (!prop.isEmpty()) {
+            try { return Integer.parseInt(prop); } catch (NumberFormatException e) { /* ignore */ }
+        }
         return Build.VERSION.SDK_INT;
     }
 
     public static String getBuildId() {
-        return Build.ID;
+        String prop = getProp("ro.build.id");
+        return prop.isEmpty() ? Build.ID : prop;
     }
 
     public static String getBuildNumber() {
-        return Build.DISPLAY;
+        String prop = getProp("ro.build.display.id");
+        return prop.isEmpty() ? Build.DISPLAY : prop;
     }
 
     public static String getSerialNumber() {
         try {
+            String prop = getProp("ro.serialno");
+            if (!prop.isEmpty()) return prop;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 return Build.getSerial();
-            } else {
-                return Build.SERIAL;
             }
+            return Build.SERIAL;
         } catch (SecurityException e) {
             return "权限受限";
         }
     }
 
-    public static String getProductName() {
-        return Build.PRODUCT;
-    }
-
-    public static String getBoard() {
-        return Build.BOARD;
-    }
-
-    public static String getHardware() {
-        return Build.HARDWARE;
-    }
-
-    public static String getBootloader() {
-        return Build.BOOTLOADER;
-    }
-
-    public static String getRadioVersion() {
-        return Build.getRadioVersion();
-    }
-
-    public static String getScreenResolution(Context context) {
-        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        if (wm != null) {
-            DisplayMetrics metrics = new DisplayMetrics();
-            wm.getDefaultDisplay().getMetrics(metrics);
-            return metrics.widthPixels + " × " + metrics.heightPixels;
+    public static String getSecurityPatch() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String prop = getProp("ro.build.version.security_patch");
+            return prop.isEmpty() ? Build.VERSION.SECURITY_PATCH : prop;
         }
         return "未知";
     }
 
-    public static String getScreenDensity(Context context) {
-        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        if (wm != null) {
-            DisplayMetrics metrics = new DisplayMetrics();
-            wm.getDefaultDisplay().getMetrics(metrics);
-            return String.format(Locale.getDefault(), "%.2f", metrics.density);
+    public static String getScreenResolution(Context context) {
+        try {
+            WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            if (wm != null) {
+                DisplayMetrics metrics = new DisplayMetrics();
+                wm.getDefaultDisplay().getRealMetrics(metrics);
+                return metrics.widthPixels + " × " + metrics.heightPixels;
+            }
+        } catch (Exception e) {
+            // ignore
         }
         return "未知";
     }
 
     public static String getScreenDensityDpi(Context context) {
-        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        if (wm != null) {
-            DisplayMetrics metrics = new DisplayMetrics();
-            wm.getDefaultDisplay().getMetrics(metrics);
-            return String.valueOf(metrics.densityDpi);
+        try {
+            WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            if (wm != null) {
+                DisplayMetrics metrics = new DisplayMetrics();
+                wm.getDefaultDisplay().getRealMetrics(metrics);
+                int dpi = metrics.densityDpi;
+                String category;
+                if (dpi <= 120) category = "ldpi";
+                else if (dpi <= 160) category = "mdpi";
+                else if (dpi <= 240) category = "hdpi";
+                else if (dpi <= 320) category = "xhdpi";
+                else if (dpi <= 480) category = "xxhdpi";
+                else if (dpi <= 640) category = "xxxhdpi";
+                else category = "tvdpi";
+                return dpi + "dpi (" + category + ")";
+            }
+        } catch (Exception e) {
+            // ignore
         }
         return "未知";
     }
 
     public static String getCpuInfo() {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
-            StringBuilder cpuInfo = new StringBuilder();
-            String line;
-            int count = 0;
-            while ((line = reader.readLine()) != null && count < 10) {
-                if (line.contains("Processor") || line.contains("model name") || 
-                    line.contains("Hardware") || line.contains("CPU architecture")) {
-                    cpuInfo.append(line.trim()).append("\n");
-                    count++;
-                }
-            }
-            reader.close();
-            return cpuInfo.toString().trim();
-        } catch (IOException e) {
-            return "获取失败";
+        // 优先通过 getprop 获取 SoC 信息
+        String socManu = getProp("ro.soc.manufacturer");
+        String socModel = getProp("ro.soc.model");
+        if (!socManu.isEmpty() || !socModel.isEmpty()) {
+            return (socManu.isEmpty() ? "" : socManu + " ") + socModel;
         }
+        // 回退到 cpuinfo
+        try {
+            String cpuInfo = execShell("cat /proc/cpuinfo | head -20");
+            if (!cpuInfo.isEmpty()) {
+                StringBuilder result = new StringBuilder();
+                for (String line : cpuInfo.split("\n")) {
+                    if (line.contains("Hardware") || line.contains("Processor") ||
+                        line.contains("model name") || line.contains("CPU implementer") ||
+                        line.contains("CPU part")) {
+                        String[] parts = line.split(":", 2);
+                        if (parts.length >= 2) {
+                            result.append(parts[1].trim()).append("  ");
+                        }
+                    }
+                }
+                String r = result.toString().trim();
+                if (!r.isEmpty()) return r;
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return Build.HARDWARE;
     }
 
     public static String getCpuAbi() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            StringBuilder abi = new StringBuilder();
-            for (String a : Build.SUPPORTED_ABIS) {
-                abi.append(a).append(" ");
-            }
-            return abi.toString().trim();
-        } else {
-            return Build.CPU_ABI + " " + Build.CPU_ABI2;
+            return Build.SUPPORTED_ABIS[0];
         }
+        return Build.CPU_ABI;
     }
 
-    public static String getTotalMemory() {
+    public static String getCpuCores() {
+        return String.valueOf(Runtime.getRuntime().availableProcessors());
+    }
+
+    public static String getCpuMaxFreq() {
+        String freq = execShell("cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
+        if (!freq.isEmpty()) {
+            try {
+                long khz = Long.parseLong(freq.trim());
+                if (khz >= 1000000) {
+                    return String.format(Locale.getDefault(), "%.2f GHz", khz / 1000000.0);
+                } else {
+                    return String.format(Locale.getDefault(), "%d MHz", khz / 1000);
+                }
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+        return "未知";
+    }
+
+    public static String getTotalMemory(Context context) {
         try {
-            BufferedReader reader = new BufferedReader(new FileReader("/proc/meminfo"));
-            String line = reader.readLine();
-            reader.close();
-            if (line != null && line.startsWith("MemTotal")) {
-                String[] parts = line.split("\\s+");
-                if (parts.length >= 2) {
-                    long kb = Long.parseLong(parts[1]);
-                    if (kb >= 1024 * 1024) {
-                        return String.format(Locale.getDefault(), "%.2f GB", kb / (1024.0 * 1024));
-                    } else {
-                        return String.format(Locale.getDefault(), "%.0f MB", kb / 1024.0);
-                    }
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                am.getMemoryInfo(mi);
+                long totalMb = mi.totalMem / (1024 * 1024);
+                if (totalMb >= 1024) {
+                    return String.format(Locale.getDefault(), "%.1f GB", totalMb / 1024.0);
+                } else {
+                    return totalMb + " MB";
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             // ignore
         }
         return "未知";
     }
 
-    public static String getAvailableMemory() {
+    public static String getAvailableMemory(Context context) {
         try {
-            BufferedReader reader = new BufferedReader(new FileReader("/proc/meminfo"));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("MemAvailable")) {
-                    String[] parts = line.split("\\s+");
-                    if (parts.length >= 2) {
-                        long kb = Long.parseLong(parts[1]);
-                        if (kb >= 1024 * 1024) {
-                            return String.format(Locale.getDefault(), "%.2f GB", kb / (1024.0 * 1024));
-                        } else {
-                            return String.format(Locale.getDefault(), "%.0f MB", kb / 1024.0);
-                        }
-                    }
-                    break;
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                am.getMemoryInfo(mi);
+                long availMb = mi.availMem / (1024 * 1024);
+                if (availMb >= 1024) {
+                    return String.format(Locale.getDefault(), "%.1f GB", availMb / 1024.0);
+                } else {
+                    return availMb + " MB";
                 }
             }
-            reader.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             // ignore
+        }
+        return "未知";
+    }
+
+    public static String getStorageInfo() {
+        String total = execShell("df /data | tail -1 | awk '{print $2}'");
+        String used = execShell("df /data | tail -1 | awk '{print $3}'");
+        if (!total.isEmpty() && !used.isEmpty()) {
+            try {
+                long totalKb = Long.parseLong(total.trim());
+                long usedKb = Long.parseLong(used.trim());
+                long totalGb = totalKb / (1024 * 1024);
+                long usedGb = usedKb / (1024 * 1024);
+                if (totalGb >= 1) {
+                    return String.format(Locale.getDefault(), "%.1f / %.1f GB", usedGb * 1.0, totalGb * 1.0);
+                } else {
+                    return String.format(Locale.getDefault(), "%d / %d MB", usedKb / 1024, totalKb / 1024);
+                }
+            } catch (NumberFormatException e) {
+                // ignore
+            }
         }
         return "未知";
     }
 
     public static String getKernelVersion() {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader("/proc/version"));
-            String line = reader.readLine();
-            reader.close();
-            if (line != null) {
-                return line;
-            }
-        } catch (IOException e) {
-            // ignore
+        String prop = getProp("ro.kernel.version");
+        if (!prop.isEmpty()) return prop;
+        // 回退到 uname
+        String uname = execShell("uname -r");
+        if (!uname.isEmpty()) return uname;
+        // 最后回退到 /proc/version
+        String procVer = execShell("cat /proc/version");
+        if (!procVer.isEmpty() && procVer.length() > 80) {
+            return procVer.substring(0, 80) + "...";
         }
-        return "未知";
-    }
-
-    public static String getOsType() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
-        } else {
-            return "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")";
-        }
+        return procVer.isEmpty() ? "未知" : procVer;
     }
 
     public static String getTimeZone() {
-        return java.util.TimeZone.getDefault().getDisplayName();
+        return java.util.TimeZone.getDefault().getID();
     }
 
     public static String getLocale() {
@@ -212,13 +294,58 @@ public class SystemInfoUtil {
     }
 
     public static String getFingerprint() {
-        return Build.FINGERPRINT;
+        String prop = getProp("ro.build.fingerprint");
+        return prop.isEmpty() ? Build.FINGERPRINT : prop;
     }
 
-    public static String getSecurityPatch() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return Build.VERSION.SECURITY_PATCH;
+    public static String getBoard() {
+        String prop = getProp("ro.product.board");
+        return prop.isEmpty() ? Build.BOARD : prop;
+    }
+
+    public static String getHardware() {
+        String prop = getProp("ro.hardware");
+        return prop.isEmpty() ? Build.HARDWARE : prop;
+    }
+
+    public static String getBootloader() {
+        String prop = getProp("ro.bootloader");
+        return prop.isEmpty() ? Build.BOOTLOADER : prop;
+    }
+
+    public static String getIpAddress() {
+        String ip = execShell("ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1");
+        if (!ip.isEmpty()) return ip;
+        ip = execShell("ifconfig wlan0 | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}'");
+        return ip.isEmpty() ? "未连接" : ip;
+    }
+
+    public static String getMacAddress() {
+        String mac = getProp("wifi.interface");
+        if (!mac.isEmpty()) {
+            String addr = execShell("cat /sys/class/net/" + mac + "/address");
+            if (!addr.isEmpty()) return addr;
         }
-        return "未知";
+        String addr = execShell("cat /sys/class/net/wlan0/address");
+        return addr.isEmpty() ? "未知" : addr;
+    }
+
+    public static String getUptime() {
+        try {
+            long uptimeMs = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
+            long uptimeSec = android.os.SystemClock.elapsedRealtime() / 1000;
+            long days = uptimeSec / 86400;
+            long hours = (uptimeSec % 86400) / 3600;
+            long mins = (uptimeSec % 3600) / 60;
+            if (days > 0) {
+                return days + "天 " + hours + "小时 " + mins + "分钟";
+            } else if (hours > 0) {
+                return hours + "小时 " + mins + "分钟";
+            } else {
+                return mins + "分钟";
+            }
+        } catch (Exception e) {
+            return "未知";
+        }
     }
 }
