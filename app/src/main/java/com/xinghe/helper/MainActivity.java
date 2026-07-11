@@ -124,10 +124,11 @@ public class MainActivity extends BasicTransNavActivity {
         popupWindow.setOutsideTouchable(false);
         popupWindow.setFocusable(true);
 
-        view.setFocusableInTouchMode(true);
-
         TextView btnConfirm = view.findViewById(R.id.btnConfirm);
         TextView btnCancel = view.findViewById(R.id.btnCancel);
+
+        btnConfirm.setClickable(true);
+        btnCancel.setClickable(true);
 
         btnConfirm.setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
@@ -141,40 +142,15 @@ public class MainActivity extends BasicTransNavActivity {
             finish();
         });
 
-        btnConfirm.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
-                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    btnCancel.requestFocus();
-                    return true;
-                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-                    btnCancel.requestFocus();
-                    return true;
-                }
-            }
-            return false;
-        });
-
-        btnCancel.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
-                if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    btnConfirm.requestFocus();
-                    return true;
-                } else if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
-                    btnConfirm.requestFocus();
-                    return true;
-                }
-            }
-            return false;
-        });
-
         View root = findViewById(android.R.id.content);
         popupWindow.showAtLocation(root, Gravity.CENTER, 0, 0);
 
-        new Handler().postDelayed(() -> {
+        view.post(() -> {
             if (btnConfirm != null) {
                 btnConfirm.requestFocus();
+                btnConfirm.requestFocusFromTouch();
             }
-        }, 100);
+        });
     }
 
     private void checkAdbConnection() {

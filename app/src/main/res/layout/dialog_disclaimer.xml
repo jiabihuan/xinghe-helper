@@ -4,8 +4,7 @@
     android:layout_height="match_parent"
     android:background="#1E1E2E"
     android:orientation="vertical"
-    android:focusable="true"
-    android:focusableInTouchMode="true">
+    android:descendantFocusability="beforeDescendants">
 
     <TextView
         android:layout_width="wrap_content"
@@ -50,8 +49,11 @@
             android:textSize="18sp"
             android:focusable="true"
             android:focusableInTouchMode="true"
+            android:clickable="true"
             android:background="@drawable/bg_button_green_solid"
-            android:gravity="center" />
+            android:gravity="center"
+            android:nextFocusRight="@+id/btnCancel"
+            android:nextFocusLeft="@+id/btnCancel" />
 
         <TextView
             android:id="@+id/btnCancel"
@@ -64,8 +66,11 @@
             android:textSize="18sp"
             android:focusable="true"
             android:focusableInTouchMode="true"
+            android:clickable="true"
             android:background="@drawable/bg_button_dark"
-            android:gravity="center" />
+            android:gravity="center"
+            android:nextFocusRight="@+id/btnConfirm"
+            android:nextFocusLeft="@+id/btnConfirm" />
 
     </LinearLayout>
 
