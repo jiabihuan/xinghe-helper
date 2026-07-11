@@ -14,6 +14,7 @@ import com.xinghe.helper.activity.BasicTransNavActivity;
 import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
+import com.xinghe.helper.fragments.SystemFragment;
 import com.xinghe.helper.util.AdbStatusManager;
 
 public class MainActivity extends BasicTransNavActivity {
@@ -21,11 +22,13 @@ public class MainActivity extends BasicTransNavActivity {
     private TextView navInstall;
     private TextView navRemote;
     private TextView navManager;
+    private TextView navSystem;
 
     private FragmentManager fragmentManager;
     private Fragment installFragment;
     private Fragment remoteFragment;
     private Fragment managerFragment;
+    private Fragment systemFragment;
     private Fragment currentFragment;
 
     private long lastBackPressTime = 0;
@@ -42,10 +45,12 @@ public class MainActivity extends BasicTransNavActivity {
         navInstall = findViewById(R.id.nav_install);
         navRemote = findViewById(R.id.nav_remote);
         navManager = findViewById(R.id.nav_manager);
+        navSystem = findViewById(R.id.nav_system);
 
         installFragment = new InstallFragment();
         remoteFragment = new RemoteFragment();
         managerFragment = new ManagerFragment();
+        systemFragment = new SystemFragment();
 
         navInstall.setOnClickListener(v -> {
             updateNav(0);
@@ -62,17 +67,24 @@ public class MainActivity extends BasicTransNavActivity {
             switchFragment(managerFragment);
         });
 
+        navSystem.setOnClickListener(v -> {
+            updateNav(3);
+            switchFragment(systemFragment);
+        });
+
         View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
             if (hasFocus) {
                 if (v == navInstall) updateNav(0);
                 else if (v == navRemote) updateNav(1);
                 else if (v == navManager) updateNav(2);
+                else if (v == navSystem) updateNav(3);
             }
         };
 
         navInstall.setOnFocusChangeListener(navFocusListener);
         navRemote.setOnFocusChangeListener(navFocusListener);
         navManager.setOnFocusChangeListener(navFocusListener);
+        navSystem.setOnFocusChangeListener(navFocusListener);
 
         updateNav(0);
         switchFragment(installFragment);
@@ -130,7 +142,7 @@ public class MainActivity extends BasicTransNavActivity {
     @Override
     public void onBackPressed() {
         View focused = getCurrentFocus();
-        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager);
+        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager || focused == navSystem);
 
         if (!isNavFocused) {
             if (currentFragment instanceof ManagerFragment) {
@@ -138,6 +150,11 @@ public class MainActivity extends BasicTransNavActivity {
                     return;
                 }
                 // 应用管理：返回键回到导航栏
+                focusNav();
+                lastBackPressTime = 0;
+                return;
+            }
+            if (currentFragment instanceof SystemFragment) {
                 focusNav();
                 lastBackPressTime = 0;
                 return;
@@ -175,6 +192,7 @@ public class MainActivity extends BasicTransNavActivity {
         if (currentFragment == installFragment) navInstall.requestFocus();
         else if (currentFragment == remoteFragment) navRemote.requestFocus();
         else if (currentFragment == managerFragment) navManager.requestFocus();
+        else if (currentFragment == systemFragment) navSystem.requestFocus();
         else navInstall.requestFocus();
     }
 
@@ -182,6 +200,7 @@ public class MainActivity extends BasicTransNavActivity {
         navInstall.setTextColor(getResources().getColor(R.color.home_text_hint));
         navRemote.setTextColor(getResources().getColor(R.color.home_text_hint));
         navManager.setTextColor(getResources().getColor(R.color.home_text_hint));
+        navSystem.setTextColor(getResources().getColor(R.color.home_text_hint));
 
         switch (index) {
             case 0:
@@ -192,6 +211,9 @@ public class MainActivity extends BasicTransNavActivity {
                 break;
             case 2:
                 navManager.setTextColor(getResources().getColor(R.color.home_text_primary));
+                break;
+            case 3:
+                navSystem.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
         }
     }
