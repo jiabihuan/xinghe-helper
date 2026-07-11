@@ -1,10 +1,12 @@
 package com.xinghe.helper;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
+import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -104,23 +106,36 @@ public class MainActivity extends BasicTransNavActivity {
     }
 
     private void showDisclaimerDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("使用须知");
-        builder.setMessage("欢迎使用星河助手。本平台仅提供正规应用软件分发服务，所有软件版权归原开发者所有。用户需自觉遵守国家网络相关法律法规，不得借助平台下载、传播盗版、涉黄、涉赌及各类违规程序。\n\n"
-                + "请从平台渠道获取安装包，自行承担软件下载与使用带来的设备风险。星河助手仅做资源展示，不对第三方应用内容承担连带责任。若发现违规软件，可通过反馈通道向我们举报。您进入并使用本软件，即表示已阅读并同意本条须知。");
-        builder.setPositiveButton("确认", (dialog, which) -> {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Light_NoTitleBar_Fullscreen);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_disclaimer, null);
+        dialog.setContentView(view);
+        dialog.setCancelable(false);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            WindowManager.LayoutParams params = window.getAttributes();
+            params.width = WindowManager.LayoutParams.MATCH_PARENT;
+            params.height = WindowManager.LayoutParams.MATCH_PARENT;
+            window.setAttributes(params);
+        }
+
+        TextView btnConfirm = view.findViewById(R.id.btnConfirm);
+        TextView btnCancel = view.findViewById(R.id.btnCancel);
+
+        btnConfirm.setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
             sp.edit().putBoolean("disclaimer_accepted", true).apply();
+            dialog.dismiss();
             checkAdbConnection();
         });
-        builder.setNegativeButton("取消", (dialog, which) -> {
+
+        btnCancel.setOnClickListener(v -> {
+            dialog.dismiss();
             finish();
         });
-        builder.setCancelable(false);
-        AlertDialog dialog = builder.create();
+
         dialog.show();
-        // 确保按钮在TV上可获取焦点
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
+        btnConfirm.requestFocus();
     }
 
     private void checkAdbConnection() {
@@ -130,7 +145,6 @@ public class MainActivity extends BasicTransNavActivity {
                 public void onAdbAvailable() {
                     runOnUiThread(() -> {
                         Toast.makeText(MainActivity.this, "ADB已连接，将使用静默安装模式", Toast.LENGTH_LONG).show();
-                        showAdbConnectedDialog();
                     });
                 }
 
@@ -142,15 +156,6 @@ public class MainActivity extends BasicTransNavActivity {
                 }
             });
         }, 500);
-    }
-
-    private void showAdbConnectedDialog() {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("ADB已连接");
-        builder.setMessage("检测到ADB连接，将使用ADB方式安装和卸载应用，无需手动确认。");
-        builder.setPositiveButton("知道了", (dialog, which) -> dialog.dismiss());
-        android.app.AlertDialog dialog = builder.create();
-        dialog.show();
     }
 
     private void switchFragment(Fragment targetFragment) {
