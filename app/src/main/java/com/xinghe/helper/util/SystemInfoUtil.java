@@ -2,6 +2,12 @@ package com.xinghe.helper.util;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.opengl.GLES20;
+import android.opengl.EGL14;
+import android.opengl.EGLConfig;
+import android.opengl.EGLContext;
+import android.opengl.EGLDisplay;
+import android.opengl.EGLSurface;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
@@ -13,6 +19,7 @@ import java.util.Locale;
 public class SystemInfoUtil {
 
     private static String cachedGpuInfo = null;
+    private static boolean gpuInfoLoaded = false;
 
     private static String getProp(String propName) {
         try {
@@ -223,10 +230,119 @@ public class SystemInfoUtil {
     }
 
     public static String getGpuInfo() {
-        if (cachedGpuInfo != null) return cachedGpuInfo;
+        if (gpuInfoLoaded && cachedGpuInfo != null) {
+            return cachedGpuInfo;
+        }
+        gpuInfoLoaded = true;
+        cachedGpuInfo = getGpuInfoFromEgl();
+        if (cachedGpuInfo != null && !cachedGpuInfo.isEmpty() && !cachedGpuInfo.contains("未知")) {
+            return cachedGpuInfo;
+        }
+        cachedGpuInfo = getGpuInfoFromSystem();
+        return cachedGpuInfo;
+    }
+
+    private static String getGpuInfoFromEgl() {
+        try {
+            EGLDisplay eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
+            if (eglDisplay == null || eglDisplay == EGL14.EGL_NO_DISPLAY) {
+                return "";
+            }
+
+            int[] version = new int[2];
+            if (!EGL14.eglInitialize(eglDisplay, version, 0, version, 1)) {
+                return "";
+            }
+
+            int[] configAttribs = {
+                EGL14.EGL_RENDERABLE_TYPE, 4,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_PBUFFER_BIT,
+                EGL14.EGL_RED_SIZE, 8,
+                EGL14.EGL_GREEN_SIZE, 8,
+                EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_ALPHA_SIZE, 8,
+                EGL14.EGL_DEPTH_SIZE, 16,
+                EGL14.EGL_STENCIL_SIZE, 8,
+                EGL14.EGL_NONE
+            };
+
+            EGLConfig[] configs = new EGLConfig[1];
+            int[] numConfigs = new int[1];
+            if (!EGL14.eglChooseConfig(eglDisplay, configAttribs, 0, configs, 0, 1, numConfigs, 0)) {
+                EGL14.eglTerminate(eglDisplay);
+                return "";
+            }
+            if (numConfigs[0] <= 0) {
+                EGL14.eglTerminate(eglDisplay);
+                return "";
+            }
+
+            int[] pbufferAttribs = {
+                EGL14.EGL_WIDTH, 1,
+                EGL14.EGL_HEIGHT, 1,
+                EGL14.EGL_NONE
+            };
+
+            EGLSurface eglSurface = EGL14.eglCreatePbufferSurface(eglDisplay, configs[0], pbufferAttribs, 0);
+            if (eglSurface == null || eglSurface == EGL14.EGL_NO_SURFACE) {
+                EGL14.eglTerminate(eglDisplay);
+                return "";
+            }
+
+            int[] contextAttribs = {
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL14.EGL_NONE
+            };
+
+            EGLContext eglContext = EGL14.eglCreateContext(eglDisplay, configs[0], EGL14.EGL_NO_CONTEXT, contextAttribs, 0);
+            if (eglContext == null || eglContext == EGL14.EGL_NO_CONTEXT) {
+                EGL14.eglDestroySurface(eglDisplay, eglSurface);
+                EGL14.eglTerminate(eglDisplay);
+                return "";
+            }
+
+            if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
+                EGL14.eglDestroyContext(eglDisplay, eglContext);
+                EGL14.eglDestroySurface(eglDisplay, eglSurface);
+                EGL14.eglTerminate(eglDisplay);
+                return "";
+            }
+
+            String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
+            String vendor = GLES20.glGetString(GLES20.GL_VENDOR);
+            String glVersion = GLES20.glGetString(GLES20.GL_VERSION);
+
+            EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+            EGL14.eglDestroyContext(eglDisplay, eglContext);
+            EGL14.eglDestroySurface(eglDisplay, eglSurface);
+            EGL14.eglTerminate(eglDisplay);
+
+            StringBuilder result = new StringBuilder();
+            if (vendor != null && !vendor.isEmpty()) {
+                result.append(vendor);
+            }
+            if (renderer != null && !renderer.isEmpty()) {
+                if (result.length() > 0) result.append(" ");
+                result.append(renderer);
+            }
+            if (glVersion != null && !glVersion.isEmpty()) {
+                if (result.length() > 0) result.append(" (");
+                result.append(glVersion);
+                if (result.length() > glVersion.length() + 1) result.append(")");
+            }
+
+            return result.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String getGpuInfoFromSystem() {
         String result = "";
+
         String prop = getProp("ro.hardware.egl");
         if (!prop.isEmpty()) result = prop;
+
         if (result.isEmpty()) {
             String vendor = getProp("ro.gpu.vendor");
             String renderer = getProp("ro.gpu.renderer");
@@ -234,10 +350,18 @@ public class SystemInfoUtil {
                 result = (vendor.isEmpty() ? "" : vendor + " ") + renderer;
             }
         }
+
         if (result.isEmpty()) {
             String gpu = execShell("cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null");
             if (!gpu.isEmpty()) result = gpu;
         }
+
+        if (result.isEmpty()) {
+            String gpu = execShell("cat /sys/class/kgsl/kgsl-3d0/gpubw 2>/dev/null ; cat /sys/class/kgsl/kgsl-3d0/max_gpuclk 2>/dev/null");
+            String model = execShell("cat /proc/device-tree/qcom,gpu@*/qcom,gpu-model 2>/dev/null");
+            if (!model.isEmpty()) result = model;
+        }
+
         if (result.isEmpty()) {
             String gpu = execShell("cat /proc/mali 2>/dev/null | head -10");
             if (!gpu.isEmpty()) {
@@ -252,35 +376,47 @@ public class SystemInfoUtil {
                 }
             }
         }
+
         if (result.isEmpty()) {
-            String gl = execShell("dumpsys SurfaceFlinger 2>/dev/null | grep -i 'gles\\|gpu\\|opengl' | head -5");
+            String gl = execShell("dumpsys SurfaceFlinger 2>/dev/null | grep -i 'gles\\|gpu\\|opengl\\|EGL' | head -10");
             if (!gl.isEmpty()) {
                 for (String line : gl.split("\n")) {
-                    if (line.toLowerCase().contains("renderer") || line.toLowerCase().contains("gpu")) {
+                    if (line.toLowerCase().contains("renderer") || line.toLowerCase().contains("gpu")
+                        || line.toLowerCase().contains("opengl") || line.toLowerCase().contains("version")) {
                         String[] parts = line.split(":", 2);
                         if (parts.length >= 2) {
-                            result = parts[1].trim();
-                            break;
+                            String val = parts[1].trim();
+                            if (val.length() > 3) {
+                                result = val;
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
+
         if (result.isEmpty()) {
             String hardware = getProp("ro.hardware");
             if (hardware.contains("mt") || hardware.contains("MT")) {
-                result = "Mali GPU (MTK)";
+                result = "Mali GPU (联发科)";
             } else if (hardware.contains("qcom") || hardware.contains("msm")) {
                 result = "Adreno GPU (高通)";
             } else if (hardware.contains("exynos")) {
                 result = "Mali GPU (三星)";
-            } else if (hardware.contains("kirin") || hardware.contains("hi")) {
+            } else if (hardware.contains("kirin") || hardware.contains("hi") || hardware.contains("Hi")) {
                 result = "Mali GPU (海思)";
+            } else if (hardware.contains("rk") || hardware.contains("RK") || hardware.contains("rockchip")) {
+                result = "Mali GPU (瑞芯微)";
+            } else if (hardware.contains("amlogic") || hardware.contains("Amlogic")) {
+                result = "Mali GPU (晶晨)";
+            } else if (hardware.contains("allwinner")) {
+                result = "Mali GPU (全志)";
             } else {
-                result = "未知GPU";
+                result = "未知GPU (" + hardware + ")";
             }
         }
-        cachedGpuInfo = result;
+
         return result;
     }
 
@@ -398,6 +534,8 @@ public class SystemInfoUtil {
     public static String getIpAddress() {
         String ip = execShell("ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1");
         if (!ip.isEmpty()) return ip;
+        ip = execShell("ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1");
+        if (!ip.isEmpty()) return ip;
         ip = execShell("ifconfig wlan0 | grep 'inet addr' | awk -F: '{print $2}' | awk '{print $1}'");
         return ip.isEmpty() ? "未连接" : ip;
     }
@@ -409,6 +547,8 @@ public class SystemInfoUtil {
             if (!addr.isEmpty()) return addr;
         }
         String addr = execShell("cat /sys/class/net/wlan0/address");
+        if (!addr.isEmpty()) return addr;
+        addr = execShell("cat /sys/class/net/eth0/address");
         return addr.isEmpty() ? "未知" : addr;
     }
 

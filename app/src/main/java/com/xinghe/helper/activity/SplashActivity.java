@@ -16,7 +16,6 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 

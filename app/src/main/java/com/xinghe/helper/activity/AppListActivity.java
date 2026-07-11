@@ -104,7 +104,6 @@ public class AppListActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_app_list_new);
 

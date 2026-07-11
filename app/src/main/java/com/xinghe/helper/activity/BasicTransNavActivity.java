@@ -12,7 +12,6 @@ import com.xinghe.helper.util.DensityUtil;
 public class BasicTransNavActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DensityUtil.setDensity(this);
         super.onCreate(savedInstanceState);
         if (Build.VERSION.SDK_INT >= 21) {
             Window window = getWindow();
