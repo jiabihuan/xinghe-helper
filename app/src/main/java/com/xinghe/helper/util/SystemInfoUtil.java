@@ -2,8 +2,6 @@ package com.xinghe.helper.util;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.opengl.GLES10;
-import android.opengl.GLES20;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.WindowManager;
@@ -11,11 +9,6 @@ import android.view.WindowManager;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Locale;
-
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.egl.EGLContext;
-import javax.microedition.khronos.egl.EGLDisplay;
 
 public class SystemInfoUtil {
 
@@ -163,17 +156,17 @@ public class SystemInfoUtil {
         if (!socManu.isEmpty() || !socModel.isEmpty()) {
             return (socManu.isEmpty() ? "" : socManu + " ") + socModel;
         }
-        String hardware = getProp("ro.hardware");
         String chipname = getProp("ro.chipname");
         if (!chipname.isEmpty()) return chipname;
+        String hardware = getProp("ro.hardware");
+        if (!hardware.isEmpty() && !hardware.equals("qcom")) return hardware;
         try {
             String cpuInfo = execShell("cat /proc/cpuinfo | head -30");
             if (!cpuInfo.isEmpty()) {
                 StringBuilder result = new StringBuilder();
                 for (String line : cpuInfo.split("\n")) {
                     if (line.contains("Hardware") || line.contains("Processor") ||
-                        line.contains("model name") || line.contains("CPU implementer") ||
-                        line.contains("CPU part") || line.contains("cpu model")) {
+                        line.contains("model name") || line.contains("cpu model")) {
                         String[] parts = line.split(":", 2);
                         if (parts.length >= 2) {
                             String val = parts[1].trim();
@@ -203,37 +196,27 @@ public class SystemInfoUtil {
     }
 
     public static String getCpuMaxFreq() {
-        String freq = execShell("cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
-        if (!freq.isEmpty()) {
-            try {
-                long khz = Long.parseLong(freq.trim());
-                if (khz >= 1000000) {
-                    return String.format(Locale.getDefault(), "%.2f GHz", khz / 1000000.0);
-                } else {
-                    return String.format(Locale.getDefault(), "%d MHz", khz / 1000);
-                }
-            } catch (NumberFormatException e) {
-            }
-        }
         String[] paths = {
-            "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
+            "/sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_max_freq",
             "/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_max_freq",
-            "/sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_max_freq"
+            "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
         };
+        long maxKhz = 0;
         for (String path : paths) {
             String f = execShell("cat " + path);
             if (!f.isEmpty()) {
                 try {
                     long khz = Long.parseLong(f.trim());
-                    if (khz > 0) {
-                        if (khz >= 1000000) {
-                            return String.format(Locale.getDefault(), "%.2f GHz", khz / 1000000.0);
-                        } else {
-                            return String.format(Locale.getDefault(), "%d MHz", khz / 1000);
-                        }
-                    }
+                    if (khz > maxKhz) maxKhz = khz;
                 } catch (Exception e) {
                 }
+            }
+        }
+        if (maxKhz > 0) {
+            if (maxKhz >= 1000000) {
+                return String.format(Locale.getDefault(), "%.2f GHz", maxKhz / 1000000.0);
+            } else {
+                return String.format(Locale.getDefault(), "%d MHz", maxKhz / 1000);
             }
         }
         return "未知";
@@ -241,94 +224,64 @@ public class SystemInfoUtil {
 
     public static String getGpuInfo() {
         if (cachedGpuInfo != null) return cachedGpuInfo;
-        try {
-            EGL10 egl = (EGL10) EGLContext.getEGL();
-            EGLDisplay display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
-            if (display == null || display == EGL10.EGL_NO_DISPLAY) {
-                return getGpuInfoFromSystem();
-            }
-            int[] version = new int[2];
-            if (!egl.eglInitialize(display, version)) {
-                return getGpuInfoFromSystem();
-            }
-            int[] configAttribs = {
-                EGL10.EGL_RED_SIZE, 4,
-                EGL10.EGL_GREEN_SIZE, 4,
-                EGL10.EGL_BLUE_SIZE, 4,
-                EGL10.EGL_RENDERABLE_TYPE, 4,
-                EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT,
-                EGL10.EGL_NONE
-            };
-            EGLConfig[] configs = new EGLConfig[1];
-            int[] numConfigs = new int[1];
-            if (!egl.eglChooseConfig(display, configAttribs, configs, 1, numConfigs) || numConfigs[0] == 0) {
-                egl.eglTerminate(display);
-                return getGpuInfoFromSystem();
-            }
-            int[] attrib_list = {EGL10.EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE};
-            EGLContext context = egl.eglCreateContext(display, configs[0], EGL10.EGL_NO_CONTEXT, attrib_list);
-            if (context == null || context == EGL10.EGL_NO_CONTEXT) {
-                int[] attrib_list1 = {EGL10.EGL_NONE};
-                context = egl.eglCreateContext(display, configs[0], EGL10.EGL_NO_CONTEXT, attrib_list1);
-                if (context == null || context == EGL10.EGL_NO_CONTEXT) {
-                    egl.eglTerminate(display);
-                    return getGpuInfoFromSystem();
-                }
-            }
-            EGLConfig[] surfConfig = {configs[0]};
-            int[] surAttribs = {EGL10.EGL_WIDTH, 1, EGL10.EGL_HEIGHT, 1, EGL10.EGL_NONE};
-            javax.microedition.khronos.egl.EGLSurface surface = egl.eglCreatePbufferSurface(display, surfConfig[0], surAttribs);
-            if (surface == null || surface == EGL10.EGL_NO_SURFACE) {
-                egl.eglDestroyContext(display, context);
-                egl.eglTerminate(display);
-                return getGpuInfoFromSystem();
-            }
-            if (!egl.eglMakeCurrent(display, surface, surface, context)) {
-                egl.eglDestroySurface(display, surface);
-                egl.eglDestroyContext(display, context);
-                egl.eglTerminate(display);
-                return getGpuInfoFromSystem();
-            }
-            String renderer = GLES20.glGetString(GLES20.GL_RENDERER);
-            String vendor = GLES20.glGetString(GLES20.GL_VENDOR);
-            String version = GLES20.glGetString(GLES20.GL_VERSION);
-            egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
-            egl.eglDestroySurface(display, surface);
-            egl.eglDestroyContext(display, context);
-            egl.eglTerminate(display);
-            String result = "";
-            if (vendor != null && !vendor.isEmpty()) result += vendor + " ";
-            if (renderer != null && !renderer.isEmpty()) result += renderer;
-            if (result.isEmpty()) {
-                result = getGpuInfoFromSystem();
-            }
-            cachedGpuInfo = result;
-            return result;
-        } catch (Exception e) {
-            cachedGpuInfo = getGpuInfoFromSystem();
-            return cachedGpuInfo;
-        }
-    }
-
-    private static String getGpuInfoFromSystem() {
+        String result = "";
         String prop = getProp("ro.hardware.egl");
-        if (!prop.isEmpty()) return prop;
-        prop = getProp("ro.vendor.extension_library");
-        if (!prop.isEmpty()) return prop;
-        String gpu = execShell("cat /sys/class/kgsl/kgsl-3d0/gpu_model");
-        if (!gpu.isEmpty()) return gpu;
-        gpu = execShell("cat /sys/devices/platform/soc/*.gpu/device/of_node/compatible 2>/dev/null | head -1");
-        if (!gpu.isEmpty()) return gpu;
-        gpu = execShell("cat /proc/mali 2>/dev/null | head -5");
-        if (!gpu.isEmpty()) {
-            for (String line : gpu.split("\n")) {
-                if (line.contains("GPU") || line.contains("model")) {
-                    String[] parts = line.split(":", 2);
-                    if (parts.length >= 2) return parts[1].trim();
+        if (!prop.isEmpty()) result = prop;
+        if (result.isEmpty()) {
+            String vendor = getProp("ro.gpu.vendor");
+            String renderer = getProp("ro.gpu.renderer");
+            if (!vendor.isEmpty() || !renderer.isEmpty()) {
+                result = (vendor.isEmpty() ? "" : vendor + " ") + renderer;
+            }
+        }
+        if (result.isEmpty()) {
+            String gpu = execShell("cat /sys/class/kgsl/kgsl-3d0/gpu_model 2>/dev/null");
+            if (!gpu.isEmpty()) result = gpu;
+        }
+        if (result.isEmpty()) {
+            String gpu = execShell("cat /proc/mali 2>/dev/null | head -10");
+            if (!gpu.isEmpty()) {
+                for (String line : gpu.split("\n")) {
+                    if (line.contains("GPU") || line.contains("model") || line.contains("version")) {
+                        String[] parts = line.split(":", 2);
+                        if (parts.length >= 2) {
+                            result = parts[1].trim();
+                            break;
+                        }
+                    }
                 }
             }
         }
-        return "未知";
+        if (result.isEmpty()) {
+            String gl = execShell("dumpsys SurfaceFlinger 2>/dev/null | grep -i 'gles\\|gpu\\|opengl' | head -5");
+            if (!gl.isEmpty()) {
+                for (String line : gl.split("\n")) {
+                    if (line.toLowerCase().contains("renderer") || line.toLowerCase().contains("gpu")) {
+                        String[] parts = line.split(":", 2);
+                        if (parts.length >= 2) {
+                            result = parts[1].trim();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (result.isEmpty()) {
+            String hardware = getProp("ro.hardware");
+            if (hardware.contains("mt") || hardware.contains("MT")) {
+                result = "Mali GPU (MTK)";
+            } else if (hardware.contains("qcom") || hardware.contains("msm")) {
+                result = "Adreno GPU (高通)";
+            } else if (hardware.contains("exynos")) {
+                result = "Mali GPU (三星)";
+            } else if (hardware.contains("kirin") || hardware.contains("hi")) {
+                result = "Mali GPU (海思)";
+            } else {
+                result = "未知GPU";
+            }
+        }
+        cachedGpuInfo = result;
+        return result;
     }
 
     public static String getTotalMemory(Context context) {
