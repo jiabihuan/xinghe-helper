@@ -94,7 +94,7 @@ public class MainActivity extends BasicTransNavActivity {
         switchFragment(installFragment);
         navInstall.requestFocus();
 
-        checkDisclaimer();
+        navInstall.post(() -> checkDisclaimer());
     }
 
     private void checkDisclaimer() {
