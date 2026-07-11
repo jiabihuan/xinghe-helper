@@ -30,6 +30,7 @@ import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.DownloadManager;
+import com.xinghe.helper.util.IconLoader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -588,7 +589,7 @@ public class AppListFragment extends Fragment {
 
             String iconUrl = apps.get(i).getIconUrl();
             if (iconUrl != null && iconUrl.length() > 0) {
-                loadIcon(iconUrl, ivIcon);
+                IconLoader.getInstance().loadIcon(iconUrl, ivIcon);
             }
 
             btnCancel.setOnClickListener(new View.OnClickListener() {

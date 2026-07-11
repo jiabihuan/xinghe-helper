@@ -38,6 +38,7 @@ import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.DensityUtil;
 import com.xinghe.helper.util.DownloadManager;
+import com.xinghe.helper.util.IconLoader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -1071,7 +1072,7 @@ public class AppListActivity extends AppCompatActivity {
 
             String iconUrl = apps.get(i).getIconUrl();
             if (iconUrl != null && iconUrl.length() > 0) {
-                loadIcon(iconUrl, ivIcon);
+                IconLoader.getInstance().loadIcon(iconUrl, ivIcon);
             }
 
             btnCancel.setOnClickListener(v -> {
