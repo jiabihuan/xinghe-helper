@@ -65,21 +65,17 @@ public class SplashActivity extends AppCompatActivity {
 
         btnConfirm.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
-                btnConfirm.setScaleX(1.05f);
-                btnConfirm.setScaleY(1.05f);
+                btnConfirm.setBackgroundResource(R.drawable.bg_button_green_focus);
             } else {
-                btnConfirm.setScaleX(1f);
-                btnConfirm.setScaleY(1f);
+                btnConfirm.setBackgroundResource(R.drawable.bg_button_green_solid);
             }
         });
 
         btnCancel.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
-                btnCancel.setScaleX(1.05f);
-                btnCancel.setScaleY(1.05f);
+                btnCancel.setBackgroundResource(R.drawable.bg_button_dark_focus);
             } else {
-                btnCancel.setScaleX(1f);
-                btnCancel.setScaleY(1f);
+                btnCancel.setBackgroundResource(R.drawable.bg_button_dark);
             }
         });
 
