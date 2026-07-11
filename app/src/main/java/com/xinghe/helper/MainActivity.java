@@ -1,12 +1,13 @@
 package com.xinghe.helper;
 
-import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
+import android.view.ViewGroup;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -106,19 +107,13 @@ public class MainActivity extends BasicTransNavActivity {
     }
 
     private void showDisclaimerDialog() {
-        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_disclaimer, null);
-        dialog.setContentView(view);
-        dialog.setCancelable(false);
 
-        Window window = dialog.getWindow();
-        if (window != null) {
-            WindowManager.LayoutParams params = window.getAttributes();
-            params.width = WindowManager.LayoutParams.MATCH_PARENT;
-            params.height = WindowManager.LayoutParams.MATCH_PARENT;
-            window.setAttributes(params);
-            window.setBackgroundDrawableResource(android.R.color.black);
-        }
+        PopupWindow popupWindow = new PopupWindow(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);
+        popupWindow.setOutsideTouchable(false);
+        popupWindow.setFocusable(true);
+
+        view.setFocusableInTouchMode(true);
 
         TextView btnConfirm = view.findViewById(R.id.btnConfirm);
         TextView btnCancel = view.findViewById(R.id.btnCancel);
@@ -126,12 +121,12 @@ public class MainActivity extends BasicTransNavActivity {
         btnConfirm.setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
             sp.edit().putBoolean("disclaimer_accepted", true).apply();
-            dialog.dismiss();
+            popupWindow.dismiss();
             checkAdbConnection();
         });
 
         btnCancel.setOnClickListener(v -> {
-            dialog.dismiss();
+            popupWindow.dismiss();
             finish();
         });
 
@@ -161,8 +156,14 @@ public class MainActivity extends BasicTransNavActivity {
             return false;
         });
 
-        dialog.show();
-        btnConfirm.requestFocus();
+        View root = findViewById(android.R.id.content);
+        popupWindow.showAtLocation(root, Gravity.CENTER, 0, 0);
+
+        new Handler().postDelayed(() -> {
+            if (btnConfirm != null) {
+                btnConfirm.requestFocus();
+            }
+        }, 100);
     }
 
     private void checkAdbConnection() {
