@@ -2,66 +2,109 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E1E2E"
-    android:orientation="vertical">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:text="使用须知"
-        android:textColor="#FFFFFF"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:layout_marginTop="60dp"
-        android:layout_marginBottom="30dp" />
-
-    <TextView
-        android:id="@+id/tvDisclaimerContent"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:textColor="#D0D0E0"
-        android:textSize="16sp"
-        android:lineSpacingExtra="8dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="40dp"
-        android:text="欢迎使用星河助手。本平台仅提供正规应用软件分发服务，所有软件版权归原开发者所有。用户需自觉遵守国家网络相关法律法规，不得借助平台下载、传播盗版、涉黄、涉赌及各类违规程序。\n\n请从平台渠道获取安装包，自行承担软件下载与使用带来的设备风险。星河助手仅做资源展示，不对第三方应用内容承担连带责任。若发现违规软件，可通过反馈通道向我们举报。您进入并使用本软件，即表示已阅读并同意本条须知。" />
+    android:background="#CC000000"
+    android:gravity="center">
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="500dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="40dp">
+        android:orientation="vertical"
+        android:background="#2D2D3A"
+        android:padding="30dp"
+        android:layout_margin="40dp">
 
         <TextView
-            android:id="@+id/btnConfirm"
-            android:layout_width="120dp"
-            android:layout_height="40dp"
-            android:layout_marginEnd="20dp"
-            android:text="确认"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="温馨提示"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:clickable="true"
-            android:background="@drawable/bg_button_green_solid"
-            android:gravity="center" />
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="25dp" />
 
         <TextView
-            android:id="@+id/btnCancel"
-            android:layout_width="120dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="20dp"
-            android:text="取消"
-            android:textColor="#FFFFFF"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#D0D0E0"
             android:textSize="16sp"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:clickable="true"
-            android:background="@drawable/bg_button_dark"
-            android:gravity="center" />
+            android:lineSpacingExtra="6dp"
+            android:text="亲爱的用户，在您使用星河助手前请阅读《星河助手用户协议》和《星河助手隐私政策》，经过您同意后，我们才能向您提供相关服务哦~" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="25dp">
+
+            <TextView
+                android:id="@+id/tvPrivacy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="《星河助手隐私政策》"
+                android:textColor="#FF6B6B"
+                android:textSize="14sp"
+                android:padding="8dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:clickable="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="        " />
+
+            <TextView
+                android:id="@+id/tvUserAgreement"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="《星河助手用户协议》"
+                android:textColor="#FF6B6B"
+                android:textSize="14sp"
+                android:padding="8dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:clickable="true" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/btnConfirm"
+                android:layout_width="140dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="25dp"
+                android:text="同意"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:background="@drawable/bg_dialog_button"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/btnCancel"
+                android:layout_width="140dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="25dp"
+                android:text="不同意"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:background="@drawable/bg_dialog_button"
+                android:gravity="center" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
