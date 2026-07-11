@@ -2,6 +2,7 @@ package com.xinghe.helper;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -90,7 +91,36 @@ public class MainActivity extends BasicTransNavActivity {
         switchFragment(installFragment);
         navInstall.requestFocus();
 
-        checkAdbConnection();
+        checkDisclaimer();
+    }
+
+    private void checkDisclaimer() {
+        SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
+        if (sp.getBoolean("disclaimer_accepted", false)) {
+            checkAdbConnection();
+            return;
+        }
+        showDisclaimerDialog();
+    }
+
+    private void showDisclaimerDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("使用须知");
+        builder.setMessage("欢迎使用星河助手。本平台仅提供正规应用软件分发服务，所有软件版权归原开发者所有。用户需自觉遵守国家网络相关法律法规，不得借助平台下载、传播盗版、涉黄、涉赌及各类违规程序。\n\n"
+                + "请从平台渠道获取安装包，自行承担软件下载与使用带来的设备风险。星河助手仅做资源展示，不对第三方应用内容承担连带责任。若发现违规软件，可通过反馈通道向我们举报。您进入并使用本软件，即表示已阅读并同意本条须知。");
+        builder.setPositiveButton("确认", (dialog, which) -> {
+            SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
+            sp.edit().putBoolean("disclaimer_accepted", true).apply();
+            checkAdbConnection();
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> {
+            finish();
+        });
+        builder.setCancelable(false);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+        // 确保按钮在TV上可获取焦点
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).requestFocus();
     }
 
     private void checkAdbConnection() {
