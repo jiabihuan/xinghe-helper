@@ -2,12 +2,7 @@ package com.xinghe.helper;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -105,52 +100,7 @@ public class MainActivity extends BasicTransNavActivity {
         switchFragment(installFragment);
         navInstall.requestFocus();
 
-        navInstall.post(() -> checkDisclaimer());
-    }
-
-    private void checkDisclaimer() {
-        SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
-        if (sp.getBoolean("disclaimer_accepted", false)) {
-            checkAdbConnection();
-            return;
-        }
-        showDisclaimerDialog();
-    }
-
-    private void showDisclaimerDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_disclaimer, null);
-
-        PopupWindow popupWindow = new PopupWindow(view, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);
-        popupWindow.setOutsideTouchable(false);
-        popupWindow.setFocusable(true);
-
-        TextView btnConfirm = view.findViewById(R.id.btnConfirm);
-        TextView btnCancel = view.findViewById(R.id.btnCancel);
-
-        btnConfirm.setClickable(true);
-        btnCancel.setClickable(true);
-
-        btnConfirm.setOnClickListener(v -> {
-            SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
-            sp.edit().putBoolean("disclaimer_accepted", true).apply();
-            popupWindow.dismiss();
-            checkAdbConnection();
-        });
-
-        btnCancel.setOnClickListener(v -> {
-            popupWindow.dismiss();
-            finish();
-        });
-
-        View root = findViewById(android.R.id.content);
-        popupWindow.showAtLocation(root, Gravity.CENTER, 0, 0);
-
-        view.post(() -> {
-            if (btnConfirm != null) {
-                btnConfirm.requestFocus();
-                btnConfirm.requestFocusFromTouch();
-            }
-        });
+        checkAdbConnection();
     }
 
     private void checkAdbConnection() {
