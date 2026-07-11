@@ -106,7 +106,7 @@ public class MainActivity extends BasicTransNavActivity {
     }
 
     private void showDisclaimerDialog() {
-        Dialog dialog = new Dialog(this, android.R.style.Theme_Light_NoTitleBar_Fullscreen);
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_disclaimer, null);
         dialog.setContentView(view);
         dialog.setCancelable(false);
@@ -117,6 +117,7 @@ public class MainActivity extends BasicTransNavActivity {
             params.width = WindowManager.LayoutParams.MATCH_PARENT;
             params.height = WindowManager.LayoutParams.MATCH_PARENT;
             window.setAttributes(params);
+            window.setBackgroundDrawableResource(android.R.color.black);
         }
 
         TextView btnConfirm = view.findViewById(R.id.btnConfirm);
