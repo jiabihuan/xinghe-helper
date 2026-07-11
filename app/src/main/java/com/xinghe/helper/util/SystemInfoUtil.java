@@ -41,10 +41,14 @@ public class SystemInfoUtil {
     }
 
     public static String getSerialNumber() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return Build.getSerial();
-        } else {
-            return Build.SERIAL;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                return Build.getSerial();
+            } else {
+                return Build.SERIAL;
+            }
+        } catch (SecurityException e) {
+            return "权限受限";
         }
     }
 

@@ -20,7 +20,7 @@
             android:layout_marginBottom="24dp" />
 
         <TextView
-            android:id="@+id/tvSectionDevice"
+            android:id="@+id/tv_section_device"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="设备信息"
@@ -37,13 +37,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_设备品牌"
+                android:id="@+id/tv_label_brand"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="设备品牌"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_设备品牌_value"
+                android:id="@+id/tv_value_brand"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -59,13 +60,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_设备型号"
+                android:id="@+id/tv_label_model"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="设备型号"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_设备型号_value"
+                android:id="@+id/tv_value_model"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -81,13 +83,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_制造商"
+                android:id="@+id/tv_label_manufacturer"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="制造商"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_制造商_value"
+                android:id="@+id/tv_value_manufacturer"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -103,13 +106,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_产品名称"
+                android:id="@+id/tv_label_product"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="产品名称"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_产品名称_value"
+                android:id="@+id/tv_value_product"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -119,7 +123,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvSectionOs"
+            android:id="@+id/tv_section_os"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="操作系统"
@@ -136,13 +140,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_android版本"
+                android:id="@+id/tv_label_android_version"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="Android版本"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_android版本_value"
+                android:id="@+id/tv_value_android_version"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -158,13 +163,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_api级别"
+                android:id="@+id/tv_label_api_level"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="API级别"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_api级别_value"
+                android:id="@+id/tv_value_api_level"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -180,13 +186,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_构建id"
+                android:id="@+id/tv_label_build_id"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="构建ID"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_构建id_value"
+                android:id="@+id/tv_value_build_id"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -202,35 +209,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_构建版本"
+                android:id="@+id/tv_label_security_patch"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="安全补丁"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_构建版本_value"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="@drawable/bg_card">
-            <TextView
-                android:id="@+id/tv_安全补丁"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14" />
-            <TextView
-                android:id="@+id/tv_安全补丁_value"
+                android:id="@+id/tv_value_security_patch"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -240,7 +226,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvSectionScreen"
+            android:id="@+id/tv_section_screen"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="屏幕信息"
@@ -257,13 +243,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_分辨率"
+                android:id="@+id/tv_label_screen_resolution"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="分辨率"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_分辨率_value"
+                android:id="@+id/tv_value_screen_resolution"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -279,35 +266,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_屏幕密度"
+                android:id="@+id/tv_label_screen_density"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="屏幕密度"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_屏幕密度_value"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="@drawable/bg_card">
-            <TextView
-                android:id="@+id/tv_dpi"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14" />
-            <TextView
-                android:id="@+id/tv_dpi_value"
+                android:id="@+id/tv_value_screen_density"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -317,7 +283,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvSectionHardware"
+            android:id="@+id/tv_section_hardware"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="硬件信息"
@@ -334,14 +300,15 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_处理器"
+                android:id="@+id/tv_label_cpu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="处理器"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14"
                 android:layout_marginBottom="8dp" />
             <TextView
-                android:id="@+id/tv_处理器_value"
+                android:id="@+id/tv_value_cpu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="@color/home_text_primary"
@@ -355,13 +322,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_cpu架构"
+                android:id="@+id/tv_label_cpu_abi"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="CPU架构"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_cpu架构_value"
+                android:id="@+id/tv_value_cpu_abi"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -377,57 +345,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_主板"
+                android:id="@+id/tv_label_board"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="主板"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_主板_value"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="@drawable/bg_card">
-            <TextView
-                android:id="@+id/tv_硬件"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14" />
-            <TextView
-                android:id="@+id/tv_硬件_value"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="@drawable/bg_card">
-            <TextView
-                android:id="@+id/tv_引导程序"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14" />
-            <TextView
-                android:id="@+id/tv_引导程序_value"
+                android:id="@+id/tv_value_board"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -437,7 +362,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvSectionMemory"
+            android:id="@+id/tv_section_memory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="内存信息"
@@ -454,13 +379,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_总内存"
+                android:id="@+id/tv_label_total_memory"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="总内存"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_总内存_value"
+                android:id="@+id/tv_value_total_memory"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -476,13 +402,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_可用内存"
+                android:id="@+id/tv_label_available_memory"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="可用内存"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_可用内存_value"
+                android:id="@+id/tv_value_available_memory"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -492,7 +419,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tvSectionSystem"
+            android:id="@+id/tv_section_system"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="系统信息"
@@ -509,14 +436,15 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_内核版本"
+                android:id="@+id/tv_label_kernel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="内核版本"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14"
                 android:layout_marginBottom="8dp" />
             <TextView
-                android:id="@+id/tv_内核版本_value"
+                android:id="@+id/tv_value_kernel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textColor="@color/home_text_primary"
@@ -530,13 +458,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_设备序列号"
+                android:id="@+id/tv_label_serial"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="设备序列号"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_设备序列号_value"
+                android:id="@+id/tv_value_serial"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -552,35 +481,14 @@
             android:padding="16dp"
             android:background="@drawable/bg_card">
             <TextView
-                android:id="@+id/tv_时区"
+                android:id="@+id/tv_label_timezone"
                 android:layout_width="120dp"
                 android:layout_height="wrap_content"
+                android:text="时区"
                 android:textColor="@color/home_text_hint"
                 android:textSize="@dimen/sp14" />
             <TextView
-                android:id="@+id/tv_时区_value"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/home_text_primary"
-                android:textSize="@dimen/sp14"
-                android:layout_marginStart="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:background="@drawable/bg_card">
-            <TextView
-                android:id="@+id/tv_语言"
-                android:layout_width="120dp"
-                android:layout_height="wrap_content"
-                android:textColor="@color/home_text_hint"
-                android:textSize="@dimen/sp14" />
-            <TextView
-                android:id="@+id/tv_语言_value"
+                android:id="@+id/tv_value_timezone"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

@@ -11,8 +11,6 @@ import androidx.fragment.app.Fragment;
 import com.xinghe.helper.R;
 import com.xinghe.helper.util.SystemInfoUtil;
 
-import java.util.Locale;
-
 public class SystemFragment extends Fragment {
 
     @Override
@@ -25,57 +23,29 @@ public class SystemFragment extends Fragment {
     }
 
     private void bindInfo(View view) {
-        addInfo(view, "设备品牌", SystemInfoUtil.getDeviceBrand());
-        addInfo(view, "设备型号", SystemInfoUtil.getDeviceModel());
-        addInfo(view, "制造商", SystemInfoUtil.getDeviceManufacturer());
-        addInfo(view, "产品名称", SystemInfoUtil.getProductName());
+        ((TextView) view.findViewById(R.id.tv_value_brand)).setText(SystemInfoUtil.getDeviceBrand());
+        ((TextView) view.findViewById(R.id.tv_value_model)).setText(SystemInfoUtil.getDeviceModel());
+        ((TextView) view.findViewById(R.id.tv_value_manufacturer)).setText(SystemInfoUtil.getDeviceManufacturer());
+        ((TextView) view.findViewById(R.id.tv_value_product)).setText(SystemInfoUtil.getProductName());
 
-        addSectionTitle(view, R.id.tvSectionOs, "操作系统");
-        addInfo(view, "Android版本", SystemInfoUtil.getAndroidVersion());
-        addInfo(view, "API级别", String.valueOf(SystemInfoUtil.getAndroidSdk()));
-        addInfo(view, "构建ID", SystemInfoUtil.getBuildId());
-        addInfo(view, "构建版本", SystemInfoUtil.getBuildNumber());
-        addInfo(view, "安全补丁", SystemInfoUtil.getSecurityPatch());
+        ((TextView) view.findViewById(R.id.tv_value_android_version)).setText(SystemInfoUtil.getAndroidVersion());
+        ((TextView) view.findViewById(R.id.tv_value_api_level)).setText(String.valueOf(SystemInfoUtil.getAndroidSdk()));
+        ((TextView) view.findViewById(R.id.tv_value_build_id)).setText(SystemInfoUtil.getBuildId());
+        ((TextView) view.findViewById(R.id.tv_value_security_patch)).setText(SystemInfoUtil.getSecurityPatch());
 
-        addSectionTitle(view, R.id.tvSectionScreen, "屏幕信息");
-        addInfo(view, "分辨率", SystemInfoUtil.getScreenResolution(getContext()));
-        addInfo(view, "屏幕密度", SystemInfoUtil.getScreenDensity(getContext()));
-        addInfo(view, "DPI", SystemInfoUtil.getScreenDensityDpi(getContext()));
+        ((TextView) view.findViewById(R.id.tv_value_screen_resolution)).setText(SystemInfoUtil.getScreenResolution(getContext()));
+        ((TextView) view.findViewById(R.id.tv_value_screen_density)).setText(SystemInfoUtil.getScreenDensity(getContext()));
 
-        addSectionTitle(view, R.id.tvSectionHardware, "硬件信息");
-        addInfo(view, "处理器", SystemInfoUtil.getCpuInfo());
-        addInfo(view, "CPU架构", SystemInfoUtil.getCpuAbi());
-        addInfo(view, "主板", SystemInfoUtil.getBoard());
-        addInfo(view, "硬件", SystemInfoUtil.getHardware());
-        addInfo(view, "引导程序", SystemInfoUtil.getBootloader());
+        ((TextView) view.findViewById(R.id.tv_value_cpu)).setText(SystemInfoUtil.getCpuInfo());
+        ((TextView) view.findViewById(R.id.tv_value_cpu_abi)).setText(SystemInfoUtil.getCpuAbi());
+        ((TextView) view.findViewById(R.id.tv_value_board)).setText(SystemInfoUtil.getBoard());
 
-        addSectionTitle(view, R.id.tvSectionMemory, "内存信息");
-        addInfo(view, "总内存", SystemInfoUtil.getTotalMemory());
-        addInfo(view, "可用内存", SystemInfoUtil.getAvailableMemory());
+        ((TextView) view.findViewById(R.id.tv_value_total_memory)).setText(SystemInfoUtil.getTotalMemory());
+        ((TextView) view.findViewById(R.id.tv_value_available_memory)).setText(SystemInfoUtil.getAvailableMemory());
 
-        addSectionTitle(view, R.id.tvSectionSystem, "系统信息");
-        addInfo(view, "内核版本", SystemInfoUtil.getKernelVersion());
-        addInfo(view, "设备序列号", SystemInfoUtil.getSerialNumber());
-        addInfo(view, "时区", SystemInfoUtil.getTimeZone());
-        addInfo(view, "语言", SystemInfoUtil.getLocale());
-    }
-
-    private void addSectionTitle(View view, int resId, String title) {
-        TextView tv = view.findViewById(resId);
-        if (tv != null) {
-            tv.setText(title);
-        }
-    }
-
-    private void addInfo(View view, String label, String value) {
-        int labelId = getResources().getIdentifier("tv_" + label.toLowerCase(Locale.getDefault()).replace(" ", "_").replace("/", "_"), "id", getContext().getPackageName());
-        int valueId = getResources().getIdentifier("tv_" + label.toLowerCase(Locale.getDefault()).replace(" ", "_").replace("/", "_") + "_value", "id", getContext().getPackageName());
-        
-        TextView tvLabel = view.findViewById(labelId);
-        TextView tvValue = view.findViewById(valueId);
-        
-        if (tvLabel != null) tvLabel.setText(label);
-        if (tvValue != null) tvValue.setText(value != null ? value : "未知");
+        ((TextView) view.findViewById(R.id.tv_value_kernel)).setText(SystemInfoUtil.getKernelVersion());
+        ((TextView) view.findViewById(R.id.tv_value_serial)).setText(SystemInfoUtil.getSerialNumber());
+        ((TextView) view.findViewById(R.id.tv_value_timezone)).setText(SystemInfoUtil.getTimeZone());
     }
 
     public boolean handleBackPress() {
