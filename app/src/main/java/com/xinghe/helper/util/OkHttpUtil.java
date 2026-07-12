@@ -1,5 +1,7 @@
 package com.xinghe.helper.util;
 
+import com.xinghe.helper.coredata.CoreData;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -58,6 +60,37 @@ public class OkHttpUtil {
             }
         }
         throw lastException != null ? lastException : new IOException("请求失败");
+    }
+
+    public static String getWithServerFallback(String path) throws IOException {
+        IOException lastException = null;
+        String[] servers = CoreData.SERVER_URLS;
+        
+        for (int i = 0; i < servers.length; i++) {
+            String server = servers[i];
+            String fullUrl;
+            if (path.startsWith("http")) {
+                fullUrl = path;
+            } else {
+                String cleanPath = path.startsWith("/") ? path : "/" + path;
+                fullUrl = server + cleanPath;
+            }
+            try {
+                String result = get(fullUrl);
+                if (i > 0) {
+                    CoreData.HTTP_BASE_URL = server;
+                }
+                return result;
+            } catch (IOException e) {
+                lastException = e;
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        throw lastException != null ? lastException : new IOException("所有线路均无法连接");
     }
 
     public static OkHttpClient getClient() {

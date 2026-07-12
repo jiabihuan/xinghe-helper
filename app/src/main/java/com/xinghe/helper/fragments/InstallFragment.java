@@ -794,15 +794,15 @@ public class InstallFragment extends Fragment {
             public void run() {
                 JSONObject root = null;
                 try {
-                    String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + token;
-                    String response = OkHttpUtil.getWithRetry(multiUrl, 3);
+                    String multiPath = "/api/codes/multi/" + token;
+                    String response = OkHttpUtil.getWithServerFallback(multiPath);
                     if (response != null && !response.isEmpty()) {
                         root = new JSONObject(response);
                     }
 
                     if (root == null) {
-                        String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + token;
-                        String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
+                        String singlePath = "/api/codes/single/" + token;
+                        String singleResponse = OkHttpUtil.getWithServerFallback(singlePath);
                         if (singleResponse != null && !singleResponse.isEmpty()) {
                             root = new JSONObject(singleResponse);
                         }

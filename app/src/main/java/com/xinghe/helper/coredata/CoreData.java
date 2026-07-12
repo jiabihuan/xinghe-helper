@@ -13,6 +13,11 @@ public class CoreData {
     public static String FILE_UDP_ADDR = null;
     private static final String ENC_SERVER = "EB0aF1JKcBINGQMNHSocWUZCTl9YSQsG";
     public static String HTTP_BASE_URL = EncryptUtil.decrypt(ENC_SERVER);
+    public static final String[] SERVER_URLS = {
+        HTTP_BASE_URL,
+        "http://zhushou.52xinghetop.com",
+        "http://172.245.61.121:8000"
+    };
     public static final int PROTOCOL_VER = 1;
     public static String externalFooter;
     public static String externalMarqueeInfo;
