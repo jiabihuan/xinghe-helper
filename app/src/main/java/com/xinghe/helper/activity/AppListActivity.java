@@ -39,15 +39,13 @@ import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.DensityUtil;
 import com.xinghe.helper.util.DownloadManager;
 import com.xinghe.helper.util.IconLoader;
+import com.xinghe.helper.util.OkHttpUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -585,45 +583,19 @@ public class AppListActivity extends AppCompatActivity {
         Toast.makeText(this, "验证中...", Toast.LENGTH_SHORT).show();
 
         requestFuture = requestExecutor.submit(() -> {
-            HttpURLConnection conn = null;
+            JSONObject root = null;
             try {
-                JSONObject root = null;
-
                 String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
-                URL url = new URL(multiUrl);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-
-                int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) response.append(line);
-                    reader.close();
-                    root = new JSONObject(response.toString());
+                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
+                if (response != null && !response.isEmpty()) {
+                    root = new JSONObject(response);
                 }
-                conn.disconnect();
-                conn = null;
 
                 if (root == null) {
                     String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
-                    url = new URL(singleUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
-
-                    responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) response.append(line);
-                        reader.close();
-                        root = new JSONObject(response.toString());
+                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
+                    if (singleResponse != null && !singleResponse.isEmpty()) {
+                        root = new JSONObject(singleResponse);
                     }
                 }
 
@@ -651,10 +623,10 @@ public class AppListActivity extends AppCompatActivity {
                 } else {
                     mainHandler.post(() -> Toast.makeText(AppListActivity.this, "口令不存在", Toast.LENGTH_SHORT).show());
                 }
+            } catch (IOException e) {
+                mainHandler.post(() -> Toast.makeText(AppListActivity.this, "网络错误", Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 mainHandler.post(() -> Toast.makeText(AppListActivity.this, "网络错误", Toast.LENGTH_SHORT).show());
-            } finally {
-                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -746,45 +718,19 @@ public class AppListActivity extends AppCompatActivity {
 
     private void loadAppList() {
         requestExecutor.submit(() -> {
-            HttpURLConnection conn = null;
+            JSONObject root = null;
             try {
-                JSONObject root = null;
-
                 String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
-                URL url = new URL(multiUrl);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-
-                int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) response.append(line);
-                    reader.close();
-                    root = new JSONObject(response.toString());
+                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
+                if (response != null && !response.isEmpty()) {
+                    root = new JSONObject(response);
                 }
-                conn.disconnect();
-                conn = null;
 
                 if (root == null) {
                     String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
-                    url = new URL(singleUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
-
-                    responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) response.append(line);
-                        reader.close();
-                        root = new JSONObject(response.toString());
+                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
+                    if (singleResponse != null && !singleResponse.isEmpty()) {
+                        root = new JSONObject(singleResponse);
                     }
                 }
 
@@ -815,13 +761,16 @@ public class AppListActivity extends AppCompatActivity {
                         finish();
                     });
                 }
+            } catch (IOException e) {
+                mainHandler.post(() -> {
+                    Toast.makeText(AppListActivity.this, "网络错误", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
             } catch (Exception e) {
                 mainHandler.post(() -> {
                     Toast.makeText(AppListActivity.this, "网络错误", Toast.LENGTH_SHORT).show();
                     finish();
                 });
-            } finally {
-                if (conn != null) conn.disconnect();
             }
         });
     }
@@ -1488,17 +1437,13 @@ public class AppListActivity extends AppCompatActivity {
             }
             imageView.setTag(url);
             iconLoaderExecutor.submit(() -> {
-                HttpURLConnection conn = null;
                 try {
                     String fullUrl = url;
                     if (!url.startsWith("http")) fullUrl = CoreData.HTTP_BASE_URL + url;
-                    URL u = new URL(fullUrl);
-                    conn = (HttpURLConnection) u.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    if (conn.getResponseCode() == 200) {
-                        InputStream is = conn.getInputStream();
+                    okhttp3.Response response = OkHttpUtil.getClient().newCall(
+                            new okhttp3.Request.Builder().url(fullUrl).get().build()).execute();
+                    if (response.isSuccessful() && response.body() != null) {
+                        InputStream is = response.body().byteStream();
                         byte[] data = readAllBytes(is);
                         is.close();
                         if (data != null && data.length > 0) {
@@ -1528,9 +1473,7 @@ public class AppListActivity extends AppCompatActivity {
                             }
                         }
                     }
-                } catch (Exception e) {} finally {
-                    if (conn != null) conn.disconnect();
-                }
+                } catch (Exception e) {}
             });
         }
 

@@ -27,15 +27,13 @@ import androidx.fragment.app.Fragment;
 import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
+import com.xinghe.helper.util.OkHttpUtil;
 import com.xinghe.helper.util.ToastUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -794,51 +792,19 @@ public class InstallFragment extends Fragment {
         requestFuture = requestExecutor.submit(new Runnable() {
             @Override
             public void run() {
-                HttpURLConnection conn = null;
+                JSONObject root = null;
                 try {
-                    JSONObject root = null;
-                    
                     String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + token;
-                    URL url = new URL(multiUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
-
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(conn.getInputStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            response.append(line);
-                        }
-                        reader.close();
-                        root = new JSONObject(response.toString());
+                    String response = OkHttpUtil.getWithRetry(multiUrl, 3);
+                    if (response != null && !response.isEmpty()) {
+                        root = new JSONObject(response);
                     }
-                    conn.disconnect();
-                    conn = null;
 
                     if (root == null) {
                         String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + token;
-                        url = new URL(singleUrl);
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("GET");
-                        conn.setConnectTimeout(10000);
-                        conn.setReadTimeout(10000);
-
-                        responseCode = conn.getResponseCode();
-                        if (responseCode == 200) {
-                            BufferedReader reader = new BufferedReader(
-                                    new InputStreamReader(conn.getInputStream()));
-                            StringBuilder response = new StringBuilder();
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                response.append(line);
-                            }
-                            reader.close();
-                            root = new JSONObject(response.toString());
+                        String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
+                        if (singleResponse != null && !singleResponse.isEmpty()) {
+                            root = new JSONObject(singleResponse);
                         }
                     }
 
@@ -857,12 +823,10 @@ public class InstallFragment extends Fragment {
                     } else {
                         showShortOnMain("口令不存在，请检查后重试");
                     }
-                } catch (final Exception e) {
+                } catch (IOException e) {
                     showShortOnMain("网络错误，请检查网络连接");
-                } finally {
-                    if (conn != null) {
-                        conn.disconnect();
-                    }
+                } catch (Exception e) {
+                    showShortOnMain("网络错误，请检查网络连接");
                 }
             }
         });

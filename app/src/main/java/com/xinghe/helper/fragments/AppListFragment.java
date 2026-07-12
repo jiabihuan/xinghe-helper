@@ -31,15 +31,13 @@ import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.DownloadManager;
 import com.xinghe.helper.util.IconLoader;
+import com.xinghe.helper.util.OkHttpUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -190,51 +188,19 @@ public class AppListFragment extends Fragment {
 
     private void loadAppList() {
         executor.submit(() -> {
-            HttpURLConnection conn = null;
+            JSONObject root = null;
             try {
-                JSONObject root = null;
-                
                 String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
-                URL url = new URL(multiUrl);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-
-                int responseCode = conn.getResponseCode();
-                if (responseCode == 200) {
-                    BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    reader.close();
-                    root = new JSONObject(response.toString());
+                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
+                if (response != null && !response.isEmpty()) {
+                    root = new JSONObject(response);
                 }
-                conn.disconnect();
-                conn = null;
 
                 if (root == null) {
                     String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
-                    url = new URL(singleUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
-
-                    responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(conn.getInputStream()));
-                        StringBuilder response = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            response.append(line);
-                        }
-                        reader.close();
-                        root = new JSONObject(response.toString());
+                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
+                    if (singleResponse != null && !singleResponse.isEmpty()) {
+                        root = new JSONObject(singleResponse);
                     }
                 }
 
@@ -274,17 +240,20 @@ public class AppListFragment extends Fragment {
                         }
                     });
                 }
-            } catch (final Exception e) {
+            } catch (IOException e) {
                 mainHandler.post(() -> {
                     Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
                     if (getActivity() != null) {
                         getActivity().onBackPressed();
                     }
                 });
-            } finally {
-                if (conn != null) {
-                    conn.disconnect();
-                }
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
+                    if (getActivity() != null) {
+                        getActivity().onBackPressed();
+                    }
+                });
             }
         });
     }
