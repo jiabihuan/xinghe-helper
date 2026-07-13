@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,13 +26,17 @@ import com.xinghe.helper.activity.CastPlayerActivity;
 import com.xinghe.helper.cast.CastService;
 import com.xinghe.helper.cast.CastState;
 
-public class CastFragment extends Fragment {
+public class CastFragment extends Fragment implements CastState.StateListener {
+
+    private static final String TAG = "CastFragment";
 
     private TextView statusText;
     private TextView ipText;
-    private TextView tipText;
-    private TextView openPlayerBtn;
+    private TextView deviceNameText;
+    private ImageView castIcon;
     private final Handler handler = new Handler(Looper.getMainLooper());
+
+    private boolean playerActivityRunning = false;
 
     @Nullable
     @Override
@@ -40,41 +45,76 @@ public class CastFragment extends Fragment {
 
         statusText = view.findViewById(R.id.statusText);
         ipText = view.findViewById(R.id.ipText);
-        tipText = view.findViewById(R.id.tipText);
-        openPlayerBtn = view.findViewById(R.id.openPlayerBtn);
+        deviceNameText = view.findViewById(R.id.deviceNameText);
+        castIcon = view.findViewById(R.id.castIcon);
 
-        // 延迟启动服务，确保 Activity 完全在前台后再启动前台服务
         handler.postDelayed(this::startCastService, 300);
 
+        updateIpDisplay();
         updateStatus();
-
-        String ip = getLocalIp();
-        if (ip != null) {
-            ipText.setText("设备IP：" + ip);
-        } else {
-            ipText.setText("请连接WiFi网络");
-        }
-
-        openPlayerBtn.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), CastPlayerActivity.class);
-            startActivity(intent);
-        });
-
-        openPlayerBtn.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                openPlayerBtn.setBackgroundResource(R.drawable.bg_dialog_button_focus);
-            } else {
-                openPlayerBtn.setBackgroundResource(R.drawable.bg_dialog_button);
-            }
-        });
 
         return view;
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        playerActivityRunning = false;
+        CastState.getInstance().addListener(this);
+        updateStatus();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        CastState.getInstance().removeListener(this);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        handler.removeCallbacksAndMessages(null);
+        CastState.getInstance().removeListener(this);
+    }
+
+    // ===== CastState.StateListener =====
+
+    @Override
+    public void onPlay(String url, String mimeType) {
+        // 收到投屏内容，自动跳转到播放器
+        if (getActivity() == null || !isAdded() || playerActivityRunning) return;
+        handler.post(() -> {
+            if (getActivity() == null || !isAdded() || playerActivityRunning) return;
+            playerActivityRunning = true;
+            Intent intent = new Intent(getActivity(), CastPlayerActivity.class);
+            startActivity(intent);
+        });
+    }
+
+    @Override
+    public void onPause() {
+        // 播放器Activity处理
+    }
+
+    @Override
+    public void onStop() {
+        handler.post(this::updateStatus);
+    }
+
+    @Override
+    public void onSeek(long position) {}
+
+    @Override
+    public void onVolume(int volume) {}
+
+    @Override
+    public void onMute(boolean mute) {}
+
+    // ===== 内部方法 =====
+
     private void startCastService() {
         if (getActivity() == null || !isAdded()) return;
 
-        // Android 13+ 检查通知权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(getActivity(),
                     android.Manifest.permission.POST_NOTIFICATIONS)
@@ -88,7 +128,6 @@ public class CastFragment extends Fragment {
             Intent intent = new Intent(getActivity(), CastService.class);
             ContextCompat.startForegroundService(getActivity(), intent);
         } catch (Exception e) {
-            // 前台服务启动失败（如 Android 12+ 后台限制），不崩溃，仅提示
             if (getActivity() != null && isAdded()) {
                 Toast.makeText(getActivity(), "投屏服务启动失败，请重试", Toast.LENGTH_SHORT).show();
             }
@@ -96,15 +135,25 @@ public class CastFragment extends Fragment {
     }
 
     private void updateStatus() {
+        if (statusText == null) return;
         CastState state = CastState.getInstance();
         if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty()) {
             statusText.setText("投屏中");
             statusText.setTextColor(0xFF4CAF50);
-            tipText.setText("正在播放投屏内容");
+            castIcon.setAlpha(1.0f);
         } else {
             statusText.setText("等待投屏");
             statusText.setTextColor(0xFFFFFFFF);
-            tipText.setText("请在手机视频APP中点击投屏按钮，选择「星河助手投屏」");
+            castIcon.setAlpha(0.6f);
+        }
+    }
+
+    private void updateIpDisplay() {
+        String ip = getLocalIp();
+        if (ip != null) {
+            ipText.setText("设备IP：" + ip);
+        } else {
+            ipText.setText("请连接WiFi网络");
         }
     }
 
@@ -124,17 +173,5 @@ public class CastFragment extends Fragment {
             e.printStackTrace();
         }
         return null;
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        updateStatus();
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        handler.removeCallbacksAndMessages(null);
     }
 }

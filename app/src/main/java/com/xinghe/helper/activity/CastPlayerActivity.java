@@ -59,6 +59,45 @@ public class CastPlayerActivity extends AppCompatActivity {
     private boolean controlBarVisible = false;
     private final Runnable hideControlBarRunnable = this::hideControlBar;
 
+    private final CastState.StateListener playerListener = new CastState.StateListener() {
+        @Override
+        public void onPlay(String url, String mimeType) {
+            mainHandler.post(() -> playMedia(url, mimeType));
+        }
+
+        @Override
+        public void onPause() {
+            mainHandler.post(() -> pausePlay());
+        }
+
+        @Override
+        public void onStop() {
+            mainHandler.post(() -> stopPlay());
+        }
+
+        @Override
+        public void onSeek(long position) {
+            mainHandler.post(() -> seekTo((int) position));
+        }
+
+        @Override
+        public void onVolume(int volume) {
+            mainHandler.post(() -> {
+                AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+                if (am != null) {
+                    int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC,
+                            (int) (volume * max / 100.0f), 0);
+                }
+            });
+        }
+
+        @Override
+        public void onMute(boolean mute) {
+            // 交给系统音量管理即可
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,44 +139,7 @@ public class CastPlayerActivity extends AppCompatActivity {
             }
         });
 
-        CastState.getInstance().setListener(new CastState.StateListener() {
-            @Override
-            public void onPlay(String url, String mimeType) {
-                mainHandler.post(() -> playMedia(url, mimeType));
-            }
-
-            @Override
-            public void onPause() {
-                mainHandler.post(() -> pausePlay());
-            }
-
-            @Override
-            public void onStop() {
-                mainHandler.post(() -> stopPlay());
-            }
-
-            @Override
-            public void onSeek(long position) {
-                mainHandler.post(() -> seekTo((int) position));
-            }
-
-            @Override
-            public void onVolume(int volume) {
-                mainHandler.post(() -> {
-                    AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
-                    if (am != null) {
-                        int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-                        am.setStreamVolume(AudioManager.STREAM_MUSIC,
-                                (int) (volume * max / 100.0f), 0);
-                    }
-                });
-            }
-
-            @Override
-            public void onMute(boolean mute) {
-                // 交给系统音量管理即可
-            }
-        });
+        CastState.getInstance().addListener(playerListener);
 
         // 进度更新
         updateRunnable = new Runnable() {
@@ -538,6 +540,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         mainHandler.removeCallbacks(updateRunnable);
         mainHandler.removeCallbacks(hideControlBarRunnable);
         releasePlayer();
-        CastState.getInstance().setListener(null);
+        CastState.getInstance().removeListener(playerListener);
     }
 }

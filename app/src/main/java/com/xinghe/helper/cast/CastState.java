@@ -1,5 +1,8 @@
 package com.xinghe.helper.cast;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public class CastState {
 
     public interface StateListener {
@@ -12,7 +15,7 @@ public class CastState {
     }
 
     private static CastState instance;
-    private StateListener listener;
+    private final List<StateListener> listeners = new CopyOnWriteArrayList<>();
 
     private String currentUrl = "";
     private String currentMimeType = "";
@@ -35,8 +38,14 @@ public class CastState {
         return instance;
     }
 
-    public synchronized void setListener(StateListener l) {
-        this.listener = l;
+    public synchronized void addListener(StateListener l) {
+        if (l != null && !listeners.contains(l)) {
+            listeners.add(l);
+        }
+    }
+
+    public synchronized void removeListener(StateListener l) {
+        listeners.remove(l);
     }
 
     public synchronized String getCurrentUrl() { return currentUrl; }
@@ -64,24 +73,20 @@ public class CastState {
         this.duration = 0;
         this.playing = false;
         this.transportState = "STOPPED";
-        if (listener != null) {
-            listener.onPlay(url, currentMimeType);
-        }
+        notifyPlay(url, currentMimeType);
     }
 
     public synchronized void play() {
         this.playing = true;
         this.transportState = "PLAYING";
-        if (listener != null) {
-            listener.onPlay(currentUrl, currentMimeType);
-        }
+        notifyPlay(currentUrl, currentMimeType);
     }
 
     public synchronized void pause() {
         this.playing = false;
         this.transportState = "PAUSED_PLAYBACK";
-        if (listener != null) {
-            listener.onPause();
+        for (StateListener l : listeners) {
+            l.onPause();
         }
     }
 
@@ -89,29 +94,35 @@ public class CastState {
         this.playing = false;
         this.transportState = "STOPPED";
         this.position = 0;
-        if (listener != null) {
-            listener.onStop();
+        for (StateListener l : listeners) {
+            l.onStop();
         }
     }
 
     public synchronized void seek(long pos) {
         this.position = pos;
-        if (listener != null) {
-            listener.onSeek(pos);
+        for (StateListener l : listeners) {
+            l.onSeek(pos);
         }
     }
 
     public synchronized void setVolume(int vol) {
         this.volume = vol;
-        if (listener != null) {
-            listener.onVolume(vol);
+        for (StateListener l : listeners) {
+            l.onVolume(vol);
         }
     }
 
     public synchronized void setMute(boolean m) {
         this.mute = m;
-        if (listener != null) {
-            listener.onMute(m);
+        for (StateListener l : listeners) {
+            l.onMute(m);
+        }
+    }
+
+    private void notifyPlay(String url, String mimeType) {
+        for (StateListener l : listeners) {
+            l.onPlay(url, mimeType);
         }
     }
 
