@@ -41,6 +41,9 @@ public class CastState {
     public synchronized void addListener(StateListener l) {
         if (l != null && !listeners.contains(l)) {
             listeners.add(l);
+            if (playing && currentUrl != null && !currentUrl.isEmpty()) {
+                l.onPlay(currentUrl, currentMimeType);
+            }
         }
     }
 

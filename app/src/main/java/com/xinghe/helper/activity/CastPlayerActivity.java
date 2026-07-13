@@ -61,13 +61,24 @@ public class CastPlayerActivity extends AppCompatActivity {
     private int retryCount = 0;
     private boolean userPaused = false;
     private boolean controlBarVisible = false;
+    private boolean pendingPlay = false;
+    private String pendingUrl = "";
+    private String pendingMimeType = "";
 
     private final Runnable hideControlBarRunnable = this::hideControlBar;
 
     private final CastState.StateListener playerListener = new CastState.StateListener() {
         @Override
         public void onPlay(String url, String mimeType) {
-            mainHandler.post(() -> playMedia(url, mimeType));
+            mainHandler.post(() -> {
+                if (surfaceView != null && surfaceView.getHolder().getSurface().isValid()) {
+                    playMedia(url, mimeType);
+                } else {
+                    pendingPlay = true;
+                    pendingUrl = url;
+                    pendingMimeType = mimeType;
+                }
+            });
         }
 
         @Override
@@ -190,10 +201,40 @@ public class CastPlayerActivity extends AppCompatActivity {
             }
         });
 
+        surfaceView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(android.view.SurfaceHolder holder) {
+                Log.d(TAG, "surfaceCreated");
+                if (pendingPlay && pendingUrl != null && !pendingUrl.isEmpty()) {
+                    pendingPlay = false;
+                    String url = pendingUrl;
+                    String mime = pendingMimeType;
+                    pendingUrl = "";
+                    pendingMimeType = "";
+                    playMedia(url, mime);
+                }
+            }
+
+            @Override
+            public void surfaceChanged(android.view.SurfaceHolder holder, int format, int width, int height) {
+            }
+
+            @Override
+            public void surfaceDestroyed(android.view.SurfaceHolder holder) {
+                Log.d(TAG, "surfaceDestroyed");
+            }
+        });
+
         // 如果已有投屏内容且正在播放，直接播放
         CastState state = CastState.getInstance();
-        if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty()) {
-            playMedia(state.getCurrentUrl(), state.getCurrentMimeType());
+        if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty() && state.isPlaying()) {
+            if (surfaceView.getHolder().getSurface().isValid()) {
+                playMedia(state.getCurrentUrl(), state.getCurrentMimeType());
+            } else {
+                pendingPlay = true;
+                pendingUrl = state.getCurrentUrl();
+                pendingMimeType = state.getCurrentMimeType();
+            }
         }
     }
 

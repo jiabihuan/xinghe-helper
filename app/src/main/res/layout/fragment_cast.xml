@@ -16,49 +16,15 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="80dp">
 
-        <ImageView
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:src="@drawable/ic_cast_big"
-            android:layout_marginEnd="10dp" />
-
         <TextView
+            android:id="@+id/titleText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="星河助手投屏"
+            android:text="星河投屏"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1" />
-
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_cast_big"
-            android:layout_marginEnd="8dp" />
-
-        <TextView
-            android:id="@+id/wifiNameText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WiFi未连接"
-            android:textColor="#BBBBBB"
-            android:textSize="16sp" />
     </LinearLayout>
-
-    <!-- 主标题 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="影视追剧投屏"
-        android:textColor="#FFFFFF"
-        android:textSize="48sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="48dp" />
 
     <!-- 步骤1 -->
     <LinearLayout
@@ -136,140 +102,7 @@
             android:textSize="20sp" />
     </LinearLayout>
 
-    <!-- 步骤3 -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="48dp">
 
-        <TextView
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:text="3"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:background="@drawable/bg_step_number" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="设备列表中选择 "
-            android:textColor="#CCCCCC"
-            android:textSize="20sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="星河助手投屏"
-            android:textColor="#00CCFF"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- 支持的APP图标 -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <!-- 爱奇艺 -->
-        <LinearLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/bg_app_icon">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="iQIYI"
-                android:textColor="#00DA66"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- 腾讯视频 -->
-        <LinearLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/bg_app_icon">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="腾讯"
-                android:textColor="#FF6A00"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- 优酷 -->
-        <LinearLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/bg_app_icon">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="优酷"
-                android:textColor="#1677FF"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- 芒果TV -->
-        <LinearLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/bg_app_icon">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="芒果"
-                android:textColor="#FF6600"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- B站 -->
-        <LinearLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/bg_app_icon">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="bilibili"
-                android:textColor="#FB7299"
-                android:textSize="10sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="等200+视频App"
-            android:textColor="#999999"
-            android:textSize="14sp" />
-    </LinearLayout>
 
     <View
         android:layout_width="0dp"

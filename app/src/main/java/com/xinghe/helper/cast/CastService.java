@@ -30,7 +30,8 @@ public class CastService extends Service {
         startForegroundCompat();
 
         CastState state = CastState.getInstance();
-        ssdpServer = new SSDPServer(this, "星河助手投屏", HTTP_PORT);
+        String deviceName = "星河投屏-" + android.os.Build.MODEL;
+        ssdpServer = new SSDPServer(this, deviceName, HTTP_PORT);
         httpServer = new DLNAHttpServer(HTTP_PORT, ssdpServer, state);
 
         try {
@@ -66,7 +67,7 @@ public class CastService extends Service {
     private void startForegroundCompat() {
         createNotificationChannel();
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("星河助手投屏")
+                .setContentTitle("星河投屏")
                 .setContentText("投屏服务运行中")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setOngoing(true)

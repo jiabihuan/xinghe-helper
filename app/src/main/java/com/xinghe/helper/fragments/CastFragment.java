@@ -2,13 +2,10 @@ package com.xinghe.helper.fragments;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,8 +27,7 @@ public class CastFragment extends Fragment {
     private static final String TAG = "CastFragment";
 
     private TextView statusText;
-    private TextView wifiNameText;
-    private TextView wifiNameHighlight;
+    private TextView titleText;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean playerActivityRunning = false;
@@ -73,11 +69,10 @@ public class CastFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_cast, container, false);
 
         statusText = view.findViewById(R.id.statusText);
-        wifiNameText = view.findViewById(R.id.wifiNameText);
-        wifiNameHighlight = view.findViewById(R.id.wifiNameHighlight);
+        titleText = view.findViewById(R.id.titleText);
 
+        updateTitle();
         handler.postDelayed(this::startCastService, 300);
-        handler.post(this::updateWifiInfo);
 
         updateStatus();
 
@@ -90,7 +85,6 @@ public class CastFragment extends Fragment {
         playerActivityRunning = false;
         CastState.getInstance().addListener(castListener);
         updateStatus();
-        updateWifiInfo();
     }
 
     @Override
@@ -104,6 +98,15 @@ public class CastFragment extends Fragment {
         super.onDestroyView();
         handler.removeCallbacksAndMessages(null);
         CastState.getInstance().removeListener(castListener);
+    }
+
+    private void updateTitle() {
+        if (titleText == null) return;
+        String deviceName = android.os.Build.MODEL;
+        if (deviceName == null || deviceName.isEmpty()) {
+            deviceName = "星河投屏";
+        }
+        titleText.setText("星河投屏 - " + deviceName);
     }
 
     private void startCastService() {
@@ -126,37 +129,6 @@ public class CastFragment extends Fragment {
                 Toast.makeText(getActivity(), "投屏服务启动失败，请重试", Toast.LENGTH_SHORT).show();
             }
         }
-    }
-
-    private void updateWifiInfo() {
-        if (getActivity() == null || !isAdded()) return;
-        String wifiName = getCurrentWifiName();
-        if (!TextUtils.isEmpty(wifiName) && !"<unknown ssid>".equals(wifiName)) {
-            wifiNameText.setText(wifiName);
-            wifiNameHighlight.setText(wifiName);
-        } else {
-            wifiNameText.setText("WiFi未连接");
-            wifiNameHighlight.setText("同一WiFi");
-        }
-    }
-
-    private String getCurrentWifiName() {
-        if (getActivity() == null) return "";
-        try {
-            WifiManager wifiManager = (WifiManager) getActivity().getApplicationContext()
-                    .getSystemService(android.content.Context.WIFI_SERVICE);
-            if (wifiManager != null && wifiManager.isWifiEnabled()) {
-                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                if (wifiInfo != null) {
-                    String ssid = wifiInfo.getSSID();
-                    if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
-                        ssid = ssid.substring(1, ssid.length() - 1);
-                    }
-                    return ssid;
-                }
-            }
-        } catch (Exception ignored) {}
-        return "";
     }
 
     private void updateStatus() {
