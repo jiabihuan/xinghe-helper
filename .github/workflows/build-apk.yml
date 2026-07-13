@@ -44,12 +44,21 @@ jobs:
           ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache > build.log 2>&1
           exit_code=$?
           if [ $exit_code -ne 0 ]; then
-            # 把最后10行错误用::error输出，这样在annotations里能看到
-            ERR=$(tail -10 build.log | tr '\n' ' ')
-            echo "::error::BUILD FAILED - $ERR"
+            # 提取关键错误信息
+            FAILURE_LINE=$(grep "FAILURE:" build.log | head -1)
+            ERROR_COUNT=$(grep -c "error:" build.log || echo 0)
+            echo "::warning::BUILD_FAILED_FAILURE_${FAILURE_LINE// /_}_ERRORS_${ERROR_COUNT}"
+            echo "::error::Build failed with ${ERROR_COUNT} errors"
           fi
           exit $exit_code
         shell: bash
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
