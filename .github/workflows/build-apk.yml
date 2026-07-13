@@ -40,7 +40,14 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build APK
-        run: ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache --stacktrace 2>&1 | tee build.log || true
+
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
