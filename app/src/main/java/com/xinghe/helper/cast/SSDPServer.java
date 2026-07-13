@@ -1,13 +1,13 @@
 package com.xinghe.helper.cast;
 
 import android.content.Context;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.text.SimpleDateFormat;
@@ -32,6 +32,7 @@ public class SSDPServer {
     private boolean running = false;
     private Thread receiveThread;
     private Thread announceThread;
+    private WifiManager.MulticastLock multicastLock;
 
     public SSDPServer(Context context, String deviceName, int httpPort) {
         this.context = context.getApplicationContext();
@@ -44,10 +45,20 @@ public class SSDPServer {
         if (running) return;
         running = true;
         try {
+            // 获取组播锁，否则Android不会将组播包投递到应用层
+            WifiManager wifi = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (wifi != null) {
+                multicastLock = wifi.createMulticastLock("SSDPLock");
+                multicastLock.setReferenceCounted(false);
+                multicastLock.acquire();
+                Log.d(TAG, "MulticastLock acquired");
+            }
+
             group = InetAddress.getByName(SSDP_ADDRESS);
             socket = new MulticastSocket(SSDP_PORT);
             socket.setReuseAddress(true);
-            socket.joinGroup(group);
+            socket.setTimeToLive(4);
+            socket.joinGroup(new InetSocketAddress(group, SSDP_PORT), getNetworkInterface());
 
             receiveThread = new Thread(this::receiveLoop, "SSDP-Receive");
             receiveThread.start();
@@ -71,16 +82,24 @@ public class SSDPServer {
             socket.close();
             socket = null;
         }
+        if (multicastLock != null && multicastLock.isHeld()) {
+            try {
+                multicastLock.release();
+            } catch (Exception ignored) {}
+            multicastLock = null;
+        }
+        Log.d(TAG, "SSDP Server stopped");
     }
 
     private void receiveLoop() {
-        byte[] buf = new byte[2048];
+        byte[] buf = new byte[4096];
         while (running && socket != null) {
             try {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
                 String msg = new String(packet.getData(), 0, packet.getLength());
                 if (msg.startsWith("M-SEARCH")) {
+                    Log.d(TAG, "M-SEARCH from " + packet.getAddress());
                     handleMSearch(packet.getAddress(), packet.getPort());
                 }
             } catch (Exception e) {
@@ -97,7 +116,9 @@ public class SSDPServer {
             }
             while (running) {
                 Thread.sleep(30000);
-                sendAnnounce("ssdp:alive");
+                if (running) {
+                    sendAnnounce("ssdp:alive");
+                }
             }
         } catch (InterruptedException ignored) {
         } catch (Exception e) {
@@ -177,10 +198,32 @@ public class SSDPServer {
         }
     }
 
+    private NetworkInterface getNetworkInterface() {
+        try {
+            String localIp = getLocalIpAddress();
+            if (localIp == null) return null;
+            for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
+                NetworkInterface intf = en.nextElement();
+                for (Enumeration<InetAddress> addr = intf.getInetAddresses(); addr.hasMoreElements();) {
+                    InetAddress inetAddr = addr.nextElement();
+                    if (!inetAddr.isLoopbackAddress() && inetAddr instanceof java.net.Inet4Address) {
+                        if (inetAddr.getHostAddress().equals(localIp)) {
+                            return intf;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "getNetworkInterface error", e);
+        }
+        return null;
+    }
+
     private String getLocalIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
                 NetworkInterface intf = en.nextElement();
+                if (!intf.isUp() || intf.isLoopback()) continue;
                 for (Enumeration<InetAddress> addr = intf.getInetAddresses(); addr.hasMoreElements();) {
                     InetAddress inetAddr = addr.nextElement();
                     if (!inetAddr.isLoopbackAddress() && inetAddr instanceof java.net.Inet4Address) {
