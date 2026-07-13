@@ -8,6 +8,7 @@ import org.w3c.dom.NodeList;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;

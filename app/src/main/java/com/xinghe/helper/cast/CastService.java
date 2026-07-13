@@ -73,7 +73,7 @@ public class CastService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("星河助手投屏")
                 .setContentText("投屏服务运行中")
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setOngoing(true)
                 .build();
     }
