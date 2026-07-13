@@ -98,6 +98,11 @@ public class CastState {
         this.playing = false;
         this.transportState = "STOPPED";
         this.position = 0;
+        this.duration = 0;
+        this.currentUrl = "";
+        this.currentMimeType = "";
+        this.currentTitle = "";
+        this.currentCreator = "";
         for (StateListener l : listeners) {
             l.onStop();
         }

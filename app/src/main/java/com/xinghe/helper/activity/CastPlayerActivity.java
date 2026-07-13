@@ -88,7 +88,10 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         @Override
         public void onStop() {
-            mainHandler.post(() -> stopPlay());
+            mainHandler.post(() -> {
+                stopPlay();
+                finish();
+            });
         }
 
         @Override
@@ -351,6 +354,9 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void handlePlaybackError() {
+        if (currentUrl == null || currentUrl.isEmpty()) {
+            return;
+        }
         if (retryCount < MAX_RETRY) {
             retryCount++;
             Log.w(TAG, "重试播放 " + retryCount + "/" + MAX_RETRY);
@@ -358,7 +364,11 @@ public class CastPlayerActivity extends AppCompatActivity {
             statusText.setText("网络异常，重试中(" + retryCount + "/" + MAX_RETRY + ")...");
             String url = currentUrl;
             currentUrl = "";
-            mainHandler.postDelayed(() -> playVideo(url), 2000L * retryCount);
+            mainHandler.postDelayed(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    playVideo(url);
+                }
+            }, 2000L * retryCount);
         } else {
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("播放失败，请检查网络或视频源");
@@ -415,6 +425,7 @@ public class CastPlayerActivity extends AppCompatActivity {
 
     private void stopPlay() {
         cancelBufferingTimeout();
+        mainHandler.removeCallbacksAndMessages(null);
         releasePlayer();
         surfaceView.setVisibility(View.VISIBLE);
         imageView.setVisibility(View.GONE);
@@ -425,7 +436,12 @@ public class CastPlayerActivity extends AppCompatActivity {
         totalTimeText.setText("00:00");
         seekBar.setProgress(0);
         currentUrl = "";
+        currentMimeType = "";
         userPaused = false;
+        pendingPlay = false;
+        pendingUrl = "";
+        pendingMimeType = "";
+        retryCount = 0;
     }
 
     private void seekTo(long position) {
@@ -438,11 +454,16 @@ public class CastPlayerActivity extends AppCompatActivity {
         if (exoPlayer != null) {
             try {
                 exoPlayer.stop();
+                exoPlayer.clearMediaItems();
+                exoPlayer.setVideoSurfaceView(null);
                 exoPlayer.release();
             } catch (Exception ignored) {}
             exoPlayer = null;
         }
         userPaused = false;
+        if (surfaceView != null) {
+            surfaceView.setKeepScreenOn(false);
+        }
     }
 
     private void startBufferingTimeout() {
@@ -495,11 +516,18 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            finish();
+            return true;
+        }
         switch (keyCode) {
-            case KeyEvent.KEYCODE_BACK:
-                finish();
-                return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
                 if (controlBarVisible) {
