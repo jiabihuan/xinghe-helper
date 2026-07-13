@@ -54,8 +54,18 @@ jobs:
 
       - name: Build APK
         run: |
-          set -o pipefail
+          set +e
           ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache --stacktrace 2>&1 | tee build.log
+          exit_code=${PIPESTATUS[0]}
+          if [ $exit_code -ne 0 ]; then
+            echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -100 build.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          exit $exit_code
+        shell: bash
 
       - name: Upload build log
         uses: actions/upload-artifact@v4
