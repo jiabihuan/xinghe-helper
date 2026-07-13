@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.xinghe.helper'
-    compileSdk 34
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.xinghe.helper"
         minSdk 21
-        targetSdk 34
+        targetSdk 33
         versionCode 9
         versionName "2.1.0"
     }

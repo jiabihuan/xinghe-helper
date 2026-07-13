@@ -23,9 +23,6 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK components
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" || true
-
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
 
@@ -42,37 +39,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Check Gradle
-        run: ./gradlew --version 2>&1 | tee gradle-version.log || true
-
-      - name: Upload gradle version log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: gradle-version-log
-          path: gradle-version.log
-
       - name: Build APK
-        run: |
-          set +e
-          ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache --stacktrace 2>&1 | tee build.log
-          exit_code=${PIPESTATUS[0]}
-          if [ $exit_code -ne 0 ]; then
-            echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            tail -100 build.log >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
-          exit $exit_code
-        shell: bash
-
-      - name: Upload build log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: build-log
-          path: build.log
+        run: ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
