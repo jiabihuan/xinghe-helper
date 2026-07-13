@@ -1017,6 +1017,8 @@ public class AppListActivity extends AppCompatActivity {
             @Override public void onError(int index, String error) { updateProgressItemError(index, "下载失败"); }
             @Override public void onCancelled(int index) { updateProgressItemCancelled(index); }
             @Override public void onAllComplete() { mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000); }
+            @Override public void onInstallStart(int index) {}
+            @Override public void onInstallResult(int index, boolean success, String message) {}
         });
         dm.addTasks(apps, this);
     }

@@ -520,6 +520,14 @@ public class AppListFragment extends Fragment {
             public void onAllComplete() {
                 mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000);
             }
+
+            @Override
+            public void onInstallStart(int index) {
+            }
+
+            @Override
+            public void onInstallResult(int index, boolean success, String message) {
+            }
         });
 
         dm.addTasks(apps, getContext());
