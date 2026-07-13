@@ -31,8 +31,9 @@ import java.util.Locale;
 public class CastPlayerActivity extends AppCompatActivity {
 
     private static final String TAG = "CastPlayerActivity";
-    private static final int SEEK_STEP = 10000; // 快进快退步长 10秒
-    private static final int MAX_RETRY = 3;     // 最大重试次数
+    private static final int SEEK_STEP = 10000;
+    private static final int MAX_RETRY = 3;
+    private static final long BUFFERING_TIMEOUT = 15000; // 缓冲超时15秒
 
     private SurfaceView surfaceView;
     private ImageView imageView;
@@ -50,13 +51,18 @@ public class CastPlayerActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable updateRunnable;
+    private Runnable bufferingTimeoutRunnable;
 
     private String currentUrl = "";
     private String currentMimeType = "";
     private int retryCount = 0;
     private boolean isPrepared = false;
+    private boolean surfaceReady = false;
     private boolean userPaused = false;
     private boolean controlBarVisible = false;
+    private boolean pendingPlay = false;
+    private int pendingSeekTo = -1;
+
     private final Runnable hideControlBarRunnable = this::hideControlBar;
 
     private final CastState.StateListener playerListener = new CastState.StateListener() {
@@ -94,7 +100,6 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         @Override
         public void onMute(boolean mute) {
-            // 交给系统音量管理即可
         }
     };
 
@@ -121,8 +126,16 @@ public class CastPlayerActivity extends AppCompatActivity {
         surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
+                Log.d(TAG, "surfaceCreated");
+                surfaceReady = true;
                 if (mediaPlayer != null && isPrepared) {
-                    mediaPlayer.setDisplay(holder);
+                    try {
+                        mediaPlayer.setDisplay(holder);
+                    } catch (Exception ignored) {}
+                } else if (pendingPlay) {
+                    // Surface 才准备好，之前有等待播放的请求
+                    pendingPlay = false;
+                    prepareAndPlay();
                 }
             }
 
@@ -131,6 +144,8 @@ public class CastPlayerActivity extends AppCompatActivity {
 
             @Override
             public void surfaceDestroyed(SurfaceHolder holder) {
+                Log.d(TAG, "surfaceDestroyed");
+                surfaceReady = false;
                 if (mediaPlayer != null) {
                     try {
                         mediaPlayer.setDisplay(null);
@@ -141,17 +156,24 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         CastState.getInstance().addListener(playerListener);
 
-        // 进度更新
+        // 进度更新，1秒一次减少性能消耗
         updateRunnable = new Runnable() {
             @Override
             public void run() {
                 updateProgress();
-                mainHandler.postDelayed(this, 500);
+                mainHandler.postDelayed(this, 1000);
             }
         };
-        mainHandler.postDelayed(updateRunnable, 500);
+        mainHandler.postDelayed(updateRunnable, 1000);
 
-        // 按钮事件
+        // 缓冲超时检测
+        bufferingTimeoutRunnable = () -> {
+            if (mediaPlayer != null && !isPrepared) {
+                Log.w(TAG, "缓冲超时，准备重试");
+                handlePlaybackError(MediaPlayer.MEDIA_ERROR_TIMED_OUT, 0);
+            }
+        };
+
         btnPlayPause.setOnClickListener(v -> {
             if (mediaPlayer != null && isPrepared) {
                 if (mediaPlayer.isPlaying()) {
@@ -222,7 +244,6 @@ public class CastPlayerActivity extends AppCompatActivity {
     private void playMedia(String url, String mimeType) {
         if (url == null || url.isEmpty()) return;
 
-        // 同一个URL且已准备好，不重复播放
         if (url.equals(currentUrl) && isPrepared) {
             resumePlay();
             return;
@@ -231,6 +252,7 @@ public class CastPlayerActivity extends AppCompatActivity {
         currentUrl = url;
         currentMimeType = mimeType != null ? mimeType : "video/mp4";
         retryCount = 0;
+        pendingSeekTo = -1;
 
         if (currentMimeType.startsWith("image/")) {
             playImage(url);
@@ -247,22 +269,35 @@ public class CastPlayerActivity extends AppCompatActivity {
         imageView.setVisibility(View.GONE);
         surfaceView.setVisibility(View.VISIBLE);
         showBuffering(true);
+        startBufferingTimeout();
 
         try {
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setDataSource(this, Uri.parse(url));
-            mediaPlayer.setSurface(surfaceView.getHolder().getSurface());
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mediaPlayer.setScreenOnWhilePlaying(true);
+            mediaPlayer.setWakeMode(this, android.os.PowerManager.PARTIAL_WAKE_LOCK);
+
+            // 尽量提高缓冲容量
+            try {
+                mediaPlayer.setParameter(2, 8192 * 1024); // 尝试设置缓冲为8MB
+            } catch (Exception ignored) {}
 
             mediaPlayer.setOnPreparedListener(mp -> {
                 Log.d(TAG, "onPrepared");
                 isPrepared = true;
+                cancelBufferingTimeout();
                 showBuffering(false);
                 showControlBar();
                 int dur = mp.getDuration();
                 totalTimeText.setText(formatTime(dur));
                 CastState.getInstance().setDuration(dur);
+
+                if (pendingSeekTo >= 0) {
+                    mp.seekTo(pendingSeekTo);
+                    pendingSeekTo = -1;
+                }
+
                 if (!userPaused) {
                     mp.start();
                     CastState.getInstance().setPlaying(true);
@@ -271,16 +306,23 @@ public class CastPlayerActivity extends AppCompatActivity {
             });
 
             mediaPlayer.setOnBufferingUpdateListener((mp, percent) -> {
-                // 系统自动处理缓冲，这里仅做日志
                 Log.d(TAG, "buffering: " + percent + "%");
             });
 
             mediaPlayer.setOnInfoListener((mp, what, extra) -> {
                 switch (what) {
                     case MediaPlayer.MEDIA_INFO_BUFFERING_START:
+                        Log.d(TAG, "BUFFERING_START");
                         showBuffering(true);
+                        startBufferingTimeout();
                         return true;
                     case MediaPlayer.MEDIA_INFO_BUFFERING_END:
+                        Log.d(TAG, "BUFFERING_END");
+                        cancelBufferingTimeout();
+                        showBuffering(false);
+                        return true;
+                    case MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
+                        cancelBufferingTimeout();
                         showBuffering(false);
                         return true;
                 }
@@ -295,36 +337,59 @@ public class CastPlayerActivity extends AppCompatActivity {
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 Log.e(TAG, "onError what=" + what + " extra=" + extra);
+                cancelBufferingTimeout();
                 showBuffering(false);
                 handlePlaybackError(what, extra);
                 return true;
             });
 
-            // 异步准备，不阻塞主线程
-            mediaPlayer.prepareAsync();
+            // 等 Surface 准备好再 prepare
+            if (surfaceReady && surfaceView.getHolder().getSurface() != null
+                    && surfaceView.getHolder().getSurface().isValid()) {
+                mediaPlayer.setDisplay(surfaceView.getHolder());
+                prepareAndPlay();
+            } else {
+                pendingPlay = true;
+                Log.d(TAG, "Surface not ready, pending play");
+            }
 
         } catch (Exception e) {
             Log.e(TAG, "playVideo error", e);
+            cancelBufferingTimeout();
             showBuffering(false);
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("播放失败：" + e.getMessage());
         }
     }
 
+    private void prepareAndPlay() {
+        if (mediaPlayer == null) return;
+        try {
+            mediaPlayer.prepareAsync();
+        } catch (Exception e) {
+            Log.e(TAG, "prepareAsync error", e);
+            handlePlaybackError(MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
+        }
+    }
+
+    private void startBufferingTimeout() {
+        cancelBufferingTimeout();
+        mainHandler.postDelayed(bufferingTimeoutRunnable, BUFFERING_TIMEOUT);
+    }
+
+    private void cancelBufferingTimeout() {
+        mainHandler.removeCallbacks(bufferingTimeoutRunnable);
+    }
+
     private void handlePlaybackError(int what, int extra) {
-        // MEDIA_ERROR_IO(1) / MEDIA_ERROR_MALFORMED(-1007) / MEDIA_ERROR_TIMED_OUT(-110) 等可重试
         if (retryCount < MAX_RETRY) {
             retryCount++;
-            Log.w(TAG, "重试播放 " + retryCount + "/" + MAX_RETRY);
+            Log.w(TAG, "重试播放 " + retryCount + "/" + MAX_RETRY + " (what=" + what + ")");
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("网络异常，重试中(" + retryCount + "/" + MAX_RETRY + ")...");
-            mainHandler.postDelayed(() -> {
-                if (currentUrl != null && !currentUrl.isEmpty()) {
-                    String url = currentUrl;
-                    currentUrl = ""; // 清空以便重新播放
-                    playVideo(url);
-                }
-            }, 2000L * retryCount); // 指数退避
+            String url = currentUrl;
+            currentUrl = "";
+            mainHandler.postDelayed(() -> playVideo(url), 2000L * retryCount);
         } else {
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("播放失败，请检查网络或视频源");
@@ -379,6 +444,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void stopPlay() {
+        cancelBufferingTimeout();
         releasePlayer();
         surfaceView.setVisibility(View.VISIBLE);
         imageView.setVisibility(View.GONE);
@@ -391,6 +457,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         currentUrl = "";
         isPrepared = false;
         userPaused = false;
+        pendingPlay = false;
+        pendingSeekTo = -1;
     }
 
     private void seekTo(int position) {
@@ -400,6 +468,8 @@ public class CastPlayerActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e(TAG, "seekTo error", e);
             }
+        } else {
+            pendingSeekTo = position;
         }
     }
 
@@ -424,13 +494,15 @@ public class CastPlayerActivity extends AppCompatActivity {
 
     private void updateProgress() {
         if (mediaPlayer != null && isPrepared) {
-            int pos = mediaPlayer.getCurrentPosition();
-            int dur = mediaPlayer.getDuration();
-            if (dur > 0) {
-                seekBar.setProgress(pos * 100 / dur);
-            }
-            currentTimeText.setText(formatTime(pos));
-            CastState.getInstance().setPosition(pos);
+            try {
+                int pos = mediaPlayer.getCurrentPosition();
+                int dur = mediaPlayer.getDuration();
+                if (dur > 0) {
+                    seekBar.setProgress(pos * 100 / dur);
+                }
+                currentTimeText.setText(formatTime(pos));
+                CastState.getInstance().setPosition(pos);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -471,7 +543,6 @@ public class CastPlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
                 if (controlBarVisible) {
-                    // 焦点在控制栏时，不拦截
                     return super.onKeyDown(keyCode, event);
                 }
                 if (mediaPlayer != null && isPrepared) {
@@ -537,6 +608,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        cancelBufferingTimeout();
         mainHandler.removeCallbacks(updateRunnable);
         mainHandler.removeCallbacks(hideControlBarRunnable);
         releasePlayer();
