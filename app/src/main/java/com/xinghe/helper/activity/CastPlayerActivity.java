@@ -3,14 +3,15 @@ package com.xinghe.helper.activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -19,19 +20,15 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.PlaybackException;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.LoadControl;
 import com.xinghe.helper.R;
 import com.xinghe.helper.cast.CastState;
 
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Locale;
+
+import tv.danmaku.ijk.media.player.IMediaPlayer;
+import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 
 public class CastPlayerActivity extends AppCompatActivity {
 
@@ -45,15 +42,15 @@ public class CastPlayerActivity extends AppCompatActivity {
     private TextView statusText;
     private ProgressBar bufferingProgress;
     private View controlBar;
-    private TextView btnPlayPause;
-    private TextView btnStop;
-    private TextView btnForward;
-    private TextView btnBackward;
+    private Button btnPlayPause;
+    private Button btnStop;
+    private Button btnForward;
+    private Button btnBackward;
     private SeekBar seekBar;
     private TextView currentTimeText;
     private TextView totalTimeText;
 
-    private ExoPlayer exoPlayer;
+    private IjkMediaPlayer ijkPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable updateRunnable;
     private Runnable bufferingTimeoutRunnable;
@@ -66,6 +63,8 @@ public class CastPlayerActivity extends AppCompatActivity {
     private boolean pendingPlay = false;
     private String pendingUrl = "";
     private String pendingMimeType = "";
+    private boolean isPrepared = false;
+    private long duration = 0;
 
     private final Runnable hideControlBarRunnable = this::hideControlBar;
 
@@ -138,6 +137,9 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
+        IjkMediaPlayer.loadLibrariesOnce(null);
+        IjkMediaPlayer.native_profileBegin("libijkplayer.so");
+
         CastState.getInstance().addListener(playerListener);
 
         updateRunnable = new Runnable() {
@@ -150,10 +152,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         mainHandler.postDelayed(updateRunnable, 1000);
 
         bufferingTimeoutRunnable = () -> {
-            if (exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
-                Log.w(TAG, "缓冲超时，重试播放");
-                handlePlaybackError();
-            }
+            Log.w(TAG, "缓冲超时，重试播放");
+            handlePlaybackError();
         };
 
         btnPlayPause.setOnClickListener(v -> togglePlayPause());
@@ -164,9 +164,9 @@ public class CastPlayerActivity extends AppCompatActivity {
         });
 
         btnForward.setOnClickListener(v -> {
-            if (exoPlayer != null) {
-                long pos = exoPlayer.getCurrentPosition();
-                long dur = exoPlayer.getDuration();
+            if (ijkPlayer != null && isPrepared) {
+                long pos = ijkPlayer.getCurrentPosition();
+                long dur = ijkPlayer.getDuration();
                 long target = Math.min(pos + SEEK_STEP, dur);
                 seekTo(target);
                 CastState.getInstance().setPosition(target);
@@ -174,8 +174,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         });
 
         btnBackward.setOnClickListener(v -> {
-            if (exoPlayer != null) {
-                long pos = exoPlayer.getCurrentPosition();
+            if (ijkPlayer != null && isPrepared) {
+                long pos = ijkPlayer.getCurrentPosition();
                 long target = Math.max(pos - SEEK_STEP, 0);
                 seekTo(target);
                 CastState.getInstance().setPosition(target);
@@ -185,9 +185,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && exoPlayer != null && exoPlayer.getDuration() > 0) {
-                    long dur = exoPlayer.getDuration();
-                    long target = dur * progress / 100;
+                if (fromUser && ijkPlayer != null && isPrepared && duration > 0) {
+                    long target = duration * progress / 100;
                     currentTimeText.setText(formatTime(target));
                 }
             }
@@ -197,18 +196,17 @@ public class CastPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if (exoPlayer != null && exoPlayer.getDuration() > 0) {
-                    long dur = exoPlayer.getDuration();
-                    long target = dur * seekBar.getProgress() / 100;
+                if (ijkPlayer != null && isPrepared && duration > 0) {
+                    long target = duration * seekBar.getProgress() / 100;
                     seekTo(target);
                     CastState.getInstance().setPosition(target);
                 }
             }
         });
 
-        surfaceView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
-            public void surfaceCreated(android.view.SurfaceHolder holder) {
+            public void surfaceCreated(SurfaceHolder holder) {
                 Log.d(TAG, "surfaceCreated");
                 if (pendingPlay && pendingUrl != null && !pendingUrl.isEmpty()) {
                     pendingPlay = false;
@@ -217,20 +215,21 @@ public class CastPlayerActivity extends AppCompatActivity {
                     pendingUrl = "";
                     pendingMimeType = "";
                     playMedia(url, mime);
+                } else if (ijkPlayer != null) {
+                    ijkPlayer.setDisplay(holder);
                 }
             }
 
             @Override
-            public void surfaceChanged(android.view.SurfaceHolder holder, int format, int width, int height) {
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             }
 
             @Override
-            public void surfaceDestroyed(android.view.SurfaceHolder holder) {
+            public void surfaceDestroyed(SurfaceHolder holder) {
                 Log.d(TAG, "surfaceDestroyed");
             }
         });
 
-        // 如果已有投屏内容且正在播放，直接播放
         CastState state = CastState.getInstance();
         if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty() && state.isPlaying()) {
             if (surfaceView.getHolder().getSurface().isValid()) {
@@ -244,8 +243,8 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void togglePlayPause() {
-        if (exoPlayer == null) return;
-        if (exoPlayer.isPlaying()) {
+        if (ijkPlayer == null || !isPrepared) return;
+        if (ijkPlayer.isPlaying()) {
             pausePlay();
             CastState.getInstance().pause();
         } else {
@@ -257,7 +256,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     private void playMedia(String url, String mimeType) {
         if (url == null || url.isEmpty()) return;
 
-        if (url.equals(currentUrl) && exoPlayer != null) {
+        if (url.equals(currentUrl) && ijkPlayer != null && isPrepared) {
             resumePlay();
             return;
         }
@@ -282,85 +281,98 @@ public class CastPlayerActivity extends AppCompatActivity {
         surfaceView.setVisibility(View.VISIBLE);
         showBuffering(true);
         startBufferingTimeout();
+        isPrepared = false;
+        duration = 0;
 
         try {
-            LoadControl loadControl = new DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(
-                            10000,
-                            60000,
-                            1500,
-                            3000
-                    )
-                    .setPrioritizeTimeOverSizeThresholds(true)
-                    .build();
+            ijkPlayer = new IjkMediaPlayer();
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "start-on-prepared", 0);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop", 1);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "enable-accurate-seek", 1);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec", 1);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 1);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "http-detect-range-support", 0);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "fflags", "fastseek");
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "rw_timeout", 30000000);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "analyzeduration", 10000000);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "probesize", 1024 * 1024 * 10);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_CODEC, "skip_loop_filter", 48);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_SWS, "fast", 1);
 
-            exoPlayer = new ExoPlayer.Builder(this)
-                    .setLoadControl(loadControl)
-                    .setWakeMode(C.WAKE_MODE_NETWORK)
-                    .setHandleAudioBecomingNoisy(true)
-                    .setSeekForwardIncrementMs(SEEK_STEP)
-                    .setSeekBackIncrementMs(SEEK_STEP)
-                    .build();
+            ijkPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+            ijkPlayer.setDisplay(surfaceView.getHolder());
+            ijkPlayer.setDataSource(url);
 
-            exoPlayer.setVideoSurfaceView(surfaceView);
-            surfaceView.setKeepScreenOn(true);
-
-            exoPlayer.addListener(new Player.Listener() {
+            ijkPlayer.setOnPreparedListener(new IMediaPlayer.OnPreparedListener() {
                 @Override
-                public void onPlaybackStateChanged(int playbackState) {
-                    switch (playbackState) {
-                        case Player.STATE_READY:
-                            Log.d(TAG, "STATE_READY");
-                            cancelBufferingTimeout();
-                            showBuffering(false);
-                            showControlBar();
-                            long dur = exoPlayer.getDuration();
-                            totalTimeText.setText(formatTime(dur));
-                            CastState.getInstance().setDuration(dur);
-                            if (!userPaused) {
-                                exoPlayer.setPlayWhenReady(true);
-                                CastState.getInstance().setPlaying(true);
-                                btnPlayPause.setText("暂停");
-                            }
-                            break;
-                        case Player.STATE_BUFFERING:
-                            Log.d(TAG, "STATE_BUFFERING");
-                            showBuffering(true);
-                            startBufferingTimeout();
-                            break;
-                        case Player.STATE_ENDED:
-                            Log.d(TAG, "STATE_ENDED");
-                            cancelBufferingTimeout();
-                            showBuffering(false);
-                            CastState.getInstance().setPlaying(false);
-                            btnPlayPause.setText("重播");
-                            break;
-                    }
-                }
-
-                @Override
-                public void onPlayerError(PlaybackException error) {
-                    Log.e(TAG, "onPlayerError", error);
+                public void onPrepared(IMediaPlayer mp) {
+                    Log.d(TAG, "onPrepared");
+                    isPrepared = true;
+                    duration = mp.getDuration();
                     cancelBufferingTimeout();
                     showBuffering(false);
-                    handlePlaybackError();
-                }
-
-                @Override
-                public void onIsPlayingChanged(boolean isPlaying) {
-                    if (isPlaying) {
+                    showControlBar();
+                    totalTimeText.setText(formatTime(duration));
+                    CastState.getInstance().setDuration(duration);
+                    if (!userPaused) {
+                        mp.start();
+                        CastState.getInstance().setPlaying(true);
                         btnPlayPause.setText("暂停");
-                    } else if (exoPlayer != null
-                            && exoPlayer.getPlaybackState() == Player.STATE_READY) {
-                        btnPlayPause.setText("播放");
                     }
                 }
             });
 
-            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-            exoPlayer.setMediaItem(mediaItem);
-            exoPlayer.prepare();
-            exoPlayer.setPlayWhenReady(!userPaused);
+            ijkPlayer.setOnVideoSizeChangedListener(new IMediaPlayer.OnVideoSizeChangedListener() {
+                @Override
+                public void onVideoSizeChanged(IMediaPlayer mp, int width, int height, int sar_num, int sar_den) {
+                    Log.d(TAG, "onVideoSizeChanged: " + width + "x" + height);
+                }
+            });
+
+            ijkPlayer.setOnCompletionListener(new IMediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(IMediaPlayer mp) {
+                    Log.d(TAG, "onCompletion");
+                    cancelBufferingTimeout();
+                    showBuffering(false);
+                    CastState.getInstance().setPlaying(false);
+                    btnPlayPause.setText("重播");
+                }
+            });
+
+            ijkPlayer.setOnErrorListener(new IMediaPlayer.OnErrorListener() {
+                @Override
+                public boolean onError(IMediaPlayer mp, int what, int extra) {
+                    Log.e(TAG, "onError: what=" + what + ", extra=" + extra);
+                    cancelBufferingTimeout();
+                    showBuffering(false);
+                    handlePlaybackError();
+                    return true;
+                }
+            });
+
+            ijkPlayer.setOnInfoListener(new IMediaPlayer.OnInfoListener() {
+                @Override
+                public boolean onInfo(IMediaPlayer mp, int what, int extra) {
+                    switch (what) {
+                        case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
+                            Log.d(TAG, "MEDIA_INFO_BUFFERING_START");
+                            showBuffering(true);
+                            startBufferingTimeout();
+                            break;
+                        case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
+                            Log.d(TAG, "MEDIA_INFO_BUFFERING_END");
+                            cancelBufferingTimeout();
+                            showBuffering(false);
+                            break;
+                    }
+                    return true;
+                }
+            });
+
+            ijkPlayer.prepareAsync();
+            surfaceView.setKeepScreenOn(true);
 
         } catch (Exception e) {
             Log.e(TAG, "playVideo error", e);
@@ -427,16 +439,16 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void pausePlay() {
-        if (exoPlayer != null) {
-            exoPlayer.setPlayWhenReady(false);
+        if (ijkPlayer != null && isPrepared) {
+            ijkPlayer.pause();
             userPaused = true;
             btnPlayPause.setText("播放");
         }
     }
 
     private void resumePlay() {
-        if (exoPlayer != null) {
-            exoPlayer.setPlayWhenReady(true);
+        if (ijkPlayer != null && isPrepared) {
+            ijkPlayer.start();
             userPaused = false;
             btnPlayPause.setText("暂停");
         }
@@ -461,25 +473,28 @@ public class CastPlayerActivity extends AppCompatActivity {
         pendingUrl = "";
         pendingMimeType = "";
         retryCount = 0;
+        isPrepared = false;
+        duration = 0;
     }
 
     private void seekTo(long position) {
-        if (exoPlayer != null) {
-            exoPlayer.seekTo(position);
+        if (ijkPlayer != null && isPrepared) {
+            ijkPlayer.seekTo(position);
         }
     }
 
     private void releasePlayer() {
-        if (exoPlayer != null) {
+        if (ijkPlayer != null) {
             try {
-                exoPlayer.stop();
-                exoPlayer.clearMediaItems();
-                exoPlayer.setVideoSurfaceView(null);
-                exoPlayer.release();
+                ijkPlayer.stop();
+                ijkPlayer.setDisplay(null);
+                ijkPlayer.release();
             } catch (Exception ignored) {}
-            exoPlayer = null;
+            ijkPlayer = null;
         }
         userPaused = false;
+        isPrepared = false;
+        duration = 0;
         if (surfaceView != null) {
             surfaceView.setKeepScreenOn(false);
         }
@@ -495,11 +510,10 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void updateProgress() {
-        if (exoPlayer != null && exoPlayer.getDuration() > 0) {
+        if (ijkPlayer != null && isPrepared && duration > 0) {
             try {
-                long pos = exoPlayer.getCurrentPosition();
-                long dur = exoPlayer.getDuration();
-                seekBar.setProgress((int) (pos * 100 / dur));
+                long pos = ijkPlayer.getCurrentPosition();
+                seekBar.setProgress((int) (pos * 100 / duration));
                 currentTimeText.setText(formatTime(pos));
                 CastState.getInstance().setPosition(pos);
             } catch (Exception ignored) {}
@@ -514,7 +528,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         controlBarVisible = true;
         controlBar.setVisibility(View.VISIBLE);
         mainHandler.removeCallbacks(hideControlBarRunnable);
-        mainHandler.postDelayed(hideControlBarRunnable, 5000);
+        mainHandler.postDelayed(hideControlBarRunnable, 8000);
+        btnPlayPause.requestFocus();
     }
 
     private void hideControlBar() {
@@ -552,7 +567,7 @@ public class CastPlayerActivity extends AppCompatActivity {
                 if (controlBarVisible) {
                     return super.onKeyDown(keyCode, event);
                 }
-                if (exoPlayer != null) {
+                if (ijkPlayer != null && isPrepared) {
                     togglePlayPause();
                 }
                 return true;
@@ -572,27 +587,27 @@ public class CastPlayerActivity extends AppCompatActivity {
                 break;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (!controlBarVisible && exoPlayer != null) {
+                if (!controlBarVisible && ijkPlayer != null && isPrepared) {
                     showControlBar();
                     btnPlayPause.requestFocus();
                     return true;
                 }
                 break;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (exoPlayer != null) {
+                if (ijkPlayer != null && isPrepared) {
                     togglePlayPause();
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                if (exoPlayer != null) {
-                    long pos = exoPlayer.getCurrentPosition();
-                    long dur = exoPlayer.getDuration();
+                if (ijkPlayer != null && isPrepared) {
+                    long pos = ijkPlayer.getCurrentPosition();
+                    long dur = ijkPlayer.getDuration();
                     seekTo(Math.min(pos + SEEK_STEP, dur));
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_REWIND:
-                if (exoPlayer != null) {
-                    long pos = exoPlayer.getCurrentPosition();
+                if (ijkPlayer != null && isPrepared) {
+                    long pos = ijkPlayer.getCurrentPosition();
                     seekTo(Math.max(pos - SEEK_STEP, 0));
                 }
                 return true;
@@ -608,5 +623,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         mainHandler.removeCallbacks(hideControlBarRunnable);
         releasePlayer();
         CastState.getInstance().removeListener(playerListener);
+        IjkMediaPlayer.native_profileEnd();
     }
 }

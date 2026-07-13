@@ -43,9 +43,10 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:background="#80000000"
-        android:padding="12dp"
-        android:visibility="gone">
+        android:background="#CC000000"
+        android:padding="16dp"
+        android:visibility="gone"
+        android:descendantFocusability="afterDescendants">
 
         <!-- 进度条 -->
         <LinearLayout
@@ -53,7 +54,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="12dp">
 
             <TextView
                 android:id="@+id/currentTime"
@@ -69,8 +70,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginHorizontal="8dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
+                android:focusable="false"
+                android:clickable="false"
                 android:max="100"
                 android:progress="0" />
 
@@ -90,63 +91,65 @@
             android:orientation="horizontal"
             android:gravity="center">
 
-            <TextView
+            <Button
                 android:id="@+id/btnBackward"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:text="快退"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:nextFocusRight="@id/btnPlayPause"
+                android:nextFocusUp="@id/seekBar"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:background="@drawable/bg_btn_secondary" />
+                android:clickable="true" />
 
-            <TextView
+            <Button
                 android:id="@+id/btnPlayPause"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_weight="1.5"
+                android:layout_height="48dp"
+                android:layout_weight="1"
                 android:layout_marginHorizontal="8dp"
-                android:gravity="center"
                 android:text="暂停"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
+                android:background="@drawable/bg_btn_primary"
+                android:nextFocusLeft="@id/btnBackward"
+                android:nextFocusRight="@id/btnForward"
+                android:nextFocusUp="@id/seekBar"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:background="@drawable/bg_btn_primary" />
+                android:clickable="true" />
 
-            <TextView
+            <Button
                 android:id="@+id/btnForward"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:text="快进"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:nextFocusLeft="@id/btnPlayPause"
+                android:nextFocusRight="@id/btnStop"
+                android:nextFocusUp="@id/seekBar"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:background="@drawable/bg_btn_secondary" />
+                android:clickable="true" />
 
-            <TextView
+            <Button
                 android:id="@+id/btnStop"
                 android:layout_width="0dp"
-                android:layout_height="44dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
-                android:gravity="center"
                 android:text="停止"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:nextFocusLeft="@id/btnForward"
+                android:nextFocusUp="@id/seekBar"
                 android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:background="@drawable/bg_btn_secondary" />
+                android:clickable="true" />
         </LinearLayout>
 
     </LinearLayout>
