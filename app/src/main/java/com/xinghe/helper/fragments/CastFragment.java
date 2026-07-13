@@ -1,10 +1,7 @@
 package com.xinghe.helper.fragments;
 
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -31,13 +28,11 @@ public class CastFragment extends Fragment {
     private static final String TAG = "CastFragment";
 
     private TextView statusText;
-    private TextView ipText;
     private ImageView castIcon;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean playerActivityRunning = false;
 
-    // 用匿名类避免Fragment.onPause()与StateListener.onPause()方法签名冲突
     private final CastState.StateListener castListener = new CastState.StateListener() {
         @Override
         public void onPlay(String url, String mimeType) {
@@ -76,12 +71,10 @@ public class CastFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_cast, container, false);
 
         statusText = view.findViewById(R.id.statusText);
-        ipText = view.findViewById(R.id.ipText);
         castIcon = view.findViewById(R.id.castIcon);
 
         handler.postDelayed(this::startCastService, 300);
 
-        updateIpDisplay();
         updateStatus();
 
         return view;
@@ -142,32 +135,5 @@ public class CastFragment extends Fragment {
             statusText.setTextColor(0xFFFFFFFF);
             castIcon.setAlpha(0.6f);
         }
-    }
-
-    private void updateIpDisplay() {
-        String ip = getLocalIp();
-        if (ip != null) {
-            ipText.setText("设备IP：" + ip);
-        } else {
-            ipText.setText("请连接WiFi网络");
-        }
-    }
-
-    private String getLocalIp() {
-        if (getActivity() == null) return null;
-        try {
-            WifiManager wm = (WifiManager) getActivity().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            if (wm != null) {
-                WifiInfo info = wm.getConnectionInfo();
-                int ip = info.getIpAddress();
-                if (ip != 0) {
-                    return ((ip & 0xFF) + "." + ((ip >> 8) & 0xFF) + "." +
-                            ((ip >> 16) & 0xFF) + "." + ((ip >> 24) & 0xFF));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 }

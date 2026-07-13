@@ -6,23 +6,13 @@
     android:background="@drawable/bg_main_gradient"
     android:gravity="center">
 
-    <!-- 顶部标题 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="手机投屏"
-        android:textColor="#FFFFFF"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="48dp" />
-
     <!-- 投屏大图标 -->
     <ImageView
         android:id="@+id/castIcon"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
         android:src="@drawable/ic_cast_big"
-        android:layout_marginBottom="32dp" />
+        android:layout_marginBottom="40dp" />
 
     <!-- 状态文字 -->
     <TextView
@@ -31,9 +21,9 @@
         android:layout_height="wrap_content"
         android:text="等待投屏"
         android:textColor="#FFFFFF"
-        android:textSize="24sp"
+        android:textSize="30sp"
         android:textStyle="bold"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="16dp" />
 
     <!-- 设备名 -->
     <TextView
@@ -41,63 +31,130 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="星河助手投屏"
-        android:textColor="#CCCCCC"
-        android:textSize="16sp"
-        android:layout_marginBottom="8dp" />
+        android:textColor="#99CCFF"
+        android:textSize="18sp"
+        android:layout_marginBottom="80dp" />
 
-    <!-- IP地址 -->
-    <TextView
-        android:id="@+id/ipText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="设备IP：--"
-        android:textColor="#999999"
-        android:textSize="14sp"
-        android:layout_marginBottom="48dp" />
-
-    <!-- 底部提示卡片 -->
+    <!-- 提示信息卡片 -->
     <LinearLayout
-        android:layout_width="560dp"
+        android:layout_width="640dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_cast_tip"
-        android:padding="24dp"
-        android:layout_marginBottom="16dp">
+        android:padding="28dp"
+        android:layout_marginBottom="20dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- 标题行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="投屏步骤"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="20dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="1. 确保手机与电视连接同一WiFi"
-            android:textColor="#BBBBBB"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="4dp" />
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_cast_big"
+                android:layout_marginEnd="10dp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="2. 在手机视频APP中点击「投屏」按钮"
-            android:textColor="#BBBBBB"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="4dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="手机投屏"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- 步骤1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="3. 选择「星河助手投屏」即可开始播放"
-            android:textColor="#BBBBBB"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="1"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:background="@drawable/bg_step_number" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:text="确保手机与电视连接同一WiFi"
+                android:textColor="#CCCCCC"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- 步骤2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="2"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:background="@drawable/bg_step_number" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:text="在视频APP中点击「TV」投屏按钮"
+                android:textColor="#CCCCCC"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- 步骤3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="3"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:background="@drawable/bg_step_number" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="14dp"
+                android:text="选择「星河助手投屏」开始播放"
+                android:textColor="#CCCCCC"
+                android:textSize="15sp" />
+        </LinearLayout>
+
     </LinearLayout>
+
+    <!-- 底部版权/版本 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DLNA 投屏接收"
+        android:textColor="#666666"
+        android:textSize="12sp" />
 
 </LinearLayout>
