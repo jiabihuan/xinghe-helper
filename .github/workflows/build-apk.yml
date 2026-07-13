@@ -40,7 +40,16 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build APK
-        run: ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache
+        run: |
+          ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache > build.log 2>&1
+          exit_code=$?
+          if [ $exit_code -ne 0 ]; then
+            # 把最后10行错误用::error输出，这样在annotations里能看到
+            ERR=$(tail -10 build.log | tr '\n' ' ')
+            echo "::error::BUILD FAILED - $ERR"
+          fi
+          exit $exit_code
+        shell: bash
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
