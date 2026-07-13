@@ -44,21 +44,21 @@ jobs:
           ./gradlew assembleDebug assembleRelease --no-daemon --parallel --no-build-cache > build.log 2>&1
           exit_code=$?
           if [ $exit_code -ne 0 ]; then
-            # 提取关键错误信息
-            FAILURE_LINE=$(grep "FAILURE:" build.log | head -1)
-            ERROR_COUNT=$(grep -c "error:" build.log || echo 0)
-            echo "::warning::BUILD_FAILED_FAILURE_${FAILURE_LINE// /_}_ERRORS_${ERROR_COUNT}"
-            echo "::error::Build failed with ${ERROR_COUNT} errors"
+            echo "Build failed with exit code $exit_code"
           fi
           exit $exit_code
         shell: bash
 
-      - name: Upload build log
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: build-log
-          path: build.log
+      - name: Push build log on failure
+        if: failure()
+        run: |
+          mkdir -p build-reports
+          cp build.log build-reports/build-log.txt
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-reports/build-log.txt
+          git commit -m "build log for debugging" || true
+          git push origin HEAD:build-logs --force || true
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
