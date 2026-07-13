@@ -69,11 +69,12 @@ public class CastState {
     public synchronized void setAVTransportURI(String url, String metaData) {
         this.currentUrl = url;
         this.currentMimeType = guessMimeType(url);
+        this.currentTitle = extractTitle(metaData);
+        this.currentCreator = extractCreator(metaData);
         this.position = 0;
         this.duration = 0;
         this.playing = false;
         this.transportState = "STOPPED";
-        notifyPlay(url, currentMimeType);
     }
 
     public synchronized void play() {
@@ -139,5 +140,30 @@ public class CastState {
         if (lower.contains(".aac")) return "audio/aac";
         if (lower.contains(".wav")) return "audio/wav";
         return "video/mp4";
+    }
+
+    private String extractTitle(String metaData) {
+        if (metaData == null || metaData.isEmpty()) return "";
+        int start = metaData.indexOf("<dc:title>");
+        int end = metaData.indexOf("</dc:title>");
+        if (start >= 0 && end > start) {
+            return metaData.substring(start + 10, end);
+        }
+        start = metaData.indexOf("<title>");
+        end = metaData.indexOf("</title>");
+        if (start >= 0 && end > start) {
+            return metaData.substring(start + 7, end);
+        }
+        return "";
+    }
+
+    private String extractCreator(String metaData) {
+        if (metaData == null || metaData.isEmpty()) return "";
+        int start = metaData.indexOf("<dc:creator>");
+        int end = metaData.indexOf("</dc:creator>");
+        if (start >= 0 && end > start) {
+            return metaData.substring(start + 12, end);
+        }
+        return "";
     }
 }

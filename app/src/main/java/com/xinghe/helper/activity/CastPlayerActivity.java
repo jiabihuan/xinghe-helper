@@ -3,14 +3,12 @@ package com.xinghe.helper.activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
@@ -21,6 +19,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
+import com.google.android.exoplayer2.Player;
 import com.xinghe.helper.R;
 import com.xinghe.helper.cast.CastState;
 
@@ -33,7 +36,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     private static final String TAG = "CastPlayerActivity";
     private static final int SEEK_STEP = 10000;
     private static final int MAX_RETRY = 3;
-    private static final long BUFFERING_TIMEOUT = 15000; // 缓冲超时15秒
+    private static final long BUFFERING_TIMEOUT = 20000;
 
     private SurfaceView surfaceView;
     private ImageView imageView;
@@ -48,7 +51,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     private TextView currentTimeText;
     private TextView totalTimeText;
 
-    private MediaPlayer mediaPlayer;
+    private ExoPlayer exoPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Runnable updateRunnable;
     private Runnable bufferingTimeoutRunnable;
@@ -56,12 +59,8 @@ public class CastPlayerActivity extends AppCompatActivity {
     private String currentUrl = "";
     private String currentMimeType = "";
     private int retryCount = 0;
-    private boolean isPrepared = false;
-    private boolean surfaceReady = false;
     private boolean userPaused = false;
     private boolean controlBarVisible = false;
-    private boolean pendingPlay = false;
-    private int pendingSeekTo = -1;
 
     private final Runnable hideControlBarRunnable = this::hideControlBar;
 
@@ -83,7 +82,7 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         @Override
         public void onSeek(long position) {
-            mainHandler.post(() -> seekTo((int) position));
+            mainHandler.post(() -> seekTo(position));
         }
 
         @Override
@@ -123,40 +122,8 @@ public class CastPlayerActivity extends AppCompatActivity {
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                Log.d(TAG, "surfaceCreated");
-                surfaceReady = true;
-                if (mediaPlayer != null && isPrepared) {
-                    try {
-                        mediaPlayer.setDisplay(holder);
-                    } catch (Exception ignored) {}
-                } else if (pendingPlay) {
-                    // Surface 才准备好，之前有等待播放的请求
-                    pendingPlay = false;
-                    prepareAndPlay();
-                }
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {}
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-                Log.d(TAG, "surfaceDestroyed");
-                surfaceReady = false;
-                if (mediaPlayer != null) {
-                    try {
-                        mediaPlayer.setDisplay(null);
-                    } catch (Exception ignored) {}
-                }
-            }
-        });
-
         CastState.getInstance().addListener(playerListener);
 
-        // 进度更新，1秒一次减少性能消耗
         updateRunnable = new Runnable() {
             @Override
             public void run() {
@@ -166,25 +133,14 @@ public class CastPlayerActivity extends AppCompatActivity {
         };
         mainHandler.postDelayed(updateRunnable, 1000);
 
-        // 缓冲超时检测
         bufferingTimeoutRunnable = () -> {
-            if (mediaPlayer != null && !isPrepared) {
-                Log.w(TAG, "缓冲超时，准备重试");
-                handlePlaybackError(MediaPlayer.MEDIA_ERROR_TIMED_OUT, 0);
+            if (exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
+                Log.w(TAG, "缓冲超时，重试播放");
+                handlePlaybackError();
             }
         };
 
-        btnPlayPause.setOnClickListener(v -> {
-            if (mediaPlayer != null && isPrepared) {
-                if (mediaPlayer.isPlaying()) {
-                    pausePlay();
-                    CastState.getInstance().pause();
-                } else {
-                    resumePlay();
-                    CastState.getInstance().setPlaying(true);
-                }
-            }
-        });
+        btnPlayPause.setOnClickListener(v -> togglePlayPause());
 
         btnStop.setOnClickListener(v -> {
             stopPlay();
@@ -192,19 +148,19 @@ public class CastPlayerActivity extends AppCompatActivity {
         });
 
         btnForward.setOnClickListener(v -> {
-            if (mediaPlayer != null && isPrepared) {
-                int pos = mediaPlayer.getCurrentPosition();
-                int dur = mediaPlayer.getDuration();
-                int target = Math.min(pos + SEEK_STEP, dur);
+            if (exoPlayer != null) {
+                long pos = exoPlayer.getCurrentPosition();
+                long dur = exoPlayer.getDuration();
+                long target = Math.min(pos + SEEK_STEP, dur);
                 seekTo(target);
                 CastState.getInstance().setPosition(target);
             }
         });
 
         btnBackward.setOnClickListener(v -> {
-            if (mediaPlayer != null && isPrepared) {
-                int pos = mediaPlayer.getCurrentPosition();
-                int target = Math.max(pos - SEEK_STEP, 0);
+            if (exoPlayer != null) {
+                long pos = exoPlayer.getCurrentPosition();
+                long target = Math.max(pos - SEEK_STEP, 0);
                 seekTo(target);
                 CastState.getInstance().setPosition(target);
             }
@@ -213,9 +169,9 @@ public class CastPlayerActivity extends AppCompatActivity {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null && isPrepared) {
-                    int dur = mediaPlayer.getDuration();
-                    int target = dur * progress / 100;
+                if (fromUser && exoPlayer != null && exoPlayer.getDuration() > 0) {
+                    long dur = exoPlayer.getDuration();
+                    long target = dur * progress / 100;
                     currentTimeText.setText(formatTime(target));
                 }
             }
@@ -225,26 +181,37 @@ public class CastPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if (mediaPlayer != null && isPrepared) {
-                    int dur = mediaPlayer.getDuration();
-                    int target = dur * seekBar.getProgress() / 100;
+                if (exoPlayer != null && exoPlayer.getDuration() > 0) {
+                    long dur = exoPlayer.getDuration();
+                    long target = dur * seekBar.getProgress() / 100;
                     seekTo(target);
                     CastState.getInstance().setPosition(target);
                 }
             }
         });
 
-        // 如果已有投屏内容，直接播放
+        // 如果已有投屏内容且正在播放，直接播放
         CastState state = CastState.getInstance();
         if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty()) {
             playMedia(state.getCurrentUrl(), state.getCurrentMimeType());
         }
     }
 
+    private void togglePlayPause() {
+        if (exoPlayer == null) return;
+        if (exoPlayer.isPlaying()) {
+            pausePlay();
+            CastState.getInstance().pause();
+        } else {
+            resumePlay();
+            CastState.getInstance().setPlaying(true);
+        }
+    }
+
     private void playMedia(String url, String mimeType) {
         if (url == null || url.isEmpty()) return;
 
-        if (url.equals(currentUrl) && isPrepared) {
+        if (url.equals(currentUrl) && exoPlayer != null) {
             resumePlay();
             return;
         }
@@ -252,7 +219,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         currentUrl = url;
         currentMimeType = mimeType != null ? mimeType : "video/mp4";
         retryCount = 0;
-        pendingSeekTo = -1;
 
         if (currentMimeType.startsWith("image/")) {
             playImage(url);
@@ -272,81 +238,67 @@ public class CastPlayerActivity extends AppCompatActivity {
         startBufferingTimeout();
 
         try {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(this, Uri.parse(url));
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mediaPlayer.setScreenOnWhilePlaying(true);
-            mediaPlayer.setWakeMode(this, android.os.PowerManager.PARTIAL_WAKE_LOCK);
+            exoPlayer = new ExoPlayer.Builder(this).build();
+            exoPlayer.setVideoSurfaceView(surfaceView);
+            exoPlayer.setWakeMode(C.POWER_WAKE_LOCK);
+            exoPlayer.setScreenOnWhilePlaying(true);
 
-            mediaPlayer.setOnPreparedListener(mp -> {
-                Log.d(TAG, "onPrepared");
-                isPrepared = true;
-                cancelBufferingTimeout();
-                showBuffering(false);
-                showControlBar();
-                int dur = mp.getDuration();
-                totalTimeText.setText(formatTime(dur));
-                CastState.getInstance().setDuration(dur);
-
-                if (pendingSeekTo >= 0) {
-                    mp.seekTo(pendingSeekTo);
-                    pendingSeekTo = -1;
+            exoPlayer.addListener(new Player.Listener() {
+                @Override
+                public void onPlaybackStateChanged(int playbackState) {
+                    switch (playbackState) {
+                        case Player.STATE_READY:
+                            Log.d(TAG, "STATE_READY");
+                            cancelBufferingTimeout();
+                            showBuffering(false);
+                            showControlBar();
+                            long dur = exoPlayer.getDuration();
+                            totalTimeText.setText(formatTime(dur));
+                            CastState.getInstance().setDuration(dur);
+                            if (!userPaused) {
+                                exoPlayer.setPlayWhenReady(true);
+                                CastState.getInstance().setPlaying(true);
+                                btnPlayPause.setText("暂停");
+                            }
+                            break;
+                        case Player.STATE_BUFFERING:
+                            Log.d(TAG, "STATE_BUFFERING");
+                            showBuffering(true);
+                            startBufferingTimeout();
+                            break;
+                        case Player.STATE_ENDED:
+                            Log.d(TAG, "STATE_ENDED");
+                            cancelBufferingTimeout();
+                            showBuffering(false);
+                            CastState.getInstance().setPlaying(false);
+                            btnPlayPause.setText("重播");
+                            break;
+                    }
                 }
 
-                if (!userPaused) {
-                    mp.start();
-                    CastState.getInstance().setPlaying(true);
-                    btnPlayPause.setText("暂停");
+                @Override
+                public void onPlayerError(PlaybackException error) {
+                    Log.e(TAG, "onPlayerError", error);
+                    cancelBufferingTimeout();
+                    showBuffering(false);
+                    handlePlaybackError();
+                }
+
+                @Override
+                public void onIsPlayingChanged(boolean isPlaying) {
+                    if (isPlaying) {
+                        btnPlayPause.setText("暂停");
+                    } else if (exoPlayer != null
+                            && exoPlayer.getPlaybackState() == Player.STATE_READY) {
+                        btnPlayPause.setText("播放");
+                    }
                 }
             });
 
-            mediaPlayer.setOnBufferingUpdateListener((mp, percent) -> {
-                Log.d(TAG, "buffering: " + percent + "%");
-            });
-
-            mediaPlayer.setOnInfoListener((mp, what, extra) -> {
-                switch (what) {
-                    case MediaPlayer.MEDIA_INFO_BUFFERING_START:
-                        Log.d(TAG, "BUFFERING_START");
-                        showBuffering(true);
-                        startBufferingTimeout();
-                        return true;
-                    case MediaPlayer.MEDIA_INFO_BUFFERING_END:
-                        Log.d(TAG, "BUFFERING_END");
-                        cancelBufferingTimeout();
-                        showBuffering(false);
-                        return true;
-                    case MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
-                        cancelBufferingTimeout();
-                        showBuffering(false);
-                        return true;
-                }
-                return false;
-            });
-
-            mediaPlayer.setOnCompletionListener(mp -> {
-                Log.d(TAG, "onCompletion");
-                CastState.getInstance().setPlaying(false);
-                btnPlayPause.setText("重播");
-            });
-
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                Log.e(TAG, "onError what=" + what + " extra=" + extra);
-                cancelBufferingTimeout();
-                showBuffering(false);
-                handlePlaybackError(what, extra);
-                return true;
-            });
-
-            // 等 Surface 准备好再 prepare
-            if (surfaceReady && surfaceView.getHolder().getSurface() != null
-                    && surfaceView.getHolder().getSurface().isValid()) {
-                mediaPlayer.setDisplay(surfaceView.getHolder());
-                prepareAndPlay();
-            } else {
-                pendingPlay = true;
-                Log.d(TAG, "Surface not ready, pending play");
-            }
+            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+            exoPlayer.setMediaItem(mediaItem);
+            exoPlayer.prepare();
+            exoPlayer.setPlayWhenReady(!userPaused);
 
         } catch (Exception e) {
             Log.e(TAG, "playVideo error", e);
@@ -357,29 +309,10 @@ public class CastPlayerActivity extends AppCompatActivity {
         }
     }
 
-    private void prepareAndPlay() {
-        if (mediaPlayer == null) return;
-        try {
-            mediaPlayer.prepareAsync();
-        } catch (Exception e) {
-            Log.e(TAG, "prepareAsync error", e);
-            handlePlaybackError(MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
-        }
-    }
-
-    private void startBufferingTimeout() {
-        cancelBufferingTimeout();
-        mainHandler.postDelayed(bufferingTimeoutRunnable, BUFFERING_TIMEOUT);
-    }
-
-    private void cancelBufferingTimeout() {
-        mainHandler.removeCallbacks(bufferingTimeoutRunnable);
-    }
-
-    private void handlePlaybackError(int what, int extra) {
+    private void handlePlaybackError() {
         if (retryCount < MAX_RETRY) {
             retryCount++;
-            Log.w(TAG, "重试播放 " + retryCount + "/" + MAX_RETRY + " (what=" + what + ")");
+            Log.w(TAG, "重试播放 " + retryCount + "/" + MAX_RETRY);
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("网络异常，重试中(" + retryCount + "/" + MAX_RETRY + ")...");
             String url = currentUrl;
@@ -393,6 +326,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void playImage(String url) {
+        releasePlayer();
         surfaceView.setVisibility(View.GONE);
         imageView.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.GONE);
@@ -423,16 +357,16 @@ public class CastPlayerActivity extends AppCompatActivity {
     }
 
     private void pausePlay() {
-        if (mediaPlayer != null && isPrepared && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
+        if (exoPlayer != null) {
+            exoPlayer.setPlayWhenReady(false);
             userPaused = true;
             btnPlayPause.setText("播放");
         }
     }
 
     private void resumePlay() {
-        if (mediaPlayer != null && isPrepared && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
+        if (exoPlayer != null) {
+            exoPlayer.setPlayWhenReady(true);
             userPaused = false;
             btnPlayPause.setText("暂停");
         }
@@ -450,51 +384,32 @@ public class CastPlayerActivity extends AppCompatActivity {
         totalTimeText.setText("00:00");
         seekBar.setProgress(0);
         currentUrl = "";
-        isPrepared = false;
         userPaused = false;
-        pendingPlay = false;
-        pendingSeekTo = -1;
     }
 
-    private void seekTo(int position) {
-        if (mediaPlayer != null && isPrepared) {
-            try {
-                mediaPlayer.seekTo(position);
-            } catch (Exception e) {
-                Log.e(TAG, "seekTo error", e);
-            }
-        } else {
-            pendingSeekTo = position;
+    private void seekTo(long position) {
+        if (exoPlayer != null) {
+            exoPlayer.seekTo(position);
         }
     }
 
     private void releasePlayer() {
-        if (mediaPlayer != null) {
+        if (exoPlayer != null) {
             try {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.stop();
-                }
+                exoPlayer.stop();
+                exoPlayer.release();
             } catch (Exception ignored) {}
-            try {
-                mediaPlayer.reset();
-            } catch (Exception ignored) {}
-            try {
-                mediaPlayer.release();
-            } catch (Exception ignored) {}
-            mediaPlayer = null;
+            exoPlayer = null;
         }
-        isPrepared = false;
         userPaused = false;
     }
 
     private void updateProgress() {
-        if (mediaPlayer != null && isPrepared) {
+        if (exoPlayer != null && exoPlayer.getDuration() > 0) {
             try {
-                int pos = mediaPlayer.getCurrentPosition();
-                int dur = mediaPlayer.getDuration();
-                if (dur > 0) {
-                    seekBar.setProgress(pos * 100 / dur);
-                }
+                long pos = exoPlayer.getCurrentPosition();
+                long dur = exoPlayer.getDuration();
+                seekBar.setProgress((int) (pos * 100 / dur));
                 currentTimeText.setText(formatTime(pos));
                 CastState.getInstance().setPosition(pos);
             } catch (Exception ignored) {}
@@ -517,12 +432,12 @@ public class CastPlayerActivity extends AppCompatActivity {
         controlBar.setVisibility(View.GONE);
     }
 
-    private String formatTime(int ms) {
+    private String formatTime(long ms) {
         if (ms <= 0) return "00:00";
-        int totalSec = ms / 1000;
-        int h = totalSec / 3600;
-        int m = (totalSec % 3600) / 60;
-        int s = totalSec % 60;
+        long totalSec = ms / 1000;
+        long h = totalSec / 3600;
+        long m = (totalSec % 3600) / 60;
+        long s = totalSec % 60;
         if (h > 0) {
             return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
         }
@@ -540,14 +455,8 @@ public class CastPlayerActivity extends AppCompatActivity {
                 if (controlBarVisible) {
                     return super.onKeyDown(keyCode, event);
                 }
-                if (mediaPlayer != null && isPrepared) {
-                    if (mediaPlayer.isPlaying()) {
-                        pausePlay();
-                        CastState.getInstance().pause();
-                    } else {
-                        resumePlay();
-                        CastState.getInstance().setPlaying(true);
-                    }
+                if (exoPlayer != null) {
+                    togglePlayPause();
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
@@ -566,33 +475,27 @@ public class CastPlayerActivity extends AppCompatActivity {
                 break;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (!controlBarVisible && mediaPlayer != null && isPrepared) {
+                if (!controlBarVisible && exoPlayer != null) {
                     showControlBar();
                     btnPlayPause.requestFocus();
                     return true;
                 }
                 break;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (mediaPlayer != null && isPrepared) {
-                    if (mediaPlayer.isPlaying()) {
-                        pausePlay();
-                        CastState.getInstance().pause();
-                    } else {
-                        resumePlay();
-                        CastState.getInstance().setPlaying(true);
-                    }
+                if (exoPlayer != null) {
+                    togglePlayPause();
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                if (mediaPlayer != null && isPrepared) {
-                    int pos = mediaPlayer.getCurrentPosition();
-                    int dur = mediaPlayer.getDuration();
+                if (exoPlayer != null) {
+                    long pos = exoPlayer.getCurrentPosition();
+                    long dur = exoPlayer.getDuration();
                     seekTo(Math.min(pos + SEEK_STEP, dur));
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_REWIND:
-                if (mediaPlayer != null && isPrepared) {
-                    int pos = mediaPlayer.getCurrentPosition();
+                if (exoPlayer != null) {
+                    long pos = exoPlayer.getCurrentPosition();
                     seekTo(Math.max(pos - SEEK_STEP, 0));
                 }
                 return true;
