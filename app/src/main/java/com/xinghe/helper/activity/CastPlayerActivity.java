@@ -24,6 +24,11 @@ import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.DefaultLoadControl;
+import com.google.android.exoplayer2.LoadControl;
+import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.xinghe.helper.R;
 import com.xinghe.helper.cast.CastState;
 
@@ -35,8 +40,8 @@ public class CastPlayerActivity extends AppCompatActivity {
 
     private static final String TAG = "CastPlayerActivity";
     private static final int SEEK_STEP = 10000;
-    private static final int MAX_RETRY = 3;
-    private static final long BUFFERING_TIMEOUT = 20000;
+    private static final int MAX_RETRY = 5;
+    private static final long BUFFERING_TIMEOUT = 60000;
 
     private SurfaceView surfaceView;
     private ImageView imageView;
@@ -282,9 +287,38 @@ public class CastPlayerActivity extends AppCompatActivity {
         startBufferingTimeout();
 
         try {
-            exoPlayer = new ExoPlayer.Builder(this).build();
+            LoadControl loadControl = new DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(
+                            10000,
+                            60000,
+                            1500,
+                            3000
+                    )
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build();
+
+            DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
+                    .setConnectTimeoutMs(15000)
+                    .setReadTimeoutMs(30000)
+                    .setAllowCrossProtocolRedirects(true)
+                    .setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+
+            DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(
+                    this, httpDataSourceFactory);
+
+            DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
+                    .setDataSourceFactory(dataSourceFactory);
+
+            exoPlayer = new ExoPlayer.Builder(this)
+                    .setLoadControl(loadControl)
+                    .setMediaSourceFactory(mediaSourceFactory)
+                    .setWakeMode(C.WAKE_MODE_NETWORK)
+                    .setHandleAudioBecomingNoisy(true)
+                    .setSeekForwardIncrementMs(SEEK_STEP)
+                    .setSeekBackIncrementMs(SEEK_STEP)
+                    .build();
+
             exoPlayer.setVideoSurfaceView(surfaceView);
-            exoPlayer.setWakeMode(C.WAKE_MODE_NETWORK);
             surfaceView.setKeepScreenOn(true);
 
             exoPlayer.addListener(new Player.Listener() {
@@ -364,11 +398,12 @@ public class CastPlayerActivity extends AppCompatActivity {
             statusText.setText("网络异常，重试中(" + retryCount + "/" + MAX_RETRY + ")...");
             String url = currentUrl;
             currentUrl = "";
+            long delay = retryCount == 1 ? 1000 : 2000L * retryCount;
             mainHandler.postDelayed(() -> {
                 if (!isFinishing() && !isDestroyed()) {
                     playVideo(url);
                 }
-            }, 2000L * retryCount);
+            }, delay);
         } else {
             statusText.setVisibility(View.VISIBLE);
             statusText.setText("播放失败，请检查网络或视频源");
