@@ -26,17 +26,49 @@ import com.xinghe.helper.activity.CastPlayerActivity;
 import com.xinghe.helper.cast.CastService;
 import com.xinghe.helper.cast.CastState;
 
-public class CastFragment extends Fragment implements CastState.StateListener {
+public class CastFragment extends Fragment {
 
     private static final String TAG = "CastFragment";
 
     private TextView statusText;
     private TextView ipText;
-    private TextView deviceNameText;
     private ImageView castIcon;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private boolean playerActivityRunning = false;
+
+    // 用匿名类避免Fragment.onPause()与StateListener.onPause()方法签名冲突
+    private final CastState.StateListener castListener = new CastState.StateListener() {
+        @Override
+        public void onPlay(String url, String mimeType) {
+            if (getActivity() == null || !isAdded() || playerActivityRunning) return;
+            handler.post(() -> {
+                if (getActivity() == null || !isAdded() || playerActivityRunning) return;
+                playerActivityRunning = true;
+                Intent intent = new Intent(getActivity(), CastPlayerActivity.class);
+                startActivity(intent);
+            });
+        }
+
+        @Override
+        public void onPause() {
+            // 播放器Activity处理
+        }
+
+        @Override
+        public void onStop() {
+            handler.post(CastFragment.this::updateStatus);
+        }
+
+        @Override
+        public void onSeek(long position) {}
+
+        @Override
+        public void onVolume(int volume) {}
+
+        @Override
+        public void onMute(boolean mute) {}
+    };
 
     @Nullable
     @Override
@@ -45,7 +77,6 @@ public class CastFragment extends Fragment implements CastState.StateListener {
 
         statusText = view.findViewById(R.id.statusText);
         ipText = view.findViewById(R.id.ipText);
-        deviceNameText = view.findViewById(R.id.deviceNameText);
         castIcon = view.findViewById(R.id.castIcon);
 
         handler.postDelayed(this::startCastService, 300);
@@ -60,57 +91,22 @@ public class CastFragment extends Fragment implements CastState.StateListener {
     public void onResume() {
         super.onResume();
         playerActivityRunning = false;
-        CastState.getInstance().addListener(this);
+        CastState.getInstance().addListener(castListener);
         updateStatus();
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        CastState.getInstance().removeListener(this);
+        CastState.getInstance().removeListener(castListener);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         handler.removeCallbacksAndMessages(null);
-        CastState.getInstance().removeListener(this);
+        CastState.getInstance().removeListener(castListener);
     }
-
-    // ===== CastState.StateListener =====
-
-    @Override
-    public void onPlay(String url, String mimeType) {
-        // 收到投屏内容，自动跳转到播放器
-        if (getActivity() == null || !isAdded() || playerActivityRunning) return;
-        handler.post(() -> {
-            if (getActivity() == null || !isAdded() || playerActivityRunning) return;
-            playerActivityRunning = true;
-            Intent intent = new Intent(getActivity(), CastPlayerActivity.class);
-            startActivity(intent);
-        });
-    }
-
-    @Override
-    public void onPause() {
-        // 播放器Activity处理
-    }
-
-    @Override
-    public void onStop() {
-        handler.post(this::updateStatus);
-    }
-
-    @Override
-    public void onSeek(long position) {}
-
-    @Override
-    public void onVolume(int volume) {}
-
-    @Override
-    public void onMute(boolean mute) {}
-
-    // ===== 内部方法 =====
 
     private void startCastService() {
         if (getActivity() == null || !isAdded()) return;
