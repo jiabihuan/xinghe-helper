@@ -5,9 +5,7 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.LruCache;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -30,14 +28,13 @@ import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.DownloadManager;
-import com.xinghe.helper.util.IconLoader;
-import com.xinghe.helper.util.OkHttpUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -45,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -69,9 +67,8 @@ public class AppListFragment extends Fragment {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newCachedThreadPool();
-    private final ExecutorService iconLoaderExecutor = Executors.newFixedThreadPool(8);
     private AppAdapter adapter;
-    private LruCache<String, Bitmap> iconCache;
+    private final ConcurrentHashMap<String, Bitmap> iconCache = new ConcurrentHashMap<>();
 
     private View downloadPopupView;
     private LinearLayout downloadsContainer;
@@ -103,17 +100,6 @@ public class AppListFragment extends Fragment {
         appRecyclerView = view.findViewById(R.id.appRecyclerView);
         tvSelectedCount = view.findViewById(R.id.tvSelectedCount);
         btnDownload = view.findViewById(R.id.btnDownload);
-
-        if (iconCache == null) {
-            int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-            int cacheSize = maxMemory / 8;
-            iconCache = new LruCache<String, Bitmap>(cacheSize) {
-                @Override
-                protected int sizeOf(String key, Bitmap bitmap) {
-                    return bitmap.getByteCount() / 1024;
-                }
-            };
-        }
 
         tvCodeInfo.setText("口令: " + code);
 
@@ -180,29 +166,56 @@ public class AppListFragment extends Fragment {
     public void onDestroyView() {
         dismissDownloadPopup();
         executor.shutdownNow();
-        iconLoaderExecutor.shutdownNow();
-        if (iconCache != null) {
-            iconCache.evictAll();
-            iconCache = null;
-        }
         super.onDestroyView();
     }
 
     private void loadAppList() {
         executor.submit(() -> {
-            JSONObject root = null;
+            HttpURLConnection conn = null;
             try {
+                JSONObject root = null;
+                
                 String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
-                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
-                if (response != null && !response.isEmpty()) {
-                    root = new JSONObject(response);
+                URL url = new URL(multiUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+                    root = new JSONObject(response.toString());
                 }
+                conn.disconnect();
+                conn = null;
 
                 if (root == null) {
                     String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
-                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
-                    if (singleResponse != null && !singleResponse.isEmpty()) {
-                        root = new JSONObject(singleResponse);
+                    url = new URL(singleUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(conn.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        root = new JSONObject(response.toString());
                     }
                 }
 
@@ -242,20 +255,17 @@ public class AppListFragment extends Fragment {
                         }
                     });
                 }
-            } catch (IOException e) {
+            } catch (final Exception e) {
                 mainHandler.post(() -> {
                     Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
                     if (getActivity() != null) {
                         getActivity().onBackPressed();
                     }
                 });
-            } catch (Exception e) {
-                mainHandler.post(() -> {
-                    Toast.makeText(getContext(), "网络错误，请检查网络连接", Toast.LENGTH_SHORT).show();
-                    if (getActivity() != null) {
-                        getActivity().onBackPressed();
-                    }
-                });
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         });
     }
@@ -493,6 +503,7 @@ public class AppListFragment extends Fragment {
 
             @Override
             public void onComplete(int index, java.io.File apkFile) {
+                updateProgressItem(index, 100, 0, 0, true);
             }
 
             @Override
@@ -508,16 +519,6 @@ public class AppListFragment extends Fragment {
             @Override
             public void onAllComplete() {
                 mainHandler.postDelayed(() -> dismissDownloadPopup(), 2000);
-            }
-
-            @Override
-            public void onInstallStart(int index) {
-                updateInstallStart(index);
-            }
-
-            @Override
-            public void onInstallResult(int index, boolean success, String message) {
-                updateInstallResult(index, success, message);
             }
         });
 
@@ -544,7 +545,6 @@ public class AppListFragment extends Fragment {
         for (int i = 0; i < apps.size(); i++) {
             final int index = i;
             View itemView = LayoutInflater.from(getContext()).inflate(R.layout.item_download_big, downloadsContainer, false);
-            ImageView ivIcon = itemView.findViewById(R.id.ivAppIcon);
             TextView tvName = itemView.findViewById(R.id.tvAppName);
             TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
             TextView tvPercent = itemView.findViewById(R.id.tvPercent);
@@ -557,11 +557,6 @@ public class AppListFragment extends Fragment {
             tvPercent.setText("0%");
             progressBar.setProgress(0);
             tvStatus.setText("等待中...");
-
-            String iconUrl = apps.get(i).getIconUrl();
-            if (iconUrl != null && iconUrl.length() > 0) {
-                IconLoader.getInstance().loadIcon(iconUrl, ivIcon);
-            }
 
             btnCancel.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -726,61 +721,6 @@ public class AppListFragment extends Fragment {
         }
     }
 
-    private void updateInstallStart(int index) {
-        if (downloadsContainer == null) return;
-        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
-        View itemView = downloadsContainer.getChildAt(index);
-        if (itemView == null) return;
-
-        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
-        TextView btnCancel = itemView.findViewById(R.id.btnCancel);
-        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
-        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-        tvStatus.setText("正在安装...");
-        tvStatus.setTextColor(getResources().getColor(R.color.accent));
-        if (tvPercent != null) tvPercent.setText("安装中");
-        if (progressBar != null) {
-            progressBar.setIndeterminate(true);
-            progressBar.setProgressTintList(getResources().getColorStateList(R.color.accent));
-        }
-        if (btnCancel != null) btnCancel.setVisibility(View.GONE);
-    }
-
-    private void updateInstallResult(int index, boolean success, String message) {
-        if (downloadsContainer == null) return;
-        if (index < 0 || index >= downloadsContainer.getChildCount()) return;
-        View itemView = downloadsContainer.getChildAt(index);
-        if (itemView == null) return;
-
-        TextView tvStatus = itemView.findViewById(R.id.tvStatus);
-        TextView tvPercent = itemView.findViewById(R.id.tvPercent);
-        ProgressBar progressBar = itemView.findViewById(R.id.progressBar);
-        if (success) {
-            tvStatus.setText("已安装");
-            tvStatus.setTextColor(getResources().getColor(R.color.success));
-            if (tvPercent != null) tvPercent.setText("✓");
-            if (progressBar != null) {
-                progressBar.setIndeterminate(false);
-                progressBar.setProgress(100);
-                progressBar.setProgressTintList(getResources().getColorStateList(R.color.success));
-            }
-        } else {
-            if ("手动安装中".equals(message)) {
-                tvStatus.setText("正在安装...");
-                tvStatus.setTextColor(getResources().getColor(R.color.accent));
-                if (tvPercent != null) tvPercent.setText("安装中");
-            } else {
-                tvStatus.setText("安装失败: " + message);
-                tvStatus.setTextColor(getResources().getColor(R.color.error));
-                if (tvPercent != null) tvPercent.setText("✗");
-                if (progressBar != null) {
-                    progressBar.setIndeterminate(false);
-                    progressBar.setProgressTintList(getResources().getColorStateList(R.color.error));
-                }
-            }
-        }
-    }
-
     private void dismissDownloadPopup() {
         if (downloadPopup != null && downloadPopup.isShowing()) {
             downloadPopup.dismiss();
@@ -796,10 +736,6 @@ public class AppListFragment extends Fragment {
         if (size < 1024 * 1024) return String.format(Locale.getDefault(), "%.1f KB", size / 1024.0);
         if (size < 1024 * 1024 * 1024) return String.format(Locale.getDefault(), "%.1f MB", size / (1024.0 * 1024));
         return String.format(Locale.getDefault(), "%.2f GB", size / (1024.0 * 1024 * 1024));
-    }
-
-    private int dpToPx(int value) {
-        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
     }
 
     private static class CategoryInfo {
@@ -949,61 +885,38 @@ public class AppListFragment extends Fragment {
                 return;
             }
             imageView.setTag(url);
-            iconLoaderExecutor.submit(() -> {
+            executor.submit(() -> {
                 HttpURLConnection conn = null;
                 try {
                     String fullUrl = url;
-                    if (!url.startsWith("http")) fullUrl = CoreData.HTTP_BASE_URL + url;
+                    if (!url.startsWith("http")) {
+                        fullUrl = CoreData.HTTP_BASE_URL + url;
+                    }
                     URL u = new URL(fullUrl);
                     conn = (HttpURLConnection) u.openConnection();
                     conn.setRequestMethod("GET");
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(5000);
                     if (conn.getResponseCode() == 200) {
                         InputStream is = conn.getInputStream();
-                        byte[] data = readAllBytes(is);
+                        Bitmap bmp = BitmapFactory.decodeStream(is);
                         is.close();
-                        if (data != null && data.length > 0) {
-                            BitmapFactory.Options opts = new BitmapFactory.Options();
-                            opts.inJustDecodeBounds = true;
-                            BitmapFactory.decodeByteArray(data, 0, data.length, opts);
-                            int reqSize = dpToPx(80);
-                            int inSampleSize = 1;
-                            if (opts.outWidth > reqSize || opts.outHeight > reqSize) {
-                                int halfWidth = opts.outWidth / 2;
-                                int halfHeight = opts.outHeight / 2;
-                                while ((halfWidth / inSampleSize) >= reqSize
-                                        && (halfHeight / inSampleSize) >= reqSize) {
-                                    inSampleSize *= 2;
+                        if (bmp != null) {
+                            iconCache.put(url, bmp);
+                            mainHandler.post(() -> {
+                                Object tag = imageView.getTag();
+                                if (tag != null && tag.equals(url)) {
+                                    imageView.setImageBitmap(bmp);
                                 }
-                            }
-                            opts.inJustDecodeBounds = false;
-                            opts.inSampleSize = inSampleSize;
-                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length, opts);
-                            if (bmp != null) {
-                                iconCache.put(url, bmp);
-                                mainHandler.post(() -> {
-                                    Object tag = imageView.getTag();
-                                    if (tag != null && tag.equals(url)) imageView.setImageBitmap(bmp);
-                                });
-                            }
+                            });
                         }
                     }
-                } catch (Exception e) {} finally {
+                } catch (Exception e) {
+                    // ignore
+                } finally {
                     if (conn != null) conn.disconnect();
                 }
             });
-        }
-
-        private byte[] readAllBytes(InputStream is) throws java.io.IOException {
-            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                buf.write(buffer, 0, len);
-            }
-            return buf.toByteArray();
         }
 
         @Override

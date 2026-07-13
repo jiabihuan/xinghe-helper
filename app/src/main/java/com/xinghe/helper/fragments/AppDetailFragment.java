@@ -18,13 +18,13 @@ import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.ApkInstallUtil;
-import com.xinghe.helper.util.OkHttpUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Locale;
@@ -116,19 +116,51 @@ public class AppDetailFragment extends Fragment {
         btnDownload.setText("加载中...");
 
         executor.submit(() -> {
-            JSONObject root = null;
+            HttpURLConnection conn = null;
             try {
+                JSONObject root = null;
+                
                 String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
-                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
-                if (response != null && !response.isEmpty()) {
-                    root = new JSONObject(response);
+                URL url = new URL(multiUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+                    root = new JSONObject(response.toString());
                 }
+                conn.disconnect();
+                conn = null;
 
                 if (root == null) {
                     String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
-                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
-                    if (singleResponse != null && !singleResponse.isEmpty()) {
-                        root = new JSONObject(singleResponse);
+                    url = new URL(singleUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+
+                    responseCode = conn.getResponseCode();
+                    if (responseCode == 200) {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(conn.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        root = new JSONObject(response.toString());
                     }
                 }
 
@@ -181,20 +213,17 @@ public class AppDetailFragment extends Fragment {
                         btnDownload.setText("重试");
                     });
                 }
-            } catch (IOException e) {
+            } catch (final Exception e) {
                 e.printStackTrace();
                 mainHandler.post(() -> {
-                    Toast.makeText(getActivity(), "网络错误", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     btnDownload.setEnabled(true);
                     btnDownload.setText("重试");
                 });
-            } catch (Exception e) {
-                e.printStackTrace();
-                mainHandler.post(() -> {
-                    Toast.makeText(getActivity(), "网络错误", Toast.LENGTH_SHORT).show();
-                    btnDownload.setEnabled(true);
-                    btnDownload.setText("重试");
-                });
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         });
     }
