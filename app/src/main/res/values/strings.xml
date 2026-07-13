@@ -16,6 +16,7 @@
     <string name="nav_remote">远程推送</string>
     <string name="nav_manager">应用管理</string>
     <string name="nav_system">系统详情</string>
+    <string name="nav_cast">手机投屏</string>
     <string name="title_install">口令安装</string>
     <string name="subtitle_install">输入4位分享口令，快速安装应用</string>
     <string name="hint_code">请输入4位口令</string>

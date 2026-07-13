@@ -14,6 +14,7 @@ import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
 import com.xinghe.helper.fragments.SystemFragment;
+import com.xinghe.helper.fragments.CastFragment;
 import com.xinghe.helper.util.AdbStatusManager;
 
 public class MainActivity extends BasicTransNavActivity {
@@ -22,12 +23,14 @@ public class MainActivity extends BasicTransNavActivity {
     private TextView navRemote;
     private TextView navManager;
     private TextView navSystem;
+    private TextView navCast;
 
     private FragmentManager fragmentManager;
     private Fragment installFragment;
     private Fragment remoteFragment;
     private Fragment managerFragment;
     private Fragment systemFragment;
+    private Fragment castFragment;
     private Fragment currentFragment;
 
     private long lastBackPressTime = 0;
@@ -45,21 +48,25 @@ public class MainActivity extends BasicTransNavActivity {
         navRemote = findViewById(R.id.nav_remote);
         navManager = findViewById(R.id.nav_manager);
         navSystem = findViewById(R.id.nav_system);
+        navCast = findViewById(R.id.nav_cast);
 
         if (savedInstanceState == null) {
             installFragment = new InstallFragment();
             remoteFragment = new RemoteFragment();
             managerFragment = new ManagerFragment();
             systemFragment = new SystemFragment();
+            castFragment = new CastFragment();
         } else {
             installFragment = fragmentManager.findFragmentByTag("install");
             remoteFragment = fragmentManager.findFragmentByTag("remote");
             managerFragment = fragmentManager.findFragmentByTag("manager");
             systemFragment = fragmentManager.findFragmentByTag("system");
+            castFragment = fragmentManager.findFragmentByTag("cast");
             if (installFragment == null) installFragment = new InstallFragment();
             if (remoteFragment == null) remoteFragment = new RemoteFragment();
             if (managerFragment == null) managerFragment = new ManagerFragment();
             if (systemFragment == null) systemFragment = new SystemFragment();
+            if (castFragment == null) castFragment = new CastFragment();
         }
 
         navInstall.setOnClickListener(v -> {
@@ -82,12 +89,18 @@ public class MainActivity extends BasicTransNavActivity {
             switchFragment(systemFragment);
         });
 
+        navCast.setOnClickListener(v -> {
+            updateNav(4);
+            switchFragment(castFragment);
+        });
+
         View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
             if (hasFocus) {
                 if (v == navInstall) updateNav(0);
                 else if (v == navRemote) updateNav(1);
                 else if (v == navManager) updateNav(2);
                 else if (v == navSystem) updateNav(3);
+                else if (v == navCast) updateNav(4);
             }
         };
 
@@ -95,6 +108,7 @@ public class MainActivity extends BasicTransNavActivity {
         navRemote.setOnFocusChangeListener(navFocusListener);
         navManager.setOnFocusChangeListener(navFocusListener);
         navSystem.setOnFocusChangeListener(navFocusListener);
+        navCast.setOnFocusChangeListener(navFocusListener);
 
         updateNav(0);
         switchFragment(installFragment);
@@ -151,13 +165,14 @@ public class MainActivity extends BasicTransNavActivity {
         if (fragment instanceof RemoteFragment) return "remote";
         if (fragment instanceof ManagerFragment) return "manager";
         if (fragment instanceof SystemFragment) return "system";
+        if (fragment instanceof CastFragment) return "cast";
         return "";
     }
 
     @Override
     public void onBackPressed() {
         View focused = getCurrentFocus();
-        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager || focused == navSystem);
+        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager || focused == navSystem || focused == navCast);
 
         if (!isNavFocused) {
             if (currentFragment instanceof ManagerFragment) {
@@ -208,6 +223,7 @@ public class MainActivity extends BasicTransNavActivity {
         else if (currentFragment == remoteFragment) navRemote.requestFocus();
         else if (currentFragment == managerFragment) navManager.requestFocus();
         else if (currentFragment == systemFragment) navSystem.requestFocus();
+        else if (currentFragment == castFragment) navCast.requestFocus();
         else navInstall.requestFocus();
     }
 
@@ -216,6 +232,7 @@ public class MainActivity extends BasicTransNavActivity {
         navRemote.setTextColor(getResources().getColor(R.color.home_text_hint));
         navManager.setTextColor(getResources().getColor(R.color.home_text_hint));
         navSystem.setTextColor(getResources().getColor(R.color.home_text_hint));
+        navCast.setTextColor(getResources().getColor(R.color.home_text_hint));
 
         switch (index) {
             case 0:
@@ -229,6 +246,9 @@ public class MainActivity extends BasicTransNavActivity {
                 break;
             case 3:
                 navSystem.setTextColor(getResources().getColor(R.color.home_text_primary));
+                break;
+            case 4:
+                navCast.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
         }
     }
