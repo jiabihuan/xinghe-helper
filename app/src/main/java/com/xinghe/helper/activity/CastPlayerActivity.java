@@ -26,9 +26,6 @@ import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.LoadControl;
-import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.xinghe.helper.R;
 import com.xinghe.helper.cast.CastState;
 
@@ -297,21 +294,8 @@ public class CastPlayerActivity extends AppCompatActivity {
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build();
 
-            DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
-                    .setConnectTimeoutMs(15000)
-                    .setReadTimeoutMs(30000)
-                    .setAllowCrossProtocolRedirects(true)
-                    .setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-
-            DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(
-                    this, httpDataSourceFactory);
-
-            DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
-                    .setDataSourceFactory(dataSourceFactory);
-
             exoPlayer = new ExoPlayer.Builder(this)
                     .setLoadControl(loadControl)
-                    .setMediaSourceFactory(mediaSourceFactory)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .setHandleAudioBecomingNoisy(true)
                     .setSeekForwardIncrementMs(SEEK_STEP)
