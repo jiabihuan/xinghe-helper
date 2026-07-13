@@ -278,11 +278,6 @@ public class CastPlayerActivity extends AppCompatActivity {
             mediaPlayer.setScreenOnWhilePlaying(true);
             mediaPlayer.setWakeMode(this, android.os.PowerManager.PARTIAL_WAKE_LOCK);
 
-            // 尽量提高缓冲容量
-            try {
-                mediaPlayer.setParameter(2, 8192 * 1024); // 尝试设置缓冲为8MB
-            } catch (Exception ignored) {}
-
             mediaPlayer.setOnPreparedListener(mp -> {
                 Log.d(TAG, "onPrepared");
                 isPrepared = true;
