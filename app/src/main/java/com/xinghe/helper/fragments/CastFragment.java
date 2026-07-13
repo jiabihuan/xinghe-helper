@@ -2,16 +2,22 @@ package com.xinghe.helper.fragments;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.xinghe.helper.R;
@@ -25,6 +31,7 @@ public class CastFragment extends Fragment {
     private TextView ipText;
     private TextView tipText;
     private TextView openPlayerBtn;
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     @Nullable
     @Override
@@ -36,7 +43,9 @@ public class CastFragment extends Fragment {
         tipText = view.findViewById(R.id.tipText);
         openPlayerBtn = view.findViewById(R.id.openPlayerBtn);
 
-        startCastService();
+        // 延迟启动服务，确保 Activity 完全在前台后再启动前台服务
+        handler.postDelayed(this::startCastService, 300);
+
         updateStatus();
 
         String ip = getLocalIp();
@@ -63,12 +72,26 @@ public class CastFragment extends Fragment {
     }
 
     private void startCastService() {
-        if (getActivity() == null) return;
-        Intent intent = new Intent(getActivity(), CastService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            getActivity().startForegroundService(intent);
-        } else {
-            getActivity().startService(intent);
+        if (getActivity() == null || !isAdded()) return;
+
+        // Android 13+ 检查通知权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(getActivity(),
+                    android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1001);
+            }
+        }
+
+        try {
+            Intent intent = new Intent(getActivity(), CastService.class);
+            ContextCompat.startForegroundService(getActivity(), intent);
+        } catch (Exception e) {
+            // 前台服务启动失败（如 Android 12+ 后台限制），不崩溃，仅提示
+            if (getActivity() != null && isAdded()) {
+                Toast.makeText(getActivity(), "投屏服务启动失败，请重试", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -107,5 +130,11 @@ public class CastFragment extends Fragment {
     public void onResume() {
         super.onResume();
         updateStatus();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        handler.removeCallbacksAndMessages(null);
     }
 }

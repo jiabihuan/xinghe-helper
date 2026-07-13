@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -15,6 +16,7 @@ import com.xinghe.helper.R;
 
 public class CastService extends Service {
 
+    private static final String TAG = "CastService";
     private static final String CHANNEL_ID = "cast_service_channel";
     private static final int NOTIFICATION_ID = 1001;
 
@@ -25,7 +27,7 @@ public class CastService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        startForeground(NOTIFICATION_ID, createNotification());
+        startForegroundCompat();
 
         CastState state = CastState.getInstance();
         ssdpServer = new SSDPServer(this, "星河助手投屏", HTTP_PORT);
@@ -35,7 +37,7 @@ public class CastService extends Service {
             httpServer.start();
             ssdpServer.start();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Failed to start servers", e);
         }
     }
 
@@ -61,7 +63,23 @@ public class CastService extends Service {
         return null;
     }
 
-    private Notification createNotification() {
+    private void startForegroundCompat() {
+        createNotificationChannel();
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("星河助手投屏")
+                .setContentText("投屏服务运行中")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setOngoing(true)
+                .build();
+        try {
+            // compileSdk 33: 直接用 startForeground，系统会读取 manifest 中的 foregroundServiceType
+            startForeground(NOTIFICATION_ID, notification);
+        } catch (Exception e) {
+            Log.e(TAG, "startForeground failed", e);
+        }
+    }
+
+    private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "投屏服务", NotificationManager.IMPORTANCE_LOW);
@@ -70,11 +88,5 @@ public class CastService extends Service {
                 nm.createNotificationChannel(channel);
             }
         }
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("星河助手投屏")
-                .setContentText("投屏服务运行中")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setOngoing(true)
-                .build();
     }
 }
