@@ -118,15 +118,15 @@ public class AppDetailFragment extends Fragment {
         executor.submit(() -> {
             JSONObject root = null;
             try {
-                String multiPath = "/api/codes/multi/" + code;
-                String response = OkHttpUtil.getWithServerFallback(multiPath);
+                String multiUrl = CoreData.HTTP_BASE_URL + "/api/codes/multi/" + code;
+                String response = OkHttpUtil.getWithRetry(multiUrl, 3);
                 if (response != null && !response.isEmpty()) {
                     root = new JSONObject(response);
                 }
 
                 if (root == null) {
-                    String singlePath = "/api/codes/single/" + code;
-                    String singleResponse = OkHttpUtil.getWithServerFallback(singlePath);
+                    String singleUrl = CoreData.HTTP_BASE_URL + "/api/codes/single/" + code;
+                    String singleResponse = OkHttpUtil.getWithRetry(singleUrl, 3);
                     if (singleResponse != null && !singleResponse.isEmpty()) {
                         root = new JSONObject(singleResponse);
                     }

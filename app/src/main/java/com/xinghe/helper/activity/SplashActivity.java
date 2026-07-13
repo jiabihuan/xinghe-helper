@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.xinghe.helper.MainActivity;
 import com.xinghe.helper.R;
 import com.xinghe.helper.util.DensityUtil;
-import com.xinghe.helper.util.ServerDetector;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -19,8 +18,6 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
-
-        ServerDetector.detectAsync(null);
 
         SharedPreferences sp = getSharedPreferences("xinghe_helper", MODE_PRIVATE);
         if (sp.getBoolean("disclaimer_accepted", false)) {
