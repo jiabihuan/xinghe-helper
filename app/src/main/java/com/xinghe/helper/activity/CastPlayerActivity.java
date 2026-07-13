@@ -240,8 +240,8 @@ public class CastPlayerActivity extends AppCompatActivity {
         try {
             exoPlayer = new ExoPlayer.Builder(this).build();
             exoPlayer.setVideoSurfaceView(surfaceView);
-            exoPlayer.setWakeMode(C.POWER_WAKE_LOCK);
-            exoPlayer.setScreenOnWhilePlaying(true);
+            exoPlayer.setWakeMode(C.WAKE_MODE_NETWORK);
+            surfaceView.setKeepScreenOn(true);
 
             exoPlayer.addListener(new Player.Listener() {
                 @Override
@@ -402,6 +402,15 @@ public class CastPlayerActivity extends AppCompatActivity {
             exoPlayer = null;
         }
         userPaused = false;
+    }
+
+    private void startBufferingTimeout() {
+        cancelBufferingTimeout();
+        mainHandler.postDelayed(bufferingTimeoutRunnable, BUFFERING_TIMEOUT);
+    }
+
+    private void cancelBufferingTimeout() {
+        mainHandler.removeCallbacks(bufferingTimeoutRunnable);
     }
 
     private void updateProgress() {
