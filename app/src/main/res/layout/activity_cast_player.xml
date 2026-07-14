@@ -5,13 +5,23 @@
     android:background="#000000"
     android:touchscreenBlocksFocus="false">
 
-    <!-- 视频画面 -->
-    <SurfaceView
-        android:id="@+id/surfaceView"
+    <!-- 视频画面容器 -->
+    <FrameLayout
+        android:id="@+id/videoContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:focusable="false"
-        android:focusableInTouchMode="false" />
+        android:layout_gravity="center"
+        android:background="#000000"
+        android:focusable="false">
+
+        <SurfaceView
+            android:id="@+id/surfaceView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:focusable="false"
+            android:focusableInTouchMode="false" />
+    </FrameLayout>
 
     <!-- 图片显示 -->
     <ImageView
