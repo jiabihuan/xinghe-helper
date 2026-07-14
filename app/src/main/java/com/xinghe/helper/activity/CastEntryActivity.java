@@ -28,6 +28,11 @@ public class CastEntryActivity extends AppCompatActivity {
 
     private final CastState.StateListener castListener = new CastState.StateListener() {
         @Override
+        public void onSetAVTransportURI(String url, String mimeType) {
+            handler.post(CastEntryActivity.this::updateStatus);
+        }
+
+        @Override
         public void onPlay(String url, String mimeType) {
             if (isFinishing() || playerActivityRunning) return;
             handler.post(() -> {
@@ -130,8 +135,13 @@ public class CastEntryActivity extends AppCompatActivity {
 
     private void updateStatus() {
         CastState state = CastState.getInstance();
-        if (state.getCurrentUrl() != null && !state.getCurrentUrl().isEmpty()) {
-            statusText.setText("投屏中...");
+        String url = state.getCurrentUrl();
+        if (url != null && !url.isEmpty()) {
+            if (state.isPlaying()) {
+                statusText.setText("投屏播放中...");
+            } else {
+                statusText.setText("设备已连接 等待投屏");
+            }
         } else {
             statusText.setText("等待投屏中...");
         }

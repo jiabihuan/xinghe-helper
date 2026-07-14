@@ -75,6 +75,10 @@ public class CastPlayerActivity extends AppCompatActivity {
 
     private final CastState.StateListener playerListener = new CastState.StateListener() {
         @Override
+        public void onSetAVTransportURI(String url, String mimeType) {
+        }
+
+        @Override
         public void onPlay(String url, String mimeType) {
             mainHandler.post(() -> {
                 if (surfaceView != null && surfaceView.getHolder().getSurface().isValid()) {

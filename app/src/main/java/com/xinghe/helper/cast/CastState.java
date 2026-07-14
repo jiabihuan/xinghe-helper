@@ -6,6 +6,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class CastState {
 
     public interface StateListener {
+        void onSetAVTransportURI(String url, String mimeType);
         void onPlay(String url, String mimeType);
         void onPause();
         void onStop();
@@ -41,8 +42,11 @@ public class CastState {
     public synchronized void addListener(StateListener l) {
         if (l != null && !listeners.contains(l)) {
             listeners.add(l);
-            if (playing && currentUrl != null && !currentUrl.isEmpty()) {
-                l.onPlay(currentUrl, currentMimeType);
+            if (currentUrl != null && !currentUrl.isEmpty()) {
+                l.onSetAVTransportURI(currentUrl, currentMimeType);
+                if (playing) {
+                    l.onPlay(currentUrl, currentMimeType);
+                }
             }
         }
     }
@@ -78,6 +82,9 @@ public class CastState {
         this.duration = 0;
         this.playing = false;
         this.transportState = "STOPPED";
+        for (StateListener l : listeners) {
+            l.onSetAVTransportURI(url, currentMimeType);
+        }
     }
 
     public synchronized void play() {
