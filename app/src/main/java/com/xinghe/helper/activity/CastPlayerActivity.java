@@ -306,7 +306,6 @@ public class CastPlayerActivity extends AppCompatActivity {
                             10000
                     )
                     .setTargetBufferBytes(C.LENGTH_UNSET)
-                    .setBackBufferDurationMs(60000)
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build();
 
