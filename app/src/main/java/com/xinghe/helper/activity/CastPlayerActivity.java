@@ -12,9 +12,9 @@ import android.view.KeyEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.FrameLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,6 +47,7 @@ public class CastPlayerActivity extends AppCompatActivity {
     private static final long BUFFERING_TIMEOUT = 90000;
 
     private SurfaceView surfaceView;
+    private FrameLayout videoContainer;
     private ImageView imageView;
     private TextView statusText;
     private ProgressBar bufferingProgress;
@@ -126,6 +127,7 @@ public class CastPlayerActivity extends AppCompatActivity {
         setContentView(R.layout.activity_cast_player);
 
         surfaceView = findViewById(R.id.surfaceView);
+        videoContainer = findViewById(R.id.videoContainer);
         imageView = findViewById(R.id.imageView);
         statusText = findViewById(R.id.statusText);
         bufferingProgress = findViewById(R.id.bufferingProgress);
@@ -292,6 +294,13 @@ public class CastPlayerActivity extends AppCompatActivity {
             surfaceView.setKeepScreenOn(true);
 
             exoPlayer.addListener(new Player.Listener() {
+                @Override
+                public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
+                    if (width > 0 && height > 0) {
+                        updateVideoAspectRatio(width, height, pixelWidthHeightRatio);
+                    }
+                }
+
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
                     switch (playbackState) {
@@ -504,6 +513,30 @@ public class CastPlayerActivity extends AppCompatActivity {
             return String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
         }
         return String.format(Locale.getDefault(), "%02d:%02d", m, s);
+    }
+
+    private void updateVideoAspectRatio(int videoWidth, int videoHeight, float pixelWidthHeightRatio) {
+        if (videoContainer == null) return;
+        float videoRatio = videoWidth * pixelWidthHeightRatio / (float) videoHeight;
+
+        int containerWidth = videoContainer.getWidth();
+        int containerHeight = videoContainer.getHeight();
+        if (containerWidth <= 0 || containerHeight <= 0) return;
+
+        float containerRatio = containerWidth / (float) containerHeight;
+
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) surfaceView.getLayoutParams();
+        if (videoRatio > containerRatio) {
+            params.width = containerWidth;
+            params.height = (int) (containerWidth / videoRatio);
+        } else {
+            params.height = containerHeight;
+            params.width = (int) (containerHeight * videoRatio);
+        }
+        surfaceView.setLayoutParams(params);
+        Log.d(TAG, "updateVideoAspectRatio: " + videoWidth + "x" + videoHeight
+                + " ratio=" + videoRatio + " container=" + containerWidth + "x" + containerHeight
+                + " view=" + params.width + "x" + params.height);
     }
 
     @Override
