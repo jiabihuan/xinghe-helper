@@ -1,5 +1,6 @@
 package com.xinghe.helper;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
@@ -10,11 +11,11 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.xinghe.helper.activity.BasicTransNavActivity;
+import com.xinghe.helper.activity.CastEntryActivity;
 import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
 import com.xinghe.helper.fragments.SystemFragment;
-import com.xinghe.helper.fragments.CastFragment;
 import com.xinghe.helper.util.AdbStatusManager;
 
 public class MainActivity extends BasicTransNavActivity {
@@ -30,7 +31,6 @@ public class MainActivity extends BasicTransNavActivity {
     private Fragment remoteFragment;
     private Fragment managerFragment;
     private Fragment systemFragment;
-    private Fragment castFragment;
     private Fragment currentFragment;
 
     private long lastBackPressTime = 0;
@@ -55,18 +55,15 @@ public class MainActivity extends BasicTransNavActivity {
             remoteFragment = new RemoteFragment();
             managerFragment = new ManagerFragment();
             systemFragment = new SystemFragment();
-            castFragment = new CastFragment();
         } else {
             installFragment = fragmentManager.findFragmentByTag("install");
             remoteFragment = fragmentManager.findFragmentByTag("remote");
             managerFragment = fragmentManager.findFragmentByTag("manager");
             systemFragment = fragmentManager.findFragmentByTag("system");
-            castFragment = fragmentManager.findFragmentByTag("cast");
             if (installFragment == null) installFragment = new InstallFragment();
             if (remoteFragment == null) remoteFragment = new RemoteFragment();
             if (managerFragment == null) managerFragment = new ManagerFragment();
             if (systemFragment == null) systemFragment = new SystemFragment();
-            if (castFragment == null) castFragment = new CastFragment();
         }
 
         navInstall.setOnClickListener(v -> {
@@ -91,7 +88,8 @@ public class MainActivity extends BasicTransNavActivity {
 
         navCast.setOnClickListener(v -> {
             updateNav(4);
-            switchFragment(castFragment);
+            Intent intent = new Intent(MainActivity.this, CastEntryActivity.class);
+            startActivity(intent);
         });
 
         View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
@@ -165,7 +163,6 @@ public class MainActivity extends BasicTransNavActivity {
         if (fragment instanceof RemoteFragment) return "remote";
         if (fragment instanceof ManagerFragment) return "manager";
         if (fragment instanceof SystemFragment) return "system";
-        if (fragment instanceof CastFragment) return "cast";
         return "";
     }
 
@@ -223,7 +220,6 @@ public class MainActivity extends BasicTransNavActivity {
         else if (currentFragment == remoteFragment) navRemote.requestFocus();
         else if (currentFragment == managerFragment) navManager.requestFocus();
         else if (currentFragment == systemFragment) navSystem.requestFocus();
-        else if (currentFragment == castFragment) navCast.requestFocus();
         else navInstall.requestFocus();
     }
 

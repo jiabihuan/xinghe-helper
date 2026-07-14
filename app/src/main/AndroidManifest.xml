@@ -56,6 +56,12 @@
             android:screenOrientation="landscape"
             android:theme="@style/AppTheme" />
 
+        <activity
+            android:name=".activity.CastEntryActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/AppTheme" />
+
         <service
             android:name=".cast.CastService"
             android:enabled="true"
