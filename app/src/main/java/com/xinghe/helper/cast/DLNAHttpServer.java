@@ -16,6 +16,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import java.util.UUID;
+
 public class DLNAHttpServer extends NanoHTTPD {
 
     private static final String TAG = "DLNAHttpServer";
@@ -136,6 +138,12 @@ public class DLNAHttpServer extends NanoHTTPD {
                         + "<RecordMedium>NOT_IMPLEMENTED</RecordMedium>"
                         + "<WriteStatus>NOT_IMPLEMENTED</WriteStatus>";
                 return soapResponse("AVTransport", "GetMediaInfo", body);
+            }
+            if (soapAction.contains("GetDeviceCapabilities")) {
+                String body = "<PlayMedia>NONE</PlayMedia>"
+                        + "<RecMedia>NOT_IMPLEMENTED</RecMedia>"
+                        + "<RecQualityModes>NOT_IMPLEMENTED</RecQualityModes>";
+                return soapResponse("AVTransport", "GetDeviceCapabilities", body);
             }
             if (soapAction.contains("GetTransportSettings")) {
                 String body = "<PlayMode>NORMAL</PlayMode><RecQualityMode>NOT_IMPLEMENTED</RecQualityMode>";

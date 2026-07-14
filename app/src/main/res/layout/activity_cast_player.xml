@@ -50,7 +50,7 @@
         android:layout_gravity="bottom"
         android:orientation="vertical"
         android:background="#CC000000"
-        android:padding="16dp"
+        android:padding="12dp"
         android:visibility="gone"
         android:focusable="false"
         android:descendantFocusability="afterDescendants">
@@ -61,7 +61,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="0dp"
             android:focusable="false">
 
             <TextView
@@ -94,82 +94,7 @@
                 android:focusable="false" />
         </LinearLayout>
 
-        <!-- 按钮行 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:focusable="false">
 
-            <Button
-                android:id="@+id/btnBackward"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="快退"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary_selector"
-                android:nextFocusRight="@id/btnPlayPause"
-                android:nextFocusDown="@id/btnBackward"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:stateListAnimator="@null" />
-
-            <Button
-                android:id="@+id/btnPlayPause"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:layout_marginHorizontal="8dp"
-                android:text="暂停"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_btn_primary_selector"
-                android:nextFocusLeft="@id/btnBackward"
-                android:nextFocusRight="@id/btnForward"
-                android:nextFocusDown="@id/btnPlayPause"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:stateListAnimator="@null" />
-
-            <Button
-                android:id="@+id/btnForward"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="快进"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary_selector"
-                android:nextFocusLeft="@id/btnPlayPause"
-                android:nextFocusRight="@id/btnStop"
-                android:nextFocusDown="@id/btnForward"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:stateListAnimator="@null" />
-
-            <Button
-                android:id="@+id/btnStop"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="停止"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary_selector"
-                android:nextFocusLeft="@id/btnForward"
-                android:nextFocusDown="@id/btnStop"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:clickable="true"
-                android:stateListAnimator="@null" />
-        </LinearLayout>
 
     </LinearLayout>
 

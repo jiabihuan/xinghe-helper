@@ -38,7 +38,9 @@ public class SSDPServer {
         this.context = context.getApplicationContext();
         this.deviceName = deviceName;
         this.httpPort = httpPort;
-        this.uuid = UUID.randomUUID().toString();
+        this.uuid = UUID.nameUUIDFromBytes(
+                ("xinghe-cast-" + android.os.Build.SERIAL).getBytes()
+        ).toString();
     }
 
     public void start() {
@@ -110,12 +112,12 @@ public class SSDPServer {
 
     private void announceLoop() {
         try {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 5; i++) {
                 sendAnnounce("ssdp:alive");
-                Thread.sleep(200);
+                Thread.sleep(300);
             }
             while (running) {
-                Thread.sleep(30000);
+                Thread.sleep(15000);
                 if (running) {
                     sendAnnounce("ssdp:alive");
                 }

@@ -51,10 +51,6 @@ public class CastPlayerActivity extends AppCompatActivity {
     private TextView statusText;
     private ProgressBar bufferingProgress;
     private View controlBar;
-    private Button btnPlayPause;
-    private Button btnStop;
-    private Button btnForward;
-    private Button btnBackward;
     private SeekBar seekBar;
     private TextView currentTimeText;
     private TextView totalTimeText;
@@ -134,10 +130,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         statusText = findViewById(R.id.statusText);
         bufferingProgress = findViewById(R.id.bufferingProgress);
         controlBar = findViewById(R.id.controlBar);
-        btnPlayPause = findViewById(R.id.btnPlayPause);
-        btnStop = findViewById(R.id.btnStop);
-        btnForward = findViewById(R.id.btnForward);
-        btnBackward = findViewById(R.id.btnBackward);
         seekBar = findViewById(R.id.seekBar);
         currentTimeText = findViewById(R.id.currentTime);
         totalTimeText = findViewById(R.id.totalTime);
@@ -161,32 +153,6 @@ public class CastPlayerActivity extends AppCompatActivity {
                 handlePlaybackError();
             }
         };
-
-        btnPlayPause.setOnClickListener(v -> togglePlayPause());
-
-        btnStop.setOnClickListener(v -> {
-            stopPlay();
-            CastState.getInstance().stop();
-        });
-
-        btnForward.setOnClickListener(v -> {
-            if (exoPlayer != null) {
-                long pos = exoPlayer.getCurrentPosition();
-                long dur = exoPlayer.getDuration();
-                long target = Math.min(pos + SEEK_STEP, dur);
-                seekTo(target);
-                CastState.getInstance().setPosition(target);
-            }
-        });
-
-        btnBackward.setOnClickListener(v -> {
-            if (exoPlayer != null) {
-                long pos = exoPlayer.getCurrentPosition();
-                long target = Math.max(pos - SEEK_STEP, 0);
-                seekTo(target);
-                CastState.getInstance().setPosition(target);
-            }
-        });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -340,7 +306,6 @@ public class CastPlayerActivity extends AppCompatActivity {
                             if (!userPaused) {
                                 exoPlayer.setPlayWhenReady(true);
                                 CastState.getInstance().setPlaying(true);
-                                btnPlayPause.setText("暂停");
                             }
                             break;
                         case Player.STATE_BUFFERING:
@@ -353,7 +318,6 @@ public class CastPlayerActivity extends AppCompatActivity {
                             cancelBufferingTimeout();
                             showBuffering(false);
                             CastState.getInstance().setPlaying(false);
-                            btnPlayPause.setText("重播");
                             break;
                     }
                 }
@@ -364,16 +328,6 @@ public class CastPlayerActivity extends AppCompatActivity {
                     cancelBufferingTimeout();
                     showBuffering(false);
                     handlePlaybackError();
-                }
-
-                @Override
-                public void onIsPlayingChanged(boolean isPlaying) {
-                    if (isPlaying) {
-                        btnPlayPause.setText("暂停");
-                    } else if (exoPlayer != null
-                            && exoPlayer.getPlaybackState() == Player.STATE_READY) {
-                        btnPlayPause.setText("播放");
-                    }
                 }
             });
 
@@ -450,7 +404,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         if (exoPlayer != null) {
             exoPlayer.setPlayWhenReady(false);
             userPaused = true;
-            btnPlayPause.setText("播放");
         }
     }
 
@@ -458,7 +411,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         if (exoPlayer != null) {
             exoPlayer.setPlayWhenReady(true);
             userPaused = false;
-            btnPlayPause.setText("暂停");
         }
     }
 
@@ -535,11 +487,6 @@ public class CastPlayerActivity extends AppCompatActivity {
         controlBar.setVisibility(View.VISIBLE);
         mainHandler.removeCallbacks(hideControlBarRunnable);
         mainHandler.postDelayed(hideControlBarRunnable, 8000);
-        btnPlayPause.post(() -> {
-            if (btnPlayPause != null) {
-                btnPlayPause.requestFocus();
-            }
-        });
     }
 
     private void hideControlBar() {
@@ -568,41 +515,24 @@ public class CastPlayerActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            finish();
+            stopPlay();
+            CastState.getInstance().stop();
             return true;
         }
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                if (controlBarVisible) {
-                    return super.onKeyDown(keyCode, event);
-                }
                 if (exoPlayer != null) {
                     togglePlayPause();
+                    showControlBar();
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (!controlBarVisible) {
-                    showControlBar();
-                    btnBackward.requestFocus();
-                    return true;
-                }
-                break;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (!controlBarVisible) {
-                    showControlBar();
-                    btnForward.requestFocus();
-                    return true;
-                }
-                break;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (!controlBarVisible && exoPlayer != null) {
-                    showControlBar();
-                    btnPlayPause.requestFocus();
-                    return true;
-                }
-                break;
+                showControlBar();
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 if (exoPlayer != null) {
                     togglePlayPause();
@@ -613,12 +543,14 @@ public class CastPlayerActivity extends AppCompatActivity {
                     long pos = exoPlayer.getCurrentPosition();
                     long dur = exoPlayer.getDuration();
                     seekTo(Math.min(pos + SEEK_STEP, dur));
+                    showControlBar();
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_REWIND:
                 if (exoPlayer != null) {
                     long pos = exoPlayer.getCurrentPosition();
                     seekTo(Math.max(pos - SEEK_STEP, 0));
+                    showControlBar();
                 }
                 return true;
         }
