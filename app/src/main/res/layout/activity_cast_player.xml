@@ -2,13 +2,16 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="#000000"
+    android:touchscreenBlocksFocus="false">
 
     <!-- 视频画面 -->
     <SurfaceView
         android:id="@+id/surfaceView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:focusable="false"
+        android:focusableInTouchMode="false" />
 
     <!-- 图片显示 -->
     <ImageView
@@ -16,7 +19,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitCenter"
-        android:visibility="gone" />
+        android:visibility="gone"
+        android:focusable="false" />
 
     <!-- 等待/状态文字 -->
     <TextView
@@ -26,7 +30,8 @@
         android:layout_gravity="center"
         android:text="等待投屏..."
         android:textColor="#FFFFFF"
-        android:textSize="24sp" />
+        android:textSize="24sp"
+        android:focusable="false" />
 
     <!-- 缓冲加载圈 -->
     <ProgressBar
@@ -34,7 +39,8 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center"
-        android:visibility="gone" />
+        android:visibility="gone"
+        android:focusable="false" />
 
     <!-- 底部控制栏 -->
     <LinearLayout
@@ -46,6 +52,7 @@
         android:background="#CC000000"
         android:padding="16dp"
         android:visibility="gone"
+        android:focusable="false"
         android:descendantFocusability="afterDescendants">
 
         <!-- 进度条 -->
@@ -54,7 +61,8 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:focusable="false">
 
             <TextView
                 android:id="@+id/currentTime"
@@ -62,7 +70,8 @@
                 android:layout_height="wrap_content"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:focusable="false" />
 
             <SeekBar
                 android:id="@+id/seekBar"
@@ -81,7 +90,8 @@
                 android:layout_height="wrap_content"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:focusable="false" />
         </LinearLayout>
 
         <!-- 按钮行 -->
@@ -89,7 +99,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:focusable="false">
 
             <Button
                 android:id="@+id/btnBackward"
@@ -99,11 +110,13 @@
                 android:text="快退"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary"
+                android:background="@drawable/bg_btn_secondary_selector"
                 android:nextFocusRight="@id/btnPlayPause"
-                android:nextFocusUp="@id/seekBar"
+                android:nextFocusDown="@id/btnBackward"
                 android:focusable="true"
-                android:clickable="true" />
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:stateListAnimator="@null" />
 
             <Button
                 android:id="@+id/btnPlayPause"
@@ -114,12 +127,14 @@
                 android:text="暂停"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:background="@drawable/bg_btn_primary"
+                android:background="@drawable/bg_btn_primary_selector"
                 android:nextFocusLeft="@id/btnBackward"
                 android:nextFocusRight="@id/btnForward"
-                android:nextFocusUp="@id/seekBar"
+                android:nextFocusDown="@id/btnPlayPause"
                 android:focusable="true"
-                android:clickable="true" />
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:stateListAnimator="@null" />
 
             <Button
                 android:id="@+id/btnForward"
@@ -129,12 +144,14 @@
                 android:text="快进"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary"
+                android:background="@drawable/bg_btn_secondary_selector"
                 android:nextFocusLeft="@id/btnPlayPause"
                 android:nextFocusRight="@id/btnStop"
-                android:nextFocusUp="@id/seekBar"
+                android:nextFocusDown="@id/btnForward"
                 android:focusable="true"
-                android:clickable="true" />
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:stateListAnimator="@null" />
 
             <Button
                 android:id="@+id/btnStop"
@@ -145,11 +162,13 @@
                 android:text="停止"
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
-                android:background="@drawable/bg_btn_secondary"
+                android:background="@drawable/bg_btn_secondary_selector"
                 android:nextFocusLeft="@id/btnForward"
-                android:nextFocusUp="@id/seekBar"
+                android:nextFocusDown="@id/btnStop"
                 android:focusable="true"
-                android:clickable="true" />
+                android:focusableInTouchMode="true"
+                android:clickable="true"
+                android:stateListAnimator="@null" />
         </LinearLayout>
 
     </LinearLayout>

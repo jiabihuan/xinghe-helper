@@ -300,11 +300,13 @@ public class CastPlayerActivity extends AppCompatActivity {
         try {
             LoadControl loadControl = new DefaultLoadControl.Builder()
                     .setBufferDurationsMs(
-                            15000,
-                            90000,
-                            2000,
-                            5000
+                            60000,
+                            300000,
+                            5000,
+                            10000
                     )
+                    .setTargetBufferBytes(C.LENGTH_UNSET)
+                    .setBackBufferDurationMs(60000)
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build();
 
@@ -534,7 +536,11 @@ public class CastPlayerActivity extends AppCompatActivity {
         controlBar.setVisibility(View.VISIBLE);
         mainHandler.removeCallbacks(hideControlBarRunnable);
         mainHandler.postDelayed(hideControlBarRunnable, 8000);
-        btnPlayPause.requestFocus();
+        btnPlayPause.post(() -> {
+            if (btnPlayPause != null) {
+                btnPlayPause.requestFocus();
+            }
+        });
     }
 
     private void hideControlBar() {
