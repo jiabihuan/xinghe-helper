@@ -4,9 +4,9 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_main_gradient"
-    android:paddingStart="120dp"
-    android:paddingTop="80dp"
-    android:paddingEnd="120dp"
+    android:paddingStart="72dp"
+    android:paddingTop="36dp"
+    android:paddingEnd="72dp"
     android:paddingBottom="80dp">
 
     <LinearLayout
@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="100dp">
+        android:layout_marginBottom="56dp">
 
         <ImageView
             android:layout_width="48dp"
@@ -150,7 +150,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="56dp">
 
         <ImageView
             android:layout_width="24dp"
