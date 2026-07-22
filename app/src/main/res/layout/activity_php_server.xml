@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_main_gradient"
+    android:orientation="vertical"
+    android:paddingStart="72dp"
+    android:paddingTop="48dp"
+    android:paddingEnd="72dp"
+    android:paddingBottom="48dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="星河 PHP 服务"
+        android:textColor="@color/home_text_primary"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="在电视盒子上启动本地 Web 服务，电脑或手机浏览器访问下面地址上传/运行 PHP 文件"
+        android:textColor="@color/home_text_hint"
+        android:textSize="18sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="访问地址"
+            android:textColor="@color/home_text_hint"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/phpUrlText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="正在启动..."
+            android:textColor="@color/accent"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/phpStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="正在检测 PHP 解释器..."
+            android:textColor="@color/home_text_primary"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/phpRootText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="PHP 文件目录："
+            android:textColor="@color/home_text_hint"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="说明：如果设备没有内置 php/php-cgi，服务仍可上传和浏览文件，但访问 .php 时会提示放置解释器。把 Android 可执行的 php 放到“星河助手/php/php”后重启服务即可执行。"
+        android:textColor="@color/home_text_hint"
+        android:textSize="17sp" />
+
+    <Button
+        android:id="@+id/phpRestartButton"
+        android:layout_width="220dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="28dp"
+        android:background="@drawable/bg_btn_primary_selector"
+        android:focusable="true"
+        android:text="重启服务"
+        android:textColor="@color/home_text_primary"
+        android:textSize="18sp" />
+
+</LinearLayout>

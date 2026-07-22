@@ -12,6 +12,7 @@ import androidx.fragment.app.FragmentManager;
 
 import com.xinghe.helper.activity.BasicTransNavActivity;
 import com.xinghe.helper.activity.CastEntryActivity;
+import com.xinghe.helper.activity.PhpServerActivity;
 import com.xinghe.helper.fragments.InstallFragment;
 import com.xinghe.helper.fragments.ManagerFragment;
 import com.xinghe.helper.fragments.RemoteFragment;
@@ -25,6 +26,7 @@ public class MainActivity extends BasicTransNavActivity {
     private TextView navManager;
     private TextView navSystem;
     private TextView navCast;
+    private TextView navPhp;
 
     private FragmentManager fragmentManager;
     private Fragment installFragment;
@@ -49,6 +51,7 @@ public class MainActivity extends BasicTransNavActivity {
         navManager = findViewById(R.id.nav_manager);
         navSystem = findViewById(R.id.nav_system);
         navCast = findViewById(R.id.nav_cast);
+        navPhp = findViewById(R.id.nav_php);
 
         if (savedInstanceState == null) {
             installFragment = new InstallFragment();
@@ -92,6 +95,12 @@ public class MainActivity extends BasicTransNavActivity {
             startActivity(intent);
         });
 
+        navPhp.setOnClickListener(v -> {
+            updateNav(5);
+            Intent intent = new Intent(MainActivity.this, PhpServerActivity.class);
+            startActivity(intent);
+        });
+
         View.OnFocusChangeListener navFocusListener = (v, hasFocus) -> {
             if (hasFocus) {
                 if (v == navInstall) updateNav(0);
@@ -99,6 +108,7 @@ public class MainActivity extends BasicTransNavActivity {
                 else if (v == navManager) updateNav(2);
                 else if (v == navSystem) updateNav(3);
                 else if (v == navCast) updateNav(4);
+                else if (v == navPhp) updateNav(5);
             }
         };
 
@@ -107,6 +117,7 @@ public class MainActivity extends BasicTransNavActivity {
         navManager.setOnFocusChangeListener(navFocusListener);
         navSystem.setOnFocusChangeListener(navFocusListener);
         navCast.setOnFocusChangeListener(navFocusListener);
+        navPhp.setOnFocusChangeListener(navFocusListener);
 
         updateNav(0);
         switchFragment(installFragment);
@@ -169,7 +180,7 @@ public class MainActivity extends BasicTransNavActivity {
     @Override
     public void onBackPressed() {
         View focused = getCurrentFocus();
-        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager || focused == navSystem || focused == navCast);
+        boolean isNavFocused = (focused == navInstall || focused == navRemote || focused == navManager || focused == navSystem || focused == navCast || focused == navPhp);
 
         if (!isNavFocused) {
             if (currentFragment instanceof ManagerFragment) {
@@ -229,6 +240,7 @@ public class MainActivity extends BasicTransNavActivity {
         navManager.setTextColor(getResources().getColor(R.color.home_text_hint));
         navSystem.setTextColor(getResources().getColor(R.color.home_text_hint));
         navCast.setTextColor(getResources().getColor(R.color.home_text_hint));
+        navPhp.setTextColor(getResources().getColor(R.color.home_text_hint));
 
         switch (index) {
             case 0:
@@ -245,6 +257,9 @@ public class MainActivity extends BasicTransNavActivity {
                 break;
             case 4:
                 navCast.setTextColor(getResources().getColor(R.color.home_text_primary));
+                break;
+            case 5:
+                navPhp.setTextColor(getResources().getColor(R.color.home_text_primary));
                 break;
         }
     }

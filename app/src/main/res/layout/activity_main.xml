@@ -100,6 +100,21 @@
             android:clickable="true"
             android:background="@drawable/selector_nav" />
 
+        <TextView
+            android:id="@+id/nav_php"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:text="@string/nav_php"
+            android:textColor="@color/home_text_hint"
+            android:textSize="@dimen/sp16"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:clickable="true"
+            android:background="@drawable/selector_nav" />
+
     </LinearLayout>
 
     <FrameLayout

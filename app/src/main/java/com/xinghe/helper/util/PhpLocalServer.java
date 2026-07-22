@@ -1,0 +1,432 @@
+package com.xinghe.helper.util;
+
+import android.content.Context;
+import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.os.Environment;
+import android.text.format.Formatter;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import fi.iki.elonen.NanoHTTPD;
+
+public class PhpLocalServer extends NanoHTTPD {
+
+    private static final int DEFAULT_PORT = 8765;
+    private static final int EXEC_TIMEOUT_SECONDS = 15;
+
+    private final Context context;
+    private int actualPort = DEFAULT_PORT;
+    private File documentRoot;
+
+    public PhpLocalServer(Context context) {
+        super(DEFAULT_PORT);
+        this.context = context.getApplicationContext();
+        this.documentRoot = getDocumentRoot();
+    }
+
+    public void startServer() throws IOException {
+        documentRoot = getDocumentRoot();
+        actualPort = findAvailablePort(DEFAULT_PORT);
+        if (actualPort <= 0) {
+            throw new IOException("找不到可用端口");
+        }
+        try {
+            java.lang.reflect.Field field = NanoHTTPD.class.getDeclaredField("myPort");
+            field.setAccessible(true);
+            field.setInt(this, actualPort);
+        } catch (Exception ignored) {
+        }
+        start();
+    }
+
+    public String getServerUrl() {
+        return "http://" + getLocalIpAddress() + ":" + actualPort;
+    }
+
+    public File getDocumentRoot() {
+        File base;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                base = new File(Environment.getExternalStorageDirectory(), "星河助手");
+            } else {
+                base = context.getExternalFilesDir(null);
+            }
+        } else {
+            base = new File(Environment.getExternalStorageDirectory(), "星河助手");
+        }
+        if (base == null) base = context.getFilesDir();
+        File root = new File(base, "php-www");
+        if (!root.exists()) root.mkdirs();
+
+        File index = new File(root, "index.php");
+        if (!index.exists()) {
+            try {
+                FileOutputStream out = new FileOutputStream(index);
+                String demo = "<?php\n"
+                        + "echo '<h1>星河 PHP 服务已启动</h1>';\n"
+                        + "echo '<p>当前时间：' . date('Y-m-d H:i:s') . '</p>';\n"
+                        + "echo '<p>如果你看到 PHP 源码，说明盒子里还没有可用的 PHP 解释器。</p>';\n";
+                out.write(demo.getBytes(StandardCharsets.UTF_8));
+                out.close();
+            } catch (IOException ignored) {
+            }
+        }
+        return root;
+    }
+
+    public String getInterpreterStatus() {
+        File php = findPhpInterpreter();
+        if (php == null) {
+            return "未检测到 PHP 解释器，仅能上传和浏览文件";
+        }
+        return "已检测到解释器：" + php.getAbsolutePath();
+    }
+
+    @Override
+    public Response serve(IHTTPSession session) {
+        Method method = session.getMethod();
+        String uri = session.getUri();
+
+        if (Method.POST.equals(method) && "/upload".equals(uri)) {
+            return handleUpload(session);
+        }
+
+        if (Method.GET.equals(method) && "/".equals(uri)) {
+            File indexPhp = new File(documentRoot, "index.php");
+            if (indexPhp.exists() && findPhpInterpreter() != null) {
+                return executePhp(indexPhp, session);
+            }
+            return htmlResponse(renderHomePage());
+        }
+
+        if (!Method.GET.equals(method)) {
+            return textResponse(Response.Status.METHOD_NOT_ALLOWED, "Method Not Allowed");
+        }
+
+        File target = resolveFile(uri);
+        if (target == null || !target.exists()) {
+            return textResponse(Response.Status.NOT_FOUND, "文件不存在");
+        }
+        if (target.isDirectory()) {
+            return htmlResponse(renderDirectory(target, uri));
+        }
+        if (target.getName().toLowerCase(Locale.US).endsWith(".php")) {
+            return executePhp(target, session);
+        }
+        return serveStaticFile(target);
+    }
+
+    private Response handleUpload(IHTTPSession session) {
+        Map<String, String> files = new HashMap<>();
+        try {
+            session.parseBody(files);
+        } catch (Exception e) {
+            return jsonResponse(false, "解析上传失败: " + e.getMessage(), Response.Status.INTERNAL_ERROR);
+        }
+        if (files.isEmpty()) {
+            return jsonResponse(false, "没有收到文件", Response.Status.BAD_REQUEST);
+        }
+
+        String fileName = session.getParms().get("filename");
+        if (fileName == null || fileName.trim().isEmpty()) {
+            fileName = "upload_" + System.currentTimeMillis() + ".php";
+        }
+        fileName = sanitizeFileName(fileName);
+        String lower = fileName.toLowerCase(Locale.US);
+        if (!(lower.endsWith(".php") || lower.endsWith(".html") || lower.endsWith(".htm")
+                || lower.endsWith(".css") || lower.endsWith(".js") || lower.endsWith(".txt")
+                || lower.endsWith(".json"))) {
+            return jsonResponse(false, "只允许上传 php/html/css/js/txt/json 文件", Response.Status.BAD_REQUEST);
+        }
+
+        File temp = new File(files.values().iterator().next());
+        File dest = new File(documentRoot, fileName);
+        try {
+            copyFile(temp, dest);
+        } catch (IOException e) {
+            return jsonResponse(false, "保存失败: " + e.getMessage(), Response.Status.INTERNAL_ERROR);
+        }
+        return jsonResponse(true, "上传成功: " + fileName, Response.Status.OK);
+    }
+
+    private Response executePhp(File script, IHTTPSession session) {
+        File php = findPhpInterpreter();
+        if (php == null) {
+            String body = "<h1>未检测到 PHP 解释器</h1>"
+                    + "<p>文件已经存在，但当前盒子不能直接执行 PHP。</p>"
+                    + "<p>请把 Android 可执行的 php 或 php-cgi 放到以下任一位置：</p>"
+                    + "<pre>" + escapeHtml(new File(documentRoot.getParentFile(), "php/php").getAbsolutePath()) + "\n"
+                    + escapeHtml(new File(documentRoot.getParentFile(), "php/php-cgi").getAbsolutePath()) + "\n"
+                    + escapeHtml(new File(context.getFilesDir(), "php/php").getAbsolutePath()) + "</pre>"
+                    + "<p>放好后重新打开 PHP 服务页面。</p>"
+                    + "<p><a href=\"/\">返回首页</a></p>";
+            return htmlResponse(body);
+        }
+
+        try {
+            ProcessBuilder pb = new ProcessBuilder(php.getAbsolutePath(), script.getAbsolutePath());
+            pb.directory(documentRoot);
+            Map<String, String> env = pb.environment();
+            env.put("REQUEST_METHOD", session.getMethod().name());
+            env.put("SCRIPT_FILENAME", script.getAbsolutePath());
+            env.put("DOCUMENT_ROOT", documentRoot.getAbsolutePath());
+            env.put("QUERY_STRING", session.getQueryParameterString() == null ? "" : session.getQueryParameterString());
+            env.put("REDIRECT_STATUS", "200");
+            Process process = pb.start();
+            boolean finished = waitForProcess(process, EXEC_TIMEOUT_SECONDS * 1000L);
+            if (!finished) {
+                process.destroy();
+                return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行超时");
+            }
+            String output = readAll(process.getInputStream());
+            String error = readAll(process.getErrorStream());
+            if (process.exitValue() != 0) {
+                return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行失败:\n" + error + "\n" + output);
+            }
+            return phpOutputResponse(output);
+        } catch (Exception e) {
+            return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行异常: " + e.getMessage());
+        }
+    }
+
+    private boolean waitForProcess(Process process, long timeoutMillis) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        while (true) {
+            try {
+                process.exitValue();
+                return true;
+            } catch (IllegalThreadStateException ignored) {
+            }
+            if (System.currentTimeMillis() - start >= timeoutMillis) {
+                return false;
+            }
+            Thread.sleep(100);
+        }
+    }
+
+    private File findPhpInterpreter() {
+        File parent = documentRoot != null ? documentRoot.getParentFile() : null;
+        File[] candidates = new File[]{
+                parent == null ? null : new File(parent, "php/php"),
+                parent == null ? null : new File(parent, "php/php-cgi"),
+                new File(context.getFilesDir(), "php/php"),
+                new File(context.getFilesDir(), "php/php-cgi"),
+                new File("/system/bin/php"),
+                new File("/system/xbin/php"),
+                new File("/vendor/bin/php"),
+                new File("/data/data/com.termux/files/usr/bin/php")
+        };
+        for (File file : candidates) {
+            if (file != null && file.exists() && file.canExecute()) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    private Response phpOutputResponse(String output) {
+        String lower = output.toLowerCase(Locale.US);
+        int headerEnd = output.indexOf("\r\n\r\n");
+        int headerEndLf = output.indexOf("\n\n");
+        if (lower.startsWith("content-type:") && (headerEnd > 0 || headerEndLf > 0)) {
+            int split = headerEnd > 0 ? headerEnd + 4 : headerEndLf + 2;
+            String headers = output.substring(0, split).trim();
+            String body = output.substring(split);
+            String mime = "text/html; charset=UTF-8";
+            for (String line : headers.split("\\r?\\n")) {
+                if (line.toLowerCase(Locale.US).startsWith("content-type:")) {
+                    mime = line.substring(line.indexOf(':') + 1).trim();
+                    break;
+                }
+            }
+            return newFixedLengthResponse(Response.Status.OK, mime, body);
+        }
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", output);
+    }
+
+    private Response serveStaticFile(File file) {
+        try {
+            FileInputStream input = new FileInputStream(file);
+            return newChunkedResponse(Response.Status.OK, guessMime(file.getName()), input);
+        } catch (IOException e) {
+            return textResponse(Response.Status.INTERNAL_ERROR, "读取文件失败");
+        }
+    }
+
+    private String renderHomePage() {
+        return "<h1>星河 PHP 本地服务</h1>"
+                + "<p>服务目录：<code>" + escapeHtml(documentRoot.getAbsolutePath()) + "</code></p>"
+                + "<p>解释器状态：" + escapeHtml(getInterpreterStatus()) + "</p>"
+                + "<form><input type=\"file\" id=\"file\"><button type=\"button\" onclick=\"upload()\">上传文件</button></form>"
+                + "<p><a href=\"/index.php\">访问 index.php</a> | <a href=\"/files/\">查看文件列表</a></p>"
+                + "<script>"
+                + "function upload(){var f=document.getElementById('file').files[0];if(!f){alert('请选择文件');return;}var x=new XMLHttpRequest();x.onreadystatechange=function(){if(x.readyState===4){alert(x.responseText);location.reload();}};x.open('POST','/upload?filename='+encodeURIComponent(f.name));var d=new FormData();d.append('file',f);x.send(d);}"
+                + "</script>";
+    }
+
+    private String renderDirectory(File dir, String uri) {
+        StringBuilder sb = new StringBuilder("<h1>文件列表</h1><p><a href=\"/\">返回首页</a></p><ul>");
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName();
+                String href = "/files/".equals(uri) || "/".equals(uri) ? "/" + encodeUrl(name) : uri + "/" + encodeUrl(name);
+                sb.append("<li><a href=\"").append(href).append("\">")
+                        .append(escapeHtml(name))
+                        .append(file.isDirectory() ? "/" : "")
+                        .append("</a></li>");
+            }
+        }
+        sb.append("</ul>");
+        return sb.toString();
+    }
+
+    private File resolveFile(String uri) {
+        try {
+            if ("/files".equals(uri) || "/files/".equals(uri)) return documentRoot;
+            String path = java.net.URLDecoder.decode(uri, "UTF-8");
+            if (path.startsWith("/")) path = path.substring(1);
+            if (path.startsWith("files/")) path = path.substring(6);
+            File target = new File(documentRoot, path);
+            String rootPath = documentRoot.getCanonicalPath();
+            String targetPath = target.getCanonicalPath();
+            if (!targetPath.startsWith(rootPath)) return null;
+            return target;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Response htmlResponse(String body) {
+        String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                + "<title>星河 PHP 服务</title><style>body{font-family:Arial,sans-serif;background:#101b3d;color:#fff;padding:24px;}a{color:#00d4ff}code,pre{background:#1c2d5a;padding:8px;border-radius:8px;display:block;white-space:pre-wrap}button{padding:10px 18px;border:0;border-radius:20px;background:#00d4ff;color:#00172a;font-weight:bold}</style></head><body>"
+                + body + "</body></html>";
+        return newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", html);
+    }
+
+    private Response textResponse(Response.Status status, String text) {
+        return newFixedLengthResponse(status, "text/plain; charset=UTF-8", text);
+    }
+
+    private Response jsonResponse(boolean success, String message, Response.Status status) {
+        String json = "{\"success\":" + success + ",\"message\":\"" + escapeJson(message) + "\"}";
+        Response resp = newFixedLengthResponse(status, "application/json; charset=UTF-8", json);
+        resp.addHeader("Access-Control-Allow-Origin", "*");
+        return resp;
+    }
+
+    private int findAvailablePort(int startPort) {
+        for (int port = startPort; port < startPort + 30; port++) {
+            ServerSocket socket = null;
+            try {
+                socket = new ServerSocket(port);
+                socket.setReuseAddress(true);
+                return port;
+            } catch (IOException ignored) {
+            } finally {
+                if (socket != null) {
+                    try {
+                        socket.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    private String getLocalIpAddress() {
+        try {
+            WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                int ip = wm.getConnectionInfo().getIpAddress();
+                if (ip != 0) {
+                    String wifiIp = Formatter.formatIpAddress(ip);
+                    if (!"0.0.0.0".equals(wifiIp) && !"127.0.0.1".equals(wifiIp)) return wifiIp;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface ni = interfaces.nextElement();
+                if (ni == null || ni.isLoopback() || !ni.isUp() || ni.isVirtual()) continue;
+                java.util.Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr == null || addr.isLoopbackAddress() || addr.isLinkLocalAddress()) continue;
+                    String host = addr.getHostAddress();
+                    if (host != null && !host.contains(":")) return host;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "0.0.0.0";
+    }
+
+    private void copyFile(File src, File dst) throws IOException {
+        InputStream in = new FileInputStream(src);
+        FileOutputStream out = new FileOutputStream(dst);
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = in.read(buffer)) != -1) out.write(buffer, 0, len);
+        out.flush();
+        in.close();
+        out.close();
+    }
+
+    private String readAll(InputStream input) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int len;
+        while ((len = input.read(buffer)) != -1) out.write(buffer, 0, len);
+        return new String(out.toByteArray(), StandardCharsets.UTF_8);
+    }
+
+    private String sanitizeFileName(String name) {
+        int lastSep = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        if (lastSep >= 0) name = name.substring(lastSep + 1);
+        return name.replaceAll("[\\r\\n\\t]", "").trim();
+    }
+
+    private String guessMime(String name) {
+        String lower = name.toLowerCase(Locale.US);
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html; charset=UTF-8";
+        if (lower.endsWith(".css")) return "text/css; charset=UTF-8";
+        if (lower.endsWith(".js")) return "application/javascript; charset=UTF-8";
+        if (lower.endsWith(".json")) return "application/json; charset=UTF-8";
+        if (lower.endsWith(".txt")) return "text/plain; charset=UTF-8";
+        return "application/octet-stream";
+    }
+
+    private String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    private String encodeUrl(String s) {
+        try {
+            return java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20");
+        } catch (Exception e) {
+            return s;
+        }
+    }
+}
