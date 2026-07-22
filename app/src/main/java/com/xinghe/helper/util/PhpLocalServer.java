@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -25,6 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 15;
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -38,6 +41,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     public void startServer() throws IOException {
         documentRoot = getDocumentRoot();
+        installBundledPhpIfNeeded();
         actualPort = findAvailablePort(DEFAULT_PORT);
         if (actualPort <= 0) {
             throw new IOException("找不到可用端口");
@@ -89,7 +93,7 @@ public class PhpLocalServer extends NanoHTTPD {
     public String getInterpreterStatus() {
         File php = findPhpInterpreter();
         if (php == null) {
-            return "未检测到 PHP 解释器，仅能上传和浏览文件";
+            return "未检测到 PHP 解释器，请确认 APK 已内置 armeabi-v7a/php";
         }
         return "已检测到解释器：" + php.getAbsolutePath();
     }
@@ -166,7 +170,8 @@ public class PhpLocalServer extends NanoHTTPD {
         if (php == null) {
             String body = "<h1>未检测到 PHP 解释器</h1>"
                     + "<p>文件已经存在，但当前盒子不能直接执行 PHP。</p>"
-                    + "<p>请把 Android 可执行的 php 或 php-cgi 放到以下任一位置：</p>"
+                    + "<p>新版 APK 会优先自动释放内置的 armeabi-v7a PHP；如果仍看到此提示，说明 APK 暂未带上可执行 PHP，或设备架构不兼容。</p>"
+                    + "<p>也可以手动把 Android 可执行的 php 或 php-cgi 放到以下任一位置：</p>"
                     + "<pre>" + escapeHtml(new File(documentRoot.getParentFile(), "php/php").getAbsolutePath()) + "\n"
                     + escapeHtml(new File(documentRoot.getParentFile(), "php/php-cgi").getAbsolutePath()) + "\n"
                     + escapeHtml(new File(context.getFilesDir(), "php/php").getAbsolutePath()) + "</pre>"
@@ -176,9 +181,23 @@ public class PhpLocalServer extends NanoHTTPD {
         }
 
         try {
-            ProcessBuilder pb = new ProcessBuilder(php.getAbsolutePath(), script.getAbsolutePath());
+            File phpHome = getBundledPhpHome();
+            File phpIni = new File(phpHome, "etc/php.ini");
+            ProcessBuilder pb;
+            if (phpIni.exists()) {
+                pb = new ProcessBuilder(php.getAbsolutePath(), "-c", phpIni.getAbsolutePath(), script.getAbsolutePath());
+            } else {
+                pb = new ProcessBuilder(php.getAbsolutePath(), script.getAbsolutePath());
+            }
             pb.directory(documentRoot);
             Map<String, String> env = pb.environment();
+            env.put("HOME", phpHome.getAbsolutePath());
+            env.put("TMPDIR", context.getCacheDir().getAbsolutePath());
+            env.put("PREFIX", phpHome.getAbsolutePath());
+            env.put("TERMUX_PREFIX", phpHome.getAbsolutePath());
+            env.put("PATH", phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
+            env.put("LD_LIBRARY_PATH", new File(phpHome, "lib").getAbsolutePath());
+            env.put("SSL_CERT_FILE", new File(phpHome, "etc/tls/cert.pem").getAbsolutePath());
             env.put("REQUEST_METHOD", session.getMethod().name());
             env.put("SCRIPT_FILENAME", script.getAbsolutePath());
             env.put("DOCUMENT_ROOT", documentRoot.getAbsolutePath());
@@ -219,6 +238,8 @@ public class PhpLocalServer extends NanoHTTPD {
     private File findPhpInterpreter() {
         File parent = documentRoot != null ? documentRoot.getParentFile() : null;
         File[] candidates = new File[]{
+                getBundledPhpFile("php"),
+                getBundledPhpFile("php-cgi"),
                 parent == null ? null : new File(parent, "php/php"),
                 parent == null ? null : new File(parent, "php/php-cgi"),
                 new File(context.getFilesDir(), "php/php"),
@@ -234,6 +255,111 @@ public class PhpLocalServer extends NanoHTTPD {
             }
         }
         return null;
+    }
+
+    private void installBundledPhpIfNeeded() {
+        String abi = chooseAssetAbi();
+        if (abi == null) return;
+        File home = getBundledPhpHome();
+        File marker = new File(home, ".version");
+        File php = new File(home, "php");
+        if (php.exists() && marker.exists()) {
+            try {
+                String version = readAll(new FileInputStream(marker)).trim();
+                if (BUNDLED_PHP_VERSION.equals(version)) {
+                    setExecutableBits(home);
+                    return;
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        deleteRecursively(home);
+        if (!home.exists()) home.mkdirs();
+        String assetPath = "php/php-" + abi + ".zip";
+        try {
+            InputStream in = context.getAssets().open(assetPath);
+            unzip(in, home);
+            in.close();
+            setExecutableBits(home);
+            FileOutputStream out = new FileOutputStream(marker);
+            out.write(BUNDLED_PHP_VERSION.getBytes(StandardCharsets.UTF_8));
+            out.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    private String chooseAssetAbi() {
+        String[] abis = Build.SUPPORTED_ABIS;
+        if (abis != null) {
+            for (String abi : abis) {
+                if ("armeabi-v7a".equals(abi)) return "armeabi-v7a";
+            }
+            for (String abi : abis) {
+                if ("arm64-v8a".equals(abi)) return "arm64-v8a";
+            }
+        }
+        return "armeabi-v7a";
+    }
+
+    private File getBundledPhpFile(String name) {
+        return new File(getBundledPhpHome(), name);
+    }
+
+    private File getBundledPhpHome() {
+        return new File(context.getFilesDir(), "bundled-php");
+    }
+
+    private void unzip(InputStream input, File destDir) throws IOException {
+        ZipInputStream zis = new ZipInputStream(input);
+        ZipEntry entry;
+        byte[] buffer = new byte[8192];
+        String root = destDir.getCanonicalPath();
+        while ((entry = zis.getNextEntry()) != null) {
+            File outFile = new File(destDir, entry.getName());
+            String outPath = outFile.getCanonicalPath();
+            if (!outPath.startsWith(root)) {
+                zis.closeEntry();
+                continue;
+            }
+            if (entry.isDirectory()) {
+                outFile.mkdirs();
+            } else {
+                File parent = outFile.getParentFile();
+                if (parent != null && !parent.exists()) parent.mkdirs();
+                FileOutputStream out = new FileOutputStream(outFile);
+                int len;
+                while ((len = zis.read(buffer)) != -1) out.write(buffer, 0, len);
+                out.close();
+            }
+            zis.closeEntry();
+        }
+        zis.close();
+    }
+
+    private void setExecutableBits(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) setExecutableBits(child);
+            }
+        }
+        file.setReadable(true, false);
+        file.setExecutable(true, false);
+        if (file.getName().equals("php") || file.getName().equals("php-cgi")) {
+            file.setWritable(true, true);
+        }
+    }
+
+    private void deleteRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) deleteRecursively(child);
+            }
+        }
+        file.delete();
     }
 
     private Response phpOutputResponse(String output) {
