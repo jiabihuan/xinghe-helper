@@ -184,10 +184,19 @@ public class PhpLocalServer extends NanoHTTPD {
             File phpHome = getBundledPhpHome();
             File phpIni = new File(phpHome, "etc/php.ini");
             File phpTmpDir = new File(context.getCacheDir(), "php-tmp");
+            File phpLibDir = new File(phpHome, "lib");
+            File phpEtcDir = new File(phpHome, "etc");
+            File phpTlsDir = new File(phpEtcDir, "tls");
+            File phpCertFile = new File(phpTlsDir, "cert.pem");
+            File phpOpenSslConf = new File(phpTlsDir, "openssl.cnf");
+            File phpResolvConf = new File(phpEtcDir, "resolv.conf");
+            File phpHosts = new File(phpEtcDir, "hosts");
+            File phpResolvWrapper = new File(phpLibDir, "libresolv_wrapper.so");
             if (!phpTmpDir.exists()) phpTmpDir.mkdirs();
             boolean cgiMode = php.getName().contains("cgi");
             java.util.List<String> command = new java.util.ArrayList<>();
             command.add(php.getAbsolutePath());
+            command.add("-n");
             command.add("-d");
             command.add("opcache.enable=0");
             command.add("-d");
@@ -198,6 +207,18 @@ public class PhpLocalServer extends NanoHTTPD {
             command.add("sys_temp_dir=" + phpTmpDir.getAbsolutePath());
             command.add("-d");
             command.add("upload_tmp_dir=" + phpTmpDir.getAbsolutePath());
+            command.add("-d");
+            command.add("date.timezone=Asia/Shanghai");
+            command.add("-d");
+            command.add("default_socket_timeout=20");
+            command.add("-d");
+            command.add("max_execution_time=" + Math.max(1, EXEC_TIMEOUT_SECONDS - 5));
+            if (phpCertFile.exists()) {
+                command.add("-d");
+                command.add("openssl.cafile=" + phpCertFile.getAbsolutePath());
+                command.add("-d");
+                command.add("curl.cainfo=" + phpCertFile.getAbsolutePath());
+            }
             if (cgiMode) {
                 if (phpIni.exists()) {
                     command.add("-c");
@@ -217,12 +238,31 @@ public class PhpLocalServer extends NanoHTTPD {
             env.put("TMPDIR", phpTmpDir.getAbsolutePath());
             env.put("TEMP", phpTmpDir.getAbsolutePath());
             env.put("TMP", phpTmpDir.getAbsolutePath());
+            env.put("TZ", "Asia/Shanghai");
             env.put("PREFIX", phpHome.getAbsolutePath());
             env.put("TERMUX_PREFIX", phpHome.getAbsolutePath());
             env.put("PHP_INI_SCAN_DIR", "");
             env.put("PATH", phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
-            env.put("LD_LIBRARY_PATH", new File(phpHome, "lib").getAbsolutePath());
-            env.put("SSL_CERT_FILE", new File(phpHome, "etc/tls/cert.pem").getAbsolutePath());
+            env.put("LD_LIBRARY_PATH", phpLibDir.getAbsolutePath());
+            if (phpResolvWrapper.exists()) {
+                env.put("LD_PRELOAD", phpResolvWrapper.getAbsolutePath());
+            }
+            if (phpResolvConf.exists()) {
+                env.put("RESOLV_WRAPPER_CONF", phpResolvConf.getAbsolutePath());
+            }
+            if (phpHosts.exists()) {
+                env.put("RESOLV_WRAPPER_HOSTS", phpHosts.getAbsolutePath());
+            }
+            if (phpCertFile.exists()) {
+                env.put("SSL_CERT_FILE", phpCertFile.getAbsolutePath());
+                env.put("CURL_CA_BUNDLE", phpCertFile.getAbsolutePath());
+            }
+            if (phpTlsDir.exists()) {
+                env.put("SSL_CERT_DIR", phpTlsDir.getAbsolutePath());
+            }
+            if (phpOpenSslConf.exists()) {
+                env.put("OPENSSL_CONF", phpOpenSslConf.getAbsolutePath());
+            }
             env.put("REQUEST_METHOD", session.getMethod().name());
             env.put("SCRIPT_FILENAME", script.getAbsolutePath());
             env.put("DOCUMENT_ROOT", documentRoot.getAbsolutePath());
@@ -239,10 +279,17 @@ public class PhpLocalServer extends NanoHTTPD {
             env.put("CONTENT_LENGTH", "0");
             env.put("REDIRECT_STATUS", "200");
             Process process = pb.start();
+            try {
+                process.getOutputStream().close();
+            } catch (IOException ignored) {
+            }
             boolean finished = waitForProcess(process, EXEC_TIMEOUT_SECONDS * 1000L);
             if (!finished) {
                 process.destroy();
-                return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行超时");
+                return textResponse(Response.Status.INTERNAL_ERROR,
+                        "PHP 执行超时，已等待 " + EXEC_TIMEOUT_SECONDS + " 秒。\n"
+                                + "可能原因：脚本请求的外部接口无响应、DNS/HTTPS 依赖异常，或脚本内部进入长循环。\n"
+                                + "当前已设置 App 私有临时目录、证书路径、DNS resolv.conf 和 libresolv_wrapper。");
             }
             String output = readAll(process.getInputStream());
             String error = readAll(process.getErrorStream());
@@ -398,21 +445,26 @@ public class PhpLocalServer extends NanoHTTPD {
     }
 
     private Response phpOutputResponse(String output) {
-        String lower = output.toLowerCase(Locale.US);
         int headerEnd = output.indexOf("\r\n\r\n");
         int headerEndLf = output.indexOf("\n\n");
-        if (lower.startsWith("content-type:") && (headerEnd > 0 || headerEndLf > 0)) {
+        if (headerEnd > 0 || headerEndLf > 0) {
             int split = headerEnd > 0 ? headerEnd + 4 : headerEndLf + 2;
             String headers = output.substring(0, split).trim();
             String body = output.substring(split);
             String mime = "text/html; charset=UTF-8";
+            boolean hasCgiHeader = false;
             for (String line : headers.split("\\r?\\n")) {
-                if (line.toLowerCase(Locale.US).startsWith("content-type:")) {
+                String lower = line.toLowerCase(Locale.US);
+                if (lower.startsWith("content-type:")) {
+                    hasCgiHeader = true;
                     mime = line.substring(line.indexOf(':') + 1).trim();
-                    break;
+                } else if (lower.startsWith("status:") || lower.startsWith("x-powered-by:")) {
+                    hasCgiHeader = true;
                 }
             }
-            return newFixedLengthResponse(Response.Status.OK, mime, body);
+            if (hasCgiHeader) {
+                return newFixedLengthResponse(Response.Status.OK, mime, body);
+            }
         }
         return newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", output);
     }
