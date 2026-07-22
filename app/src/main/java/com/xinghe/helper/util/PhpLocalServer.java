@@ -183,25 +183,43 @@ public class PhpLocalServer extends NanoHTTPD {
         try {
             File phpHome = getBundledPhpHome();
             File phpIni = new File(phpHome, "etc/php.ini");
+            File phpTmpDir = new File(context.getCacheDir(), "php-tmp");
+            if (!phpTmpDir.exists()) phpTmpDir.mkdirs();
             boolean cgiMode = php.getName().contains("cgi");
-            ProcessBuilder pb;
+            java.util.List<String> command = new java.util.ArrayList<>();
+            command.add(php.getAbsolutePath());
+            command.add("-d");
+            command.add("opcache.enable=0");
+            command.add("-d");
+            command.add("opcache.enable_cli=0");
+            command.add("-d");
+            command.add("opcache.lockfile_path=" + phpTmpDir.getAbsolutePath());
+            command.add("-d");
+            command.add("sys_temp_dir=" + phpTmpDir.getAbsolutePath());
+            command.add("-d");
+            command.add("upload_tmp_dir=" + phpTmpDir.getAbsolutePath());
             if (cgiMode) {
                 if (phpIni.exists()) {
-                    pb = new ProcessBuilder(php.getAbsolutePath(), "-c", phpIni.getAbsolutePath());
-                } else {
-                    pb = new ProcessBuilder(php.getAbsolutePath());
+                    command.add("-c");
+                    command.add(phpIni.getAbsolutePath());
                 }
             } else if (phpIni.exists()) {
-                pb = new ProcessBuilder(php.getAbsolutePath(), "-c", phpIni.getAbsolutePath(), script.getAbsolutePath());
+                command.add("-c");
+                command.add(phpIni.getAbsolutePath());
+                command.add(script.getAbsolutePath());
             } else {
-                pb = new ProcessBuilder(php.getAbsolutePath(), script.getAbsolutePath());
+                command.add(script.getAbsolutePath());
             }
+            ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(documentRoot);
             Map<String, String> env = pb.environment();
             env.put("HOME", phpHome.getAbsolutePath());
-            env.put("TMPDIR", context.getCacheDir().getAbsolutePath());
+            env.put("TMPDIR", phpTmpDir.getAbsolutePath());
+            env.put("TEMP", phpTmpDir.getAbsolutePath());
+            env.put("TMP", phpTmpDir.getAbsolutePath());
             env.put("PREFIX", phpHome.getAbsolutePath());
             env.put("TERMUX_PREFIX", phpHome.getAbsolutePath());
+            env.put("PHP_INI_SCAN_DIR", "");
             env.put("PATH", phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
             env.put("LD_LIBRARY_PATH", new File(phpHome, "lib").getAbsolutePath());
             env.put("SSL_CERT_FILE", new File(phpHome, "etc/tls/cert.pem").getAbsolutePath());
