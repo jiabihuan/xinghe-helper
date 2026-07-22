@@ -26,7 +26,7 @@ import fi.iki.elonen.NanoHTTPD;
 public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
-    private static final int EXEC_TIMEOUT_SECONDS = 15;
+    private static final int EXEC_TIMEOUT_SECONDS = 60;
     private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm";
 
     private final Context context;
@@ -183,8 +183,15 @@ public class PhpLocalServer extends NanoHTTPD {
         try {
             File phpHome = getBundledPhpHome();
             File phpIni = new File(phpHome, "etc/php.ini");
+            boolean cgiMode = php.getName().contains("cgi");
             ProcessBuilder pb;
-            if (phpIni.exists()) {
+            if (cgiMode) {
+                if (phpIni.exists()) {
+                    pb = new ProcessBuilder(php.getAbsolutePath(), "-c", phpIni.getAbsolutePath());
+                } else {
+                    pb = new ProcessBuilder(php.getAbsolutePath());
+                }
+            } else if (phpIni.exists()) {
                 pb = new ProcessBuilder(php.getAbsolutePath(), "-c", phpIni.getAbsolutePath(), script.getAbsolutePath());
             } else {
                 pb = new ProcessBuilder(php.getAbsolutePath(), script.getAbsolutePath());
@@ -201,7 +208,17 @@ public class PhpLocalServer extends NanoHTTPD {
             env.put("REQUEST_METHOD", session.getMethod().name());
             env.put("SCRIPT_FILENAME", script.getAbsolutePath());
             env.put("DOCUMENT_ROOT", documentRoot.getAbsolutePath());
-            env.put("QUERY_STRING", session.getQueryParameterString() == null ? "" : session.getQueryParameterString());
+            String queryString = session.getQueryParameterString() == null ? "" : session.getQueryParameterString();
+            String scriptName = "/" + documentRoot.toURI().relativize(script.toURI()).getPath();
+            env.put("QUERY_STRING", queryString);
+            env.put("REQUEST_URI", scriptName + (queryString.isEmpty() ? "" : "?" + queryString));
+            env.put("SCRIPT_NAME", scriptName);
+            env.put("PHP_SELF", scriptName);
+            env.put("SERVER_PROTOCOL", "HTTP/1.1");
+            env.put("GATEWAY_INTERFACE", "CGI/1.1");
+            env.put("SERVER_SOFTWARE", "XinghePhpServer/1.0");
+            env.put("CONTENT_TYPE", "");
+            env.put("CONTENT_LENGTH", "0");
             env.put("REDIRECT_STATUS", "200");
             Process process = pb.start();
             boolean finished = waitForProcess(process, EXEC_TIMEOUT_SECONDS * 1000L);
@@ -238,12 +255,12 @@ public class PhpLocalServer extends NanoHTTPD {
     private File findPhpInterpreter() {
         File parent = documentRoot != null ? documentRoot.getParentFile() : null;
         File[] candidates = new File[]{
-                getBundledPhpFile("php"),
                 getBundledPhpFile("php-cgi"),
-                parent == null ? null : new File(parent, "php/php"),
+                getBundledPhpFile("php"),
                 parent == null ? null : new File(parent, "php/php-cgi"),
-                new File(context.getFilesDir(), "php/php"),
+                parent == null ? null : new File(parent, "php/php"),
                 new File(context.getFilesDir(), "php/php-cgi"),
+                new File(context.getFilesDir(), "php/php"),
                 new File("/system/bin/php"),
                 new File("/system/xbin/php"),
                 new File("/vendor/bin/php"),
