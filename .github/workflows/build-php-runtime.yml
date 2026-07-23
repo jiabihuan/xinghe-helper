@@ -1,0 +1,53 @@
+name: Build PHP Runtime
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-php-runtime.yml"
+      - ".github/scripts/build-php-android.sh"
+
+jobs:
+  build-php-armeabi-v7a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            bison \
+            build-essential \
+            pkg-config \
+            re2c \
+            unzip \
+            wget \
+            zip
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;26.3.11579264"
+
+      - name: Build PHP for armeabi-v7a
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+          PHP_VERSION: "8.3.13"
+          ANDROID_API: "23"
+          TARGET_ABI: "armeabi-v7a"
+        run: |
+          bash .github/scripts/build-php-android.sh
+
+      - name: Upload PHP runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-runtime-armeabi-v7a
+          path: build/php-runtime-armeabi-v7a.zip
+          if-no-files-found: error
