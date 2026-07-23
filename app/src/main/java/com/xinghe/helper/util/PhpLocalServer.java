@@ -27,7 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v2";
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v3";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -197,6 +197,7 @@ public class PhpLocalServer extends NanoHTTPD {
             String termuxPrefix = "/data/data/com.termux/files/usr";
             String termuxHome = "/data/data/com.termux/files/home";
             String termuxTmp = termuxPrefix + "/tmp";
+            String prootDocumentRoot = "/www";
             if (!phpTmpDir.exists()) phpTmpDir.mkdirs();
             File prootRoot = getProotRoot();
             File prootPrefixTarget = new File(prootRoot, "data/data/com.termux/files/usr");
@@ -204,14 +205,14 @@ public class PhpLocalServer extends NanoHTTPD {
             File prootTmpTarget = new File(prootRoot, "data/data/com.termux/files/usr/tmp");
             File prootSystemTarget = new File(prootRoot, "system");
             File prootDevTarget = new File(prootRoot, "dev");
+            File prootWwwTarget = new File(prootRoot, "www");
             if (prootMode) {
                 prootPrefixTarget.mkdirs();
                 prootHomeTarget.mkdirs();
                 prootTmpTarget.mkdirs();
                 prootSystemTarget.mkdirs();
                 prootDevTarget.mkdirs();
-                new File(phpHome, "home").mkdirs();
-                new File(phpHome, "tmp").mkdirs();
+                prootWwwTarget.mkdirs();
             }
             boolean cgiMode = php.getName().contains("cgi");
             java.util.List<String> phpCommand = new java.util.ArrayList<>();
@@ -265,17 +266,13 @@ public class PhpLocalServer extends NanoHTTPD {
                 command.add("-r");
                 command.add(prootRoot.getAbsolutePath());
                 command.add("-b");
-                command.add(phpHome.getAbsolutePath() + ":" + termuxPrefix);
-                command.add("-b");
-                command.add(new File(phpHome, "home").getAbsolutePath() + ":" + termuxHome);
-                command.add("-b");
-                command.add(phpTmpDir.getAbsolutePath() + ":" + termuxTmp);
-                command.add("-b");
                 command.add("/system:/system");
                 command.add("-b");
                 command.add("/dev:/dev");
+                command.add("-b");
+                command.add(documentRoot.getAbsolutePath() + ":" + prootDocumentRoot);
                 command.add("-w");
-                command.add(documentRoot.getAbsolutePath());
+                command.add(prootDocumentRoot);
             }
             command.addAll(phpCommand);
             ProcessBuilder pb = new ProcessBuilder(command);
@@ -311,14 +308,15 @@ public class PhpLocalServer extends NanoHTTPD {
                 env.put("OPENSSL_CONF", prootMode ? termuxPrefix + "/etc/tls/openssl.cnf" : phpOpenSslConf.getAbsolutePath());
             }
             env.put("REQUEST_METHOD", session.getMethod().name());
-            env.put("SCRIPT_FILENAME", script.getAbsolutePath());
-            env.put("DOCUMENT_ROOT", documentRoot.getAbsolutePath());
+            env.put("DOCUMENT_ROOT", prootMode ? prootDocumentRoot : documentRoot.getAbsolutePath());
             String queryString = session.getQueryParameterString() == null ? "" : session.getQueryParameterString();
             String scriptName = "/" + documentRoot.toURI().relativize(script.toURI()).getPath();
+            String scriptFilename = prootMode ? prootDocumentRoot + scriptName : script.getAbsolutePath();
             env.put("QUERY_STRING", queryString);
             env.put("REQUEST_URI", scriptName + (queryString.isEmpty() ? "" : "?" + queryString));
             env.put("SCRIPT_NAME", scriptName);
             env.put("PHP_SELF", scriptName);
+            env.put("SCRIPT_FILENAME", scriptFilename);
             env.put("SERVER_PROTOCOL", "HTTP/1.1");
             env.put("GATEWAY_INTERFACE", "CGI/1.1");
             env.put("SERVER_SOFTWARE", "XinghePhpServer/1.0");
@@ -435,7 +433,7 @@ public class PhpLocalServer extends NanoHTTPD {
     }
 
     private File getBundledPhpHome() {
-        return new File(context.getFilesDir(), "bundled-php");
+        return new File(getProotRoot(), "data/data/com.termux/files/usr");
     }
 
     private File getProotRoot() {
