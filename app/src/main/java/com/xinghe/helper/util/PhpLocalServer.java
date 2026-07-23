@@ -28,7 +28,7 @@ public class PhpLocalServer extends NanoHTTPD {
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
     private static final int PHP_SOCKET_TIMEOUT_SECONDS = 8;
-    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v2";
+    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v3";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
