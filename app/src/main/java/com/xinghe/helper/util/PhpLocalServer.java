@@ -27,7 +27,8 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v1";
+    private static final int PHP_SOCKET_TIMEOUT_SECONDS = 8;
+    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v2";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -218,9 +219,19 @@ public class PhpLocalServer extends NanoHTTPD {
             command.add("-d");
             command.add("date.timezone=Asia/Shanghai");
             command.add("-d");
-            command.add("default_socket_timeout=20");
+            command.add("default_socket_timeout=" + PHP_SOCKET_TIMEOUT_SECONDS);
             command.add("-d");
             command.add("max_execution_time=" + Math.max(1, EXEC_TIMEOUT_SECONDS - 5));
+            command.add("-d");
+            command.add("display_errors=1");
+            command.add("-d");
+            command.add("log_errors=0");
+            command.add("-d");
+            command.add("html_errors=0");
+            command.add("-d");
+            command.add("allow_url_fopen=1");
+            command.add("-d");
+            command.add("user_agent=XinghePhpServer/1.0");
             if (phpCertFile.exists()) {
                 command.add("-d");
                 command.add("openssl.cafile=" + phpCertFile.getAbsolutePath());
@@ -282,10 +293,19 @@ public class PhpLocalServer extends NanoHTTPD {
             env.put("SERVER_PROTOCOL", "HTTP/1.1");
             env.put("GATEWAY_INTERFACE", "CGI/1.1");
             env.put("SERVER_SOFTWARE", "XinghePhpServer/1.0");
+            env.put("SERVER_NAME", getLocalIpAddress());
+            env.put("SERVER_PORT", String.valueOf(actualPort));
+            env.put("REMOTE_ADDR", "127.0.0.1");
+            env.put("REMOTE_PORT", "0");
+            env.put("HTTPS", "off");
             env.put("CONTENT_TYPE", "");
             env.put("CONTENT_LENGTH", "0");
             env.put("REDIRECT_STATUS", "200");
             Process process = pb.start();
+            StreamCollector stdout = new StreamCollector(process.getInputStream());
+            StreamCollector stderr = new StreamCollector(process.getErrorStream());
+            stdout.start();
+            stderr.start();
             try {
                 process.getOutputStream().close();
             } catch (IOException ignored) {
@@ -293,13 +313,23 @@ public class PhpLocalServer extends NanoHTTPD {
             boolean finished = waitForProcess(process, EXEC_TIMEOUT_SECONDS * 1000L);
             if (!finished) {
                 process.destroy();
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException ignored) {
+                }
+                process.destroyForcibly();
                 return textResponse(Response.Status.INTERNAL_ERROR,
                         "PHP 执行超时，已等待 " + EXEC_TIMEOUT_SECONDS + " 秒。\n"
-                                + "可能原因：脚本请求的外部接口无响应、DNS/HTTPS 依赖异常，或脚本内部进入长循环。\n"
-                                + "当前运行模式：Android 原生 PHP 直接执行。");
+                                + "脚本：" + script.getName() + "\n"
+                                + "请求：" + session.getUri() + (queryString.isEmpty() ? "" : "?" + queryString) + "\n"
+                                + "可能原因：脚本请求的外部接口无响应、当前 PHP runtime 缺少 curl/openssl 等联网扩展，或脚本内部进入长循环。\n"
+                                + "PHP stderr：\n" + limitText(stderr.getText(), 2000) + "\n"
+                                + "PHP stdout：\n" + limitText(stdout.getText(), 2000));
             }
-            String output = readAll(process.getInputStream());
-            String error = readAll(process.getErrorStream());
+            stdout.joinQuietly(1000);
+            stderr.joinQuietly(1000);
+            String output = stdout.getText();
+            String error = stderr.getText();
             if (process.exitValue() != 0) {
                 return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行失败:\n" + error + "\n" + output);
             }
@@ -322,6 +352,48 @@ public class PhpLocalServer extends NanoHTTPD {
             }
             Thread.sleep(100);
         }
+    }
+
+    private static class StreamCollector extends Thread {
+        private final InputStream input;
+        private final ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        StreamCollector(InputStream input) {
+            this.input = input;
+            setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            byte[] buffer = new byte[4096];
+            int len;
+            try {
+                while ((len = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, len);
+                    if (output.size() > 1024 * 1024) {
+                        break;
+                    }
+                }
+            } catch (IOException ignored) {
+            }
+        }
+
+        String getText() {
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        }
+
+        void joinQuietly(long timeoutMillis) {
+            try {
+                join(timeoutMillis);
+            } catch (InterruptedException ignored) {
+            }
+        }
+    }
+
+    private String limitText(String text, int maxLength) {
+        if (text == null || text.isEmpty()) return "(无)";
+        if (text.length() <= maxLength) return text;
+        return text.substring(0, maxLength) + "\n...(已截断)";
     }
 
     private File findPhpInterpreter() {

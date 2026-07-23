@@ -3,6 +3,8 @@ set -euo pipefail
 set -x
 
 PHP_VERSION="${PHP_VERSION:-8.3.13}"
+OPENSSL_VERSION="${OPENSSL_VERSION:-3.3.2}"
+CURL_VERSION="${CURL_VERSION:-8.10.1}"
 ANDROID_API="${ANDROID_API:-23}"
 TARGET_ABI="${TARGET_ABI:-armeabi-v7a}"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:?ANDROID_NDK_HOME is required}"
@@ -10,6 +12,7 @@ ANDROID_NDK_HOME="${ANDROID_NDK_HOME:?ANDROID_NDK_HOME is required}"
 ROOT_DIR="$(pwd)"
 BUILD_DIR="$ROOT_DIR/build/php-runtime-build"
 OUT_DIR="$ROOT_DIR/build/php-runtime-$TARGET_ABI"
+DEPS_DIR="$ROOT_DIR/build/php-runtime-deps-$TARGET_ABI"
 ZIP_PATH="$ROOT_DIR/build/php-runtime-$TARGET_ABI.zip"
 LOG_DIR="$ROOT_DIR/build/php-build-logs"
 
@@ -17,10 +20,12 @@ case "$TARGET_ABI" in
   armeabi-v7a)
     TARGET_HOST="arm-linux-androideabi"
     CLANG_TRIPLE="armv7a-linux-androideabi${ANDROID_API}"
+    OPENSSL_TARGET="android-arm"
     ;;
   arm64-v8a)
     TARGET_HOST="aarch64-linux-android"
     CLANG_TRIPLE="aarch64-linux-android${ANDROID_API}"
+    OPENSSL_TARGET="android-arm64"
     ;;
   *)
     echo "Unsupported TARGET_ABI: $TARGET_ABI" >&2
@@ -40,10 +45,11 @@ export OBJDUMP="llvm-objdump"
 export RANLIB="llvm-ranlib"
 export STRIP="llvm-strip"
 export CFLAGS="-fPIE -fPIC -O2"
-export LDFLAGS="-pie"
-export LIBS="-ldl -lm"
-export PKG_CONFIG_LIBDIR="/dev/null"
-export PKG_CONFIG_PATH=""
+export CPPFLAGS="-I$DEPS_DIR/include"
+export LDFLAGS="-L$DEPS_DIR/lib -pie"
+export LIBS="-lssl -lcrypto -ldl -lm"
+export PKG_CONFIG_LIBDIR="$DEPS_DIR/lib/pkgconfig"
+export PKG_CONFIG_PATH="$DEPS_DIR/lib/pkgconfig"
 export ac_cv_c_bigendian_php=no
 export ac_cv_func_malloc_0_nonnull=yes
 export ac_cv_func_realloc_0_nonnull=yes
@@ -66,7 +72,7 @@ export ac_cv_func_fork=no
 export ac_cv_func_vfork=no
 export ac_cv_func_daemon=no
 
-rm -rf "$BUILD_DIR" "$OUT_DIR" "$ZIP_PATH" "$LOG_DIR"
+rm -rf "$BUILD_DIR" "$OUT_DIR" "$DEPS_DIR" "$ZIP_PATH" "$LOG_DIR"
 mkdir -p "$BUILD_DIR" "$OUT_DIR/bin" "$OUT_DIR/etc" "$OUT_DIR/tmp" "$LOG_DIR"
 cd "$BUILD_DIR"
 
@@ -76,6 +82,57 @@ if [[ ! -x "$TOOLCHAIN/bin/$CC" ]]; then
 fi
 
 "$CC" --version | tee "$LOG_DIR/compiler.log"
+
+export ANDROID_NDK_ROOT="$ANDROID_NDK_HOME"
+export ANDROID_NDK_HOME="$ANDROID_NDK_HOME"
+
+wget "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+tar -xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+(
+  cd "openssl-${OPENSSL_VERSION}"
+  ./Configure "$OPENSSL_TARGET" \
+    -D__ANDROID_API__="$ANDROID_API" \
+    no-shared \
+    no-tests \
+    no-apps \
+    no-ui-console \
+    no-engine \
+    --prefix="$DEPS_DIR" \
+    --openssldir="$DEPS_DIR/ssl" 2>&1 | tee "$LOG_DIR/openssl-configure.log"
+  make -j"$(nproc)" build_sw 2>&1 | tee "$LOG_DIR/openssl-make.log"
+  make install_sw 2>&1 | tee "$LOG_DIR/openssl-install.log"
+)
+
+wget "https://curl.se/download/curl-${CURL_VERSION}.tar.gz"
+tar -xzf "curl-${CURL_VERSION}.tar.gz"
+(
+  cd "curl-${CURL_VERSION}"
+  ./configure \
+    --host="$TARGET_HOST" \
+    --prefix="$DEPS_DIR" \
+    --with-openssl="$DEPS_DIR" \
+    --without-zlib \
+    --without-brotli \
+    --without-zstd \
+    --without-libpsl \
+    --disable-shared \
+    --enable-static \
+    --disable-ipv6 \
+    --disable-ldap \
+    --disable-ldaps \
+    --disable-rtsp \
+    --disable-dict \
+    --disable-telnet \
+    --disable-tftp \
+    --disable-pop3 \
+    --disable-imap \
+    --disable-smtp \
+    --disable-gopher \
+    --disable-mqtt \
+    --disable-manual 2>&1 | tee "$LOG_DIR/curl-configure.log"
+  make -j"$(nproc)" 2>&1 | tee "$LOG_DIR/curl-make.log"
+  make install 2>&1 | tee "$LOG_DIR/curl-install.log"
+)
 
 wget "https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz"
 tar -xzf "php-${PHP_VERSION}.tar.gz"
@@ -94,6 +151,8 @@ timeout 25m ./configure \
   --enable-session \
   --enable-tokenizer \
   --enable-phar \
+  --with-openssl="$DEPS_DIR" \
+  --with-curl="$DEPS_DIR" \
   --without-pcre-jit \
   --without-pear \
   --disable-cgi-fcgi \
@@ -173,9 +232,17 @@ cat > "$OUT_DIR/etc/php.ini" <<'EOF'
 date.timezone=Asia/Shanghai
 opcache.enable=0
 opcache.enable_cli=0
-default_socket_timeout=20
+default_socket_timeout=8
 max_execution_time=55
+allow_url_fopen=1
+display_errors=1
+log_errors=0
 EOF
+
+mkdir -p "$OUT_DIR/etc/tls"
+if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
+  cp /etc/ssl/certs/ca-certificates.crt "$OUT_DIR/etc/tls/cert.pem"
+fi
 
 chmod 700 "$OUT_DIR/bin/"* || true
 "$STRIP" "$OUT_DIR/bin/"* || true
