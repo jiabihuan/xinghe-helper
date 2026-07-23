@@ -27,7 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v4";
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v5";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -281,39 +281,70 @@ public class PhpLocalServer extends NanoHTTPD {
                 command.add(documentRoot.getAbsolutePath() + ":" + prootDocumentRoot);
                 command.add("-w");
                 command.add(prootDocumentRoot);
+                command.add("/system/bin/env");
+                command.add("-i");
+                command.add("HOME=" + termuxHome);
+                command.add("TMPDIR=" + termuxTmp);
+                command.add("TEMP=" + termuxTmp);
+                command.add("TMP=" + termuxTmp);
+                command.add("TZ=Asia/Shanghai");
+                command.add("PREFIX=" + termuxPrefix);
+                command.add("TERMUX_PREFIX=" + termuxPrefix);
+                command.add("PHP_INI_SCAN_DIR=");
+                command.add("PATH=" + termuxPrefix + "/bin:" + termuxPrefix + ":/system/bin");
+                command.add("LD_LIBRARY_PATH=" + termuxPrefix + "/lib");
+                if (phpResolvWrapper.exists()) {
+                    command.add("LD_PRELOAD=" + termuxPrefix + "/lib/libresolv_wrapper.so");
+                }
+                if (phpResolvConf.exists()) {
+                    command.add("RESOLV_WRAPPER_CONF=" + termuxPrefix + "/etc/resolv.conf");
+                }
+                if (phpHosts.exists()) {
+                    command.add("RESOLV_WRAPPER_HOSTS=" + termuxPrefix + "/etc/hosts");
+                }
+                if (phpCertFile.exists()) {
+                    command.add("SSL_CERT_FILE=" + termuxPrefix + "/etc/tls/cert.pem");
+                    command.add("CURL_CA_BUNDLE=" + termuxPrefix + "/etc/tls/cert.pem");
+                }
+                if (phpTlsDir.exists()) {
+                    command.add("SSL_CERT_DIR=" + termuxPrefix + "/etc/tls");
+                }
+                if (phpOpenSslConf.exists()) {
+                    command.add("OPENSSL_CONF=" + termuxPrefix + "/etc/tls/openssl.cnf");
+                }
             }
             command.addAll(phpCommand);
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(documentRoot);
             Map<String, String> env = pb.environment();
-            env.put("HOME", prootMode ? termuxHome : phpHome.getAbsolutePath());
-            env.put("TMPDIR", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
-            env.put("TEMP", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
-            env.put("TMP", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
+            env.put("HOME", prootMode ? context.getFilesDir().getAbsolutePath() : phpHome.getAbsolutePath());
+            env.put("TMPDIR", phpTmpDir.getAbsolutePath());
+            env.put("TEMP", phpTmpDir.getAbsolutePath());
+            env.put("TMP", phpTmpDir.getAbsolutePath());
             env.put("TZ", "Asia/Shanghai");
-            env.put("PREFIX", prootMode ? termuxPrefix : phpHome.getAbsolutePath());
-            env.put("TERMUX_PREFIX", prootMode ? termuxPrefix : phpHome.getAbsolutePath());
+            env.put("PREFIX", prootMode ? phpHome.getAbsolutePath() : phpHome.getAbsolutePath());
+            env.put("TERMUX_PREFIX", prootMode ? phpHome.getAbsolutePath() : phpHome.getAbsolutePath());
             env.put("PHP_INI_SCAN_DIR", "");
-            env.put("PATH", prootMode ? termuxPrefix + "/bin:" + termuxPrefix + ":/system/bin" : phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
+            env.put("PATH", phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
             env.put("LD_LIBRARY_PATH", phpLibDir.getAbsolutePath());
             if (phpResolvWrapper.exists() && !prootMode) {
                 env.put("LD_PRELOAD", phpResolvWrapper.getAbsolutePath());
             }
             if (phpResolvConf.exists()) {
-                env.put("RESOLV_WRAPPER_CONF", prootMode ? termuxPrefix + "/etc/resolv.conf" : phpResolvConf.getAbsolutePath());
+                env.put("RESOLV_WRAPPER_CONF", phpResolvConf.getAbsolutePath());
             }
             if (phpHosts.exists()) {
-                env.put("RESOLV_WRAPPER_HOSTS", prootMode ? termuxPrefix + "/etc/hosts" : phpHosts.getAbsolutePath());
+                env.put("RESOLV_WRAPPER_HOSTS", phpHosts.getAbsolutePath());
             }
             if (phpCertFile.exists()) {
-                env.put("SSL_CERT_FILE", prootMode ? termuxPrefix + "/etc/tls/cert.pem" : phpCertFile.getAbsolutePath());
-                env.put("CURL_CA_BUNDLE", prootMode ? termuxPrefix + "/etc/tls/cert.pem" : phpCertFile.getAbsolutePath());
+                env.put("SSL_CERT_FILE", phpCertFile.getAbsolutePath());
+                env.put("CURL_CA_BUNDLE", phpCertFile.getAbsolutePath());
             }
             if (phpTlsDir.exists()) {
-                env.put("SSL_CERT_DIR", prootMode ? termuxPrefix + "/etc/tls" : phpTlsDir.getAbsolutePath());
+                env.put("SSL_CERT_DIR", phpTlsDir.getAbsolutePath());
             }
             if (phpOpenSslConf.exists()) {
-                env.put("OPENSSL_CONF", prootMode ? termuxPrefix + "/etc/tls/openssl.cnf" : phpOpenSslConf.getAbsolutePath());
+                env.put("OPENSSL_CONF", phpOpenSslConf.getAbsolutePath());
             }
             env.put("REQUEST_METHOD", session.getMethod().name());
             env.put("DOCUMENT_ROOT", prootMode ? prootDocumentRoot : documentRoot.getAbsolutePath());
