@@ -88,6 +88,7 @@ timeout 25m ./configure \
   --prefix="$OUT_DIR" \
   --disable-all \
   --disable-cli \
+  --disable-phpdbg \
   --enable-cgi \
   --enable-filter \
   --enable-session \
