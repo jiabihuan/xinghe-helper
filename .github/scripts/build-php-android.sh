@@ -116,6 +116,33 @@ if [[ "$TARGET_ABI" == "armeabi-v7a" || "$TARGET_ABI" == "arm64-v8a" ]]; then
     sed -i "s/^#define ${macro} 1$/\\/\\* #undef ${macro} \\*\\//" main/php_config.h
   done
   sed -i 's/dtablesize = getdtablesize();/dtablesize = (int) sysconf(_SC_OPEN_MAX); if (dtablesize <= 0) dtablesize = INT_MAX;/' ext/standard/php_fopen_wrapper.c
+  cat >> ext/standard/exec.c <<'EOF'
+
+#ifdef __ANDROID__
+#include <wchar.h>
+int mblen(const char *s, size_t n)
+{
+  if (s == NULL) return 0;
+  size_t result = mbrlen(s, n, NULL);
+  if (result == (size_t) -1 || result == (size_t) -2) return -1;
+  return (int) result;
+}
+#endif
+EOF
+  cat >> ext/standard/dns.c <<'EOF'
+
+#ifndef HAVE_FULL_DNS_FUNCS
+PHP_FUNCTION(dns_get_record)
+{
+  RETURN_FALSE;
+}
+
+PHP_FUNCTION(dns_get_mx)
+{
+  RETURN_FALSE;
+}
+#endif
+EOF
   grep -E "HAVE_(RES_NSEARCH|RES_SEARCH|DN_SKIPNAME|GETDTABLESIZE|FOPENCOOKIE|FUNOPEN)" main/php_config.h | tee "$LOG_DIR/android-compat-config.log" || true
 fi
 
