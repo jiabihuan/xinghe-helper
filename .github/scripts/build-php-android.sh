@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 PHP_VERSION="${PHP_VERSION:-8.3.13}"
 ANDROID_API="${ANDROID_API:-23}"
@@ -10,6 +11,7 @@ ROOT_DIR="$(pwd)"
 BUILD_DIR="$ROOT_DIR/build/php-runtime-build"
 OUT_DIR="$ROOT_DIR/build/php-runtime-$TARGET_ABI"
 ZIP_PATH="$ROOT_DIR/build/php-runtime-$TARGET_ABI.zip"
+LOG_DIR="$ROOT_DIR/build/php-build-logs"
 
 case "$TARGET_ABI" in
   armeabi-v7a)
@@ -53,15 +55,15 @@ export ac_cv_func_fork=no
 export ac_cv_func_vfork=no
 export ac_cv_func_daemon=no
 
-rm -rf "$BUILD_DIR" "$OUT_DIR" "$ZIP_PATH"
-mkdir -p "$BUILD_DIR" "$OUT_DIR/bin" "$OUT_DIR/etc" "$OUT_DIR/tmp"
+rm -rf "$BUILD_DIR" "$OUT_DIR" "$ZIP_PATH" "$LOG_DIR"
+mkdir -p "$BUILD_DIR" "$OUT_DIR/bin" "$OUT_DIR/etc" "$OUT_DIR/tmp" "$LOG_DIR"
 cd "$BUILD_DIR"
 
-wget -q "https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz"
+wget "https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz"
 tar -xzf "php-${PHP_VERSION}.tar.gz"
 cd "php-${PHP_VERSION}"
 
-./configure \
+timeout 25m ./configure \
   --host="$TARGET_HOST" \
   --build="$("./build/config.guess")" \
   --prefix="$OUT_DIR" \
@@ -76,9 +78,9 @@ cd "php-${PHP_VERSION}"
   --with-pcre-jit=no \
   --without-pear \
   --disable-cgi-fcgi \
-  --disable-ipv6
+  --disable-ipv6 2>&1 | tee "$LOG_DIR/configure.log"
 
-make -j"$(nproc)"
+timeout 45m make -j"$(nproc)" V=1 2>&1 | tee "$LOG_DIR/make.log"
 
 if [[ -f sapi/cli/php ]]; then
   cp sapi/cli/php "$OUT_DIR/bin/php"

@@ -45,6 +45,14 @@ jobs:
         run: |
           bash .github/scripts/build-php-android.sh
 
+      - name: Upload PHP build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-build-logs
+          path: build/php-build-logs
+          if-no-files-found: ignore
+
       - name: Upload PHP runtime
         uses: actions/upload-artifact@v4
         with:
