@@ -541,20 +541,69 @@ public class PhpLocalServer extends NanoHTTPD {
             String body = output.substring(split);
             String mime = "text/html; charset=UTF-8";
             boolean hasCgiHeader = false;
+            String location = null;
+            Response.Status status = Response.Status.OK;
+            Map<String, String> extraHeaders = new HashMap<>();
             for (String line : headers.split("\\r?\\n")) {
+                int colon = line.indexOf(':');
+                if (colon <= 0) continue;
                 String lower = line.toLowerCase(Locale.US);
                 if (lower.startsWith("content-type:")) {
                     hasCgiHeader = true;
-                    mime = line.substring(line.indexOf(':') + 1).trim();
-                } else if (lower.startsWith("status:") || lower.startsWith("x-powered-by:")) {
+                    mime = line.substring(colon + 1).trim();
+                } else if (lower.startsWith("status:")) {
                     hasCgiHeader = true;
+                    status = parseCgiStatus(line.substring(colon + 1).trim());
+                } else if (lower.startsWith("location:")) {
+                    hasCgiHeader = true;
+                    location = line.substring(colon + 1).trim();
+                } else if (lower.startsWith("x-powered-by:")) {
+                    hasCgiHeader = true;
+                } else if (!lower.startsWith("transfer-encoding:")
+                        && !lower.startsWith("content-length:")
+                        && !lower.startsWith("connection:")) {
+                    hasCgiHeader = true;
+                    extraHeaders.put(line.substring(0, colon).trim(), line.substring(colon + 1).trim());
                 }
             }
             if (hasCgiHeader) {
-                return newFixedLengthResponse(Response.Status.OK, mime, body);
+                if (location != null && !location.isEmpty()) {
+                    if (status == Response.Status.OK) {
+                        status = Response.Status.REDIRECT;
+                    }
+                    Response resp = newFixedLengthResponse(status, "text/html; charset=UTF-8", "");
+                    resp.addHeader("Location", location);
+                    resp.addHeader("Access-Control-Allow-Origin", "*");
+                    for (Map.Entry<String, String> entry : extraHeaders.entrySet()) {
+                        resp.addHeader(entry.getKey(), entry.getValue());
+                    }
+                    return resp;
+                }
+                Response resp = newFixedLengthResponse(status, mime, body);
+                for (Map.Entry<String, String> entry : extraHeaders.entrySet()) {
+                    resp.addHeader(entry.getKey(), entry.getValue());
+                }
+                return resp;
             }
         }
         return newFixedLengthResponse(Response.Status.OK, "text/html; charset=UTF-8", output);
+    }
+
+    private Response.Status parseCgiStatus(String value) {
+        if (value == null) return Response.Status.OK;
+        String trimmed = value.trim();
+        int space = trimmed.indexOf(' ');
+        String codeText = space > 0 ? trimmed.substring(0, space) : trimmed;
+        try {
+            int code = Integer.parseInt(codeText);
+            Response.Status found = Response.Status.lookup(code);
+            if (found != null) return found;
+            if (code >= 300 && code < 400) return Response.Status.REDIRECT;
+            if (code >= 400 && code < 500) return Response.Status.BAD_REQUEST;
+            if (code >= 500) return Response.Status.INTERNAL_ERROR;
+        } catch (Exception ignored) {
+        }
+        return Response.Status.OK;
     }
 
     private Response serveStaticFile(File file) {
