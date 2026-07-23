@@ -27,7 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v1";
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v2";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -198,6 +198,21 @@ public class PhpLocalServer extends NanoHTTPD {
             String termuxHome = "/data/data/com.termux/files/home";
             String termuxTmp = termuxPrefix + "/tmp";
             if (!phpTmpDir.exists()) phpTmpDir.mkdirs();
+            File prootRoot = getProotRoot();
+            File prootPrefixTarget = new File(prootRoot, "data/data/com.termux/files/usr");
+            File prootHomeTarget = new File(prootRoot, "data/data/com.termux/files/home");
+            File prootTmpTarget = new File(prootRoot, "data/data/com.termux/files/usr/tmp");
+            File prootSystemTarget = new File(prootRoot, "system");
+            File prootDevTarget = new File(prootRoot, "dev");
+            if (prootMode) {
+                prootPrefixTarget.mkdirs();
+                prootHomeTarget.mkdirs();
+                prootTmpTarget.mkdirs();
+                prootSystemTarget.mkdirs();
+                prootDevTarget.mkdirs();
+                new File(phpHome, "home").mkdirs();
+                new File(phpHome, "tmp").mkdirs();
+            }
             boolean cgiMode = php.getName().contains("cgi");
             java.util.List<String> phpCommand = new java.util.ArrayList<>();
             if (prootMode) {
@@ -247,10 +262,12 @@ public class PhpLocalServer extends NanoHTTPD {
             java.util.List<String> command = new java.util.ArrayList<>();
             if (prootMode) {
                 command.add(proot.getAbsolutePath());
+                command.add("-r");
+                command.add(prootRoot.getAbsolutePath());
                 command.add("-b");
                 command.add(phpHome.getAbsolutePath() + ":" + termuxPrefix);
                 command.add("-b");
-                command.add(phpHome.getAbsolutePath() + ":" + termuxHome);
+                command.add(new File(phpHome, "home").getAbsolutePath() + ":" + termuxHome);
                 command.add("-b");
                 command.add(phpTmpDir.getAbsolutePath() + ":" + termuxTmp);
                 command.add("-b");
@@ -319,7 +336,7 @@ public class PhpLocalServer extends NanoHTTPD {
                 return textResponse(Response.Status.INTERNAL_ERROR,
                         "PHP 执行超时，已等待 " + EXEC_TIMEOUT_SECONDS + " 秒。\n"
                                 + "可能原因：脚本请求的外部接口无响应、DNS/HTTPS 依赖异常，或脚本内部进入长循环。\n"
-                                + "当前运行模式：" + (prootMode ? "PRoot Termux 路径映射" : "直接运行") + "。");
+                                + "当前运行模式：" + (prootMode ? "PRoot Termux rootfs 路径映射" : "直接运行") + "。");
             }
             String output = readAll(process.getInputStream());
             String error = readAll(process.getErrorStream());
@@ -419,6 +436,10 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private File getBundledPhpHome() {
         return new File(context.getFilesDir(), "bundled-php");
+    }
+
+    private File getProotRoot() {
+        return new File(context.getFilesDir(), "proot-root");
     }
 
     private void unzip(InputStream input, File destDir) throws IOException {
