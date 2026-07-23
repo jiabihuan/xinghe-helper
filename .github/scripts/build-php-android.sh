@@ -114,6 +114,7 @@ if [[ "$TARGET_ABI" == "armeabi-v7a" || "$TARGET_ABI" == "arm64-v8a" ]]; then
   for macro in HAVE_RES_NSEARCH HAVE_RES_NDESTROY HAVE_DN_SKIPNAME HAVE_GETDTABLESIZE; do
     sed -i "s/^#define ${macro} 1$/\\/\\* #undef ${macro} \\*\\//" main/php_config.h
   done
+  sed -i 's/dtablesize = getdtablesize();/dtablesize = (int) sysconf(_SC_OPEN_MAX); if (dtablesize <= 0) dtablesize = INT_MAX;/' ext/standard/php_fopen_wrapper.c
   grep -E "HAVE_(RES_NSEARCH|RES_SEARCH|DN_SKIPNAME|GETDTABLESIZE)" main/php_config.h | tee "$LOG_DIR/android-compat-config.log" || true
 fi
 
