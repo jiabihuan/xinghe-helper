@@ -105,6 +105,18 @@ if [[ "$configure_status" -ne 0 ]]; then
   exit "$configure_status"
 fi
 
+if [[ "$TARGET_ABI" == "armeabi-v7a" || "$TARGET_ABI" == "arm64-v8a" ]]; then
+  # Android's bionic resolver exposes the older res_search API, but not the
+  # glibc-style res_nsearch/res_ninit struct API expected by PHP's DNS code.
+  # PHP_CHECK_FUNC can still mark those symbols as available while
+  # cross-compiling, so force the generated config back to the Android-safe
+  # branch before make.
+  for macro in HAVE_RES_NSEARCH HAVE_RES_NDESTROY HAVE_DN_SKIPNAME; do
+    sed -i "s/^#define ${macro} 1$/\\/\\* #undef ${macro} \\*\\//" main/php_config.h
+  done
+  grep -E "HAVE_(RES_NSEARCH|RES_SEARCH|DN_SKIPNAME)" main/php_config.h | tee "$LOG_DIR/android-dns-config.log" || true
+fi
+
 set +e
 timeout 45m make -j"$(nproc)" V=1 2>&1 | tee "$LOG_DIR/make.log"
 make_status="${PIPESTATUS[0]}"
