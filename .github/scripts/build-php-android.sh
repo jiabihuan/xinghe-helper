@@ -87,7 +87,7 @@ timeout 25m ./configure \
   --build="$("./build/config.guess")" \
   --prefix="$OUT_DIR" \
   --disable-all \
-  --enable-cli \
+  --disable-cli \
   --enable-cgi \
   --enable-filter \
   --enable-session \
