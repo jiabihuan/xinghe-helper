@@ -27,7 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v3";
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v4";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
