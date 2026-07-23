@@ -111,10 +111,10 @@ if [[ "$TARGET_ABI" == "armeabi-v7a" || "$TARGET_ABI" == "arm64-v8a" ]]; then
   # PHP_CHECK_FUNC can still mark those symbols as available while
   # cross-compiling, so force the generated config back to the Android-safe
   # branch before make.
-  for macro in HAVE_RES_NSEARCH HAVE_RES_NDESTROY HAVE_DN_SKIPNAME; do
+  for macro in HAVE_RES_NSEARCH HAVE_RES_NDESTROY HAVE_DN_SKIPNAME HAVE_GETDTABLESIZE; do
     sed -i "s/^#define ${macro} 1$/\\/\\* #undef ${macro} \\*\\//" main/php_config.h
   done
-  grep -E "HAVE_(RES_NSEARCH|RES_SEARCH|DN_SKIPNAME)" main/php_config.h | tee "$LOG_DIR/android-dns-config.log" || true
+  grep -E "HAVE_(RES_NSEARCH|RES_SEARCH|DN_SKIPNAME|GETDTABLESIZE)" main/php_config.h | tee "$LOG_DIR/android-compat-config.log" || true
 fi
 
 set +e
