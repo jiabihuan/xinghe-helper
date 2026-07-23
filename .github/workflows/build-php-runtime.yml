@@ -45,6 +45,18 @@ jobs:
         run: |
           bash .github/scripts/build-php-android.sh
 
+      - name: Show PHP build logs on failure
+        if: failure()
+        run: |
+          if [ -f build/php-build-logs/configure.log ]; then
+            echo "===== configure.log tail ====="
+            tail -n 200 build/php-build-logs/configure.log
+          fi
+          if [ -f build/php-build-logs/make.log ]; then
+            echo "===== make.log tail ====="
+            tail -n 200 build/php-build-logs/make.log
+          fi
+
       - name: Upload PHP build logs
         if: always()
         uses: actions/upload-artifact@v4
