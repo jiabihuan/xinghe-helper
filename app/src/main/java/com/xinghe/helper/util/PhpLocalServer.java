@@ -40,19 +40,27 @@ public class PhpLocalServer extends NanoHTTPD {
     }
 
     public void startServer() throws IOException {
-        documentRoot = getDocumentRoot();
-        installBundledPhpIfNeeded();
-        actualPort = findAvailablePort(DEFAULT_PORT);
-        if (actualPort <= 0) {
-            throw new IOException("找不到可用端口");
-        }
         try {
-            java.lang.reflect.Field field = NanoHTTPD.class.getDeclaredField("myPort");
-            field.setAccessible(true);
-            field.setInt(this, actualPort);
-        } catch (Exception ignored) {
+            documentRoot = getDocumentRoot();
+            installBundledPhpIfNeeded();
+            actualPort = findAvailablePort(DEFAULT_PORT);
+            if (actualPort <= 0) {
+                throw new IOException("找不到可用端口");
+            }
+            try {
+                java.lang.reflect.Field field = NanoHTTPD.class.getDeclaredField("myPort");
+                field.setAccessible(true);
+                field.setInt(this, actualPort);
+            } catch (Exception ignored) {
+            }
+            start();
+        } catch (IOException e) {
+            throw e;
+        } catch (Throwable e) {
+            IOException wrapped = new IOException("PHP服务初始化异常: " + e.getMessage());
+            wrapped.initCause(e);
+            throw wrapped;
         }
-        start();
     }
 
     public String getServerUrl() {
@@ -384,9 +392,9 @@ public class PhpLocalServer extends NanoHTTPD {
         return null;
     }
 
-    private void installBundledPhpIfNeeded() {
+    private void installBundledPhpIfNeeded() throws IOException {
         String abi = chooseAssetAbi();
-        if (abi == null) return;
+        if (abi == null) throw new IOException("当前设备没有可用 ABI");
         File home = getBundledPhpHome();
         File marker = new File(home, ".version");
         File php = new File(home, "php");
@@ -411,7 +419,9 @@ public class PhpLocalServer extends NanoHTTPD {
             FileOutputStream out = new FileOutputStream(marker);
             out.write(BUNDLED_PHP_VERSION.getBytes(StandardCharsets.UTF_8));
             out.close();
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            deleteRecursively(home);
+            throw new IOException("释放内置 PHP 环境失败: " + e.getMessage(), e);
         }
     }
 
