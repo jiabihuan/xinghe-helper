@@ -237,6 +237,7 @@ max_execution_time=55
 allow_url_fopen=1
 display_errors=1
 log_errors=0
+error_reporting=E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT
 EOF
 
 mkdir -p "$OUT_DIR/etc/tls"

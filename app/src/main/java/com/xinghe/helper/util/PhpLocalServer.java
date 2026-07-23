@@ -28,7 +28,7 @@ public class PhpLocalServer extends NanoHTTPD {
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
     private static final int PHP_SOCKET_TIMEOUT_SECONDS = 8;
-    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v3";
+    private static final String BUNDLED_PHP_VERSION = "android-php-runtime-v4";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -227,6 +227,8 @@ public class PhpLocalServer extends NanoHTTPD {
             command.add("-d");
             command.add("log_errors=0");
             command.add("-d");
+            command.add("error_reporting=E_ALL & ~E_NOTICE & ~E_DEPRECATED & ~E_STRICT");
+            command.add("-d");
             command.add("html_errors=0");
             command.add("-d");
             command.add("allow_url_fopen=1");
@@ -331,6 +333,10 @@ public class PhpLocalServer extends NanoHTTPD {
             String output = stdout.getText();
             String error = stderr.getText();
             if (process.exitValue() != 0) {
+                // Non-fatal warnings (Deprecated, Notice) still produce output; serve it
+                if (output != null && output.length() > 20) {
+                    return phpOutputResponse(output);
+                }
                 return textResponse(Response.Status.INTERNAL_ERROR, "PHP 执行失败:\n" + error + "\n" + output);
             }
             return phpOutputResponse(output);
