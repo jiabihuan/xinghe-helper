@@ -27,7 +27,7 @@ public class PhpLocalServer extends NanoHTTPD {
 
     private static final int DEFAULT_PORT = 8765;
     private static final int EXEC_TIMEOUT_SECONDS = 60;
-    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm";
+    private static final String BUNDLED_PHP_VERSION = "termux-php-8.5.1-arm-proot-v1";
 
     private final Context context;
     private int actualPort = DEFAULT_PORT;
@@ -192,76 +192,106 @@ public class PhpLocalServer extends NanoHTTPD {
             File phpResolvConf = new File(phpEtcDir, "resolv.conf");
             File phpHosts = new File(phpEtcDir, "hosts");
             File phpResolvWrapper = new File(phpLibDir, "libresolv_wrapper.so");
+            File proot = new File(phpHome, "bin/proot");
+            boolean prootMode = proot.exists() && proot.canExecute();
+            String termuxPrefix = "/data/data/com.termux/files/usr";
+            String termuxHome = "/data/data/com.termux/files/home";
+            String termuxTmp = termuxPrefix + "/tmp";
             if (!phpTmpDir.exists()) phpTmpDir.mkdirs();
             boolean cgiMode = php.getName().contains("cgi");
-            java.util.List<String> command = new java.util.ArrayList<>();
-            command.add(php.getAbsolutePath());
-            command.add("-n");
-            command.add("-d");
-            command.add("opcache.enable=0");
-            command.add("-d");
-            command.add("opcache.enable_cli=0");
-            command.add("-d");
-            command.add("opcache.lockfile_path=" + phpTmpDir.getAbsolutePath());
-            command.add("-d");
-            command.add("sys_temp_dir=" + phpTmpDir.getAbsolutePath());
-            command.add("-d");
-            command.add("upload_tmp_dir=" + phpTmpDir.getAbsolutePath());
-            command.add("-d");
-            command.add("date.timezone=Asia/Shanghai");
-            command.add("-d");
-            command.add("default_socket_timeout=20");
-            command.add("-d");
-            command.add("max_execution_time=" + Math.max(1, EXEC_TIMEOUT_SECONDS - 5));
+            java.util.List<String> phpCommand = new java.util.ArrayList<>();
+            if (prootMode) {
+                phpCommand.add(termuxPrefix + "/bin/" + php.getName());
+            } else {
+                phpCommand.add(php.getAbsolutePath());
+            }
+            phpCommand.add("-n");
+            phpCommand.add("-d");
+            phpCommand.add("opcache.enable=0");
+            phpCommand.add("-d");
+            phpCommand.add("opcache.enable_cli=0");
+            phpCommand.add("-d");
+            phpCommand.add("opcache.lockfile_path=" + (prootMode ? termuxTmp : phpTmpDir.getAbsolutePath()));
+            phpCommand.add("-d");
+            phpCommand.add("sys_temp_dir=" + (prootMode ? termuxTmp : phpTmpDir.getAbsolutePath()));
+            phpCommand.add("-d");
+            phpCommand.add("upload_tmp_dir=" + (prootMode ? termuxTmp : phpTmpDir.getAbsolutePath()));
+            phpCommand.add("-d");
+            phpCommand.add("date.timezone=Asia/Shanghai");
+            phpCommand.add("-d");
+            phpCommand.add("default_socket_timeout=20");
+            phpCommand.add("-d");
+            phpCommand.add("max_execution_time=" + Math.max(1, EXEC_TIMEOUT_SECONDS - 5));
             if (phpCertFile.exists()) {
-                command.add("-d");
-                command.add("openssl.cafile=" + phpCertFile.getAbsolutePath());
-                command.add("-d");
-                command.add("curl.cainfo=" + phpCertFile.getAbsolutePath());
+                String certPath = prootMode ? termuxPrefix + "/etc/tls/cert.pem" : phpCertFile.getAbsolutePath();
+                phpCommand.add("-d");
+                phpCommand.add("openssl.cafile=" + certPath);
+                phpCommand.add("-d");
+                phpCommand.add("curl.cainfo=" + certPath);
             }
             if (cgiMode) {
-                if (phpIni.exists()) {
-                    command.add("-c");
-                    command.add(phpIni.getAbsolutePath());
+                if (phpIni.exists() && !prootMode) {
+                    phpCommand.add("-c");
+                    phpCommand.add(phpIni.getAbsolutePath());
                 }
             } else if (phpIni.exists()) {
-                command.add("-c");
-                command.add(phpIni.getAbsolutePath());
-                command.add(script.getAbsolutePath());
+                if (!prootMode) {
+                    phpCommand.add("-c");
+                    phpCommand.add(phpIni.getAbsolutePath());
+                }
+                phpCommand.add(script.getAbsolutePath());
             } else {
-                command.add(script.getAbsolutePath());
+                phpCommand.add(script.getAbsolutePath());
             }
+
+            java.util.List<String> command = new java.util.ArrayList<>();
+            if (prootMode) {
+                command.add(proot.getAbsolutePath());
+                command.add("-b");
+                command.add(phpHome.getAbsolutePath() + ":" + termuxPrefix);
+                command.add("-b");
+                command.add(phpHome.getAbsolutePath() + ":" + termuxHome);
+                command.add("-b");
+                command.add(phpTmpDir.getAbsolutePath() + ":" + termuxTmp);
+                command.add("-b");
+                command.add("/system:/system");
+                command.add("-b");
+                command.add("/dev:/dev");
+                command.add("-w");
+                command.add(documentRoot.getAbsolutePath());
+            }
+            command.addAll(phpCommand);
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(documentRoot);
             Map<String, String> env = pb.environment();
-            env.put("HOME", phpHome.getAbsolutePath());
-            env.put("TMPDIR", phpTmpDir.getAbsolutePath());
-            env.put("TEMP", phpTmpDir.getAbsolutePath());
-            env.put("TMP", phpTmpDir.getAbsolutePath());
+            env.put("HOME", prootMode ? termuxHome : phpHome.getAbsolutePath());
+            env.put("TMPDIR", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
+            env.put("TEMP", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
+            env.put("TMP", prootMode ? termuxTmp : phpTmpDir.getAbsolutePath());
             env.put("TZ", "Asia/Shanghai");
-            env.put("PREFIX", phpHome.getAbsolutePath());
-            env.put("TERMUX_PREFIX", phpHome.getAbsolutePath());
+            env.put("PREFIX", prootMode ? termuxPrefix : phpHome.getAbsolutePath());
+            env.put("TERMUX_PREFIX", prootMode ? termuxPrefix : phpHome.getAbsolutePath());
             env.put("PHP_INI_SCAN_DIR", "");
-            env.put("PATH", phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
+            env.put("PATH", prootMode ? termuxPrefix + "/bin:" + termuxPrefix + ":/system/bin" : phpHome.getAbsolutePath() + ":" + new File(phpHome, "bin").getAbsolutePath() + ":/system/bin");
             env.put("LD_LIBRARY_PATH", phpLibDir.getAbsolutePath());
-            if (phpResolvWrapper.exists()) {
+            if (phpResolvWrapper.exists() && !prootMode) {
                 env.put("LD_PRELOAD", phpResolvWrapper.getAbsolutePath());
             }
             if (phpResolvConf.exists()) {
-                env.put("RESOLV_WRAPPER_CONF", phpResolvConf.getAbsolutePath());
+                env.put("RESOLV_WRAPPER_CONF", prootMode ? termuxPrefix + "/etc/resolv.conf" : phpResolvConf.getAbsolutePath());
             }
             if (phpHosts.exists()) {
-                env.put("RESOLV_WRAPPER_HOSTS", phpHosts.getAbsolutePath());
+                env.put("RESOLV_WRAPPER_HOSTS", prootMode ? termuxPrefix + "/etc/hosts" : phpHosts.getAbsolutePath());
             }
             if (phpCertFile.exists()) {
-                env.put("SSL_CERT_FILE", phpCertFile.getAbsolutePath());
-                env.put("CURL_CA_BUNDLE", phpCertFile.getAbsolutePath());
+                env.put("SSL_CERT_FILE", prootMode ? termuxPrefix + "/etc/tls/cert.pem" : phpCertFile.getAbsolutePath());
+                env.put("CURL_CA_BUNDLE", prootMode ? termuxPrefix + "/etc/tls/cert.pem" : phpCertFile.getAbsolutePath());
             }
             if (phpTlsDir.exists()) {
-                env.put("SSL_CERT_DIR", phpTlsDir.getAbsolutePath());
+                env.put("SSL_CERT_DIR", prootMode ? termuxPrefix + "/etc/tls" : phpTlsDir.getAbsolutePath());
             }
             if (phpOpenSslConf.exists()) {
-                env.put("OPENSSL_CONF", phpOpenSslConf.getAbsolutePath());
+                env.put("OPENSSL_CONF", prootMode ? termuxPrefix + "/etc/tls/openssl.cnf" : phpOpenSslConf.getAbsolutePath());
             }
             env.put("REQUEST_METHOD", session.getMethod().name());
             env.put("SCRIPT_FILENAME", script.getAbsolutePath());
@@ -289,7 +319,7 @@ public class PhpLocalServer extends NanoHTTPD {
                 return textResponse(Response.Status.INTERNAL_ERROR,
                         "PHP 执行超时，已等待 " + EXEC_TIMEOUT_SECONDS + " 秒。\n"
                                 + "可能原因：脚本请求的外部接口无响应、DNS/HTTPS 依赖异常，或脚本内部进入长循环。\n"
-                                + "当前已设置 App 私有临时目录、证书路径、DNS resolv.conf 和 libresolv_wrapper。");
+                                + "当前运行模式：" + (prootMode ? "PRoot Termux 路径映射" : "直接运行") + "。");
             }
             String output = readAll(process.getInputStream());
             String error = readAll(process.getErrorStream());
