@@ -1,25 +1,60 @@
 package com.xinghe.helper.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
-import android.widget.Button;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.xinghe.helper.R;
-import com.xinghe.helper.util.PhpLocalServer;
+import com.xinghe.helper.util.PhpService;
+
+import java.io.File;
 
 public class PhpServerActivity extends AppCompatActivity {
 
     private TextView urlText;
     private TextView statusText;
     private TextView rootText;
-    private Button restartButton;
-    private PhpLocalServer phpServer;
-    private volatile boolean destroyed = false;
-    private volatile boolean starting = false;
+    private TextView toggleBtn;
+    private TextView restartBtn;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+
+    private PhpService.OnPhpServiceListener serviceListener = new PhpService.OnPhpServiceListener() {
+        @Override
+        public void onStarted(String url, String status) {
+            uiHandler.post(() -> {
+                urlText.setText(url);
+                statusText.setText("服务运行中\n" + status);
+                toggleBtn.setText("停止服务");
+                toggleBtn.setClickable(true);
+                restartBtn.setVisibility(View.VISIBLE);
+                updateRootDir();
+            });
+        }
+
+        @Override
+        public void onStopped() {
+            uiHandler.post(() -> onServerStopped());
+        }
+
+        @Override
+        public void onError(String error) {
+            uiHandler.post(() -> {
+                urlText.setText("启动失败");
+                statusText.setText(error);
+                toggleBtn.setText("启动服务");
+                toggleBtn.setClickable(true);
+                restartBtn.setVisibility(View.GONE);
+                Toast.makeText(PhpServerActivity.this, "PHP服务启动失败", Toast.LENGTH_SHORT).show();
+            });
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,20 +64,27 @@ public class PhpServerActivity extends AppCompatActivity {
         urlText = findViewById(R.id.phpUrlText);
         statusText = findViewById(R.id.phpStatusText);
         rootText = findViewById(R.id.phpRootText);
-        restartButton = findViewById(R.id.phpRestartButton);
+        toggleBtn = findViewById(R.id.phpToggleBtn);
+        restartBtn = findViewById(R.id.phpRestartBtn);
 
-        restartButton.setOnClickListener(v -> restartServer());
-        startServer();
+        toggleBtn.setOnClickListener(v -> toggleService());
+        restartBtn.setOnClickListener(v -> restartService());
+
+        PhpService.setListener(serviceListener);
+        refreshUi();
     }
 
     @Override
-    protected void onDestroy() {
-        destroyed = true;
-        super.onDestroy();
-        if (phpServer != null) {
-            phpServer.stop();
-            phpServer = null;
-        }
+    protected void onResume() {
+        super.onResume();
+        PhpService.setListener(serviceListener);
+        refreshUi();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        PhpService.setListener(null);
     }
 
     @Override
@@ -54,78 +96,60 @@ public class PhpServerActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
-    private void restartServer() {
-        if (starting) {
-            Toast.makeText(this, "PHP服务正在启动，请稍等", Toast.LENGTH_SHORT).show();
-            return;
+    private void toggleService() {
+        if (PhpService.isRunning()) {
+            stopPhpService();
+        } else {
+            startPhpService();
         }
-        if (phpServer != null) {
-            phpServer.stop();
-            phpServer = null;
-        }
-        startServer();
     }
 
-    private void startServer() {
-        starting = true;
-        restartButton.setEnabled(false);
-        urlText.setText("正在准备...");
+    private void startPhpService() {
+        toggleBtn.setClickable(false);
+        toggleBtn.setText("正在启动...");
         statusText.setText("正在启动服务...");
 
-        new Thread(() -> {
-            try {
-                PhpLocalServer server = new PhpLocalServer(PhpServerActivity.this);
-                String rootPath = server.getDocumentRoot().getAbsolutePath();
-                runOnUiThreadSafe(() -> {
-                    rootText.setText("PHP 文件目录：" + rootPath);
-                    statusText.setText("正在释放内置 PHP 环境，首次启动可能需要 1-3 分钟，请不要退出...");
-                });
-
-                server.startServer();
-                phpServer = server;
-                String url = server.getServerUrl();
-                String status = server.getInterpreterStatus();
-                runOnUiThreadSafe(() -> {
-                    urlText.setText(url);
-                    statusText.setText("服务运行中\n" + status);
-                    Toast.makeText(this, "PHP服务已启动", Toast.LENGTH_SHORT).show();
-                });
-            } catch (Throwable e) {
-                String message = buildErrorMessage(e);
-                runOnUiThreadSafe(() -> {
-                    urlText.setText("启动失败");
-                    statusText.setText(message);
-                    Toast.makeText(this, "PHP服务启动失败", Toast.LENGTH_SHORT).show();
-                });
-            } finally {
-                starting = false;
-                runOnUiThreadSafe(() -> restartButton.setEnabled(true));
-            }
-        }, "xinghe-php-starter").start();
+        Intent intent = new Intent(this, PhpService.class);
+        intent.setAction(PhpService.ACTION_START);
+        startForegroundService(intent);
     }
 
-    private void runOnUiThreadSafe(Runnable runnable) {
-        if (destroyed) return;
-        runOnUiThread(() -> {
-            if (!destroyed) runnable.run();
-        });
+    private void stopPhpService() {
+        Intent intent = new Intent(this, PhpService.class);
+        intent.setAction(PhpService.ACTION_STOP);
+        startService(intent);
     }
 
-    private String buildErrorMessage(Throwable e) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("PHP服务启动失败：").append(e.getClass().getSimpleName());
-        if (e.getMessage() != null) {
-            builder.append("\n").append(e.getMessage());
-        }
-        builder.append("\n\n请把这段错误截图发给我，我可以继续定位。");
+    private void restartService() {
+        stopPhpService();
+        toggleBtn.postDelayed(() -> startPhpService(), 800);
+    }
 
-        StackTraceElement[] stack = e.getStackTrace();
-        if (stack != null && stack.length > 0) {
-            builder.append("\n\n").append(stack[0].toString());
-            if (stack.length > 1) {
-                builder.append("\n").append(stack[1].toString());
-            }
+    private void onServerStopped() {
+        urlText.setText("未启动");
+        statusText.setText("点击下方按钮启动服务");
+        toggleBtn.setText("启动服务");
+        toggleBtn.setClickable(true);
+        restartBtn.setVisibility(View.GONE);
+        rootText.setText("PHP 文件目录：未启动");
+    }
+
+    private void updateRootDir() {
+        File dir = PhpService.getDocumentRoot();
+        rootText.setText("PHP 文件目录：" + (dir != null ? dir.getAbsolutePath() : "未知"));
+    }
+
+    private void refreshUi() {
+        if (PhpService.isRunning()) {
+            String url = PhpService.getServerUrl();
+            String status = PhpService.getInterpreterStatus();
+            urlText.setText(url.isEmpty() ? "正在启动..." : url);
+            statusText.setText(url.isEmpty() ? "正在启动服务..." : "服务运行中\n" + status);
+            toggleBtn.setText("停止服务");
+            restartBtn.setVisibility(View.VISIBLE);
+            updateRootDir();
+        } else {
+            onServerStopped();
         }
-        return builder.toString();
     }
 }

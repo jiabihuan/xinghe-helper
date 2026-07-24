@@ -4,88 +4,115 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_main_gradient"
     android:orientation="vertical"
-    android:paddingStart="72dp"
-    android:paddingTop="48dp"
-    android:paddingEnd="72dp"
-    android:paddingBottom="48dp">
+    android:gravity="center_vertical"
+    android:paddingStart="60dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="60dp"
+    android:paddingBottom="24dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="星河 PHP 服务"
         android:textColor="@color/home_text_primary"
-        android:textSize="32sp"
+        android:textSize="24sp"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="在电视盒子上启动本地 Web 服务，电脑或手机浏览器访问下面地址上传/运行 PHP 文件"
+        android:layout_marginTop="4dp"
+        android:text="在电视盒子上启动本地 Web 服务，浏览器访问下方地址运行 PHP"
         android:textColor="@color/home_text_hint"
-        android:textSize="18sp" />
+        android:textSize="13sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="18dp"
         android:background="@drawable/bg_card"
         android:orientation="vertical"
-        android:padding="28dp">
+        android:padding="18dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="访问地址"
             android:textColor="@color/home_text_hint"
-            android:textSize="18sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/phpUrlText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="正在启动..."
+            android:layout_marginTop="4dp"
+            android:text="未启动"
             android:textColor="@color/accent"
-            android:textSize="30sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/phpStatusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="正在检测 PHP 解释器..."
+            android:layout_marginTop="10dp"
+            android:text="点击下方按钮启动服务"
             android:textColor="@color/home_text_primary"
-            android:textSize="20sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/phpRootText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="8dp"
             android:text="PHP 文件目录："
             android:textColor="@color/home_text_hint"
-            android:textSize="16sp" />
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="启动后可在后台运行，退出页面不会停止。通过停止按钮或通知栏关闭。"
+            android:textColor="@color/home_text_hint"
+            android:textSize="11sp" />
     </LinearLayout>
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="说明：如果设备没有内置 php/php-cgi，服务仍可上传和浏览文件，但访问 .php 时会提示放置解释器。把 Android 可执行的 php 放到“星河助手/php/php”后重启服务即可执行。"
-        android:textColor="@color/home_text_hint"
-        android:textSize="17sp" />
+        android:layout_marginTop="18dp"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/phpRestartButton"
-        android:layout_width="220dp"
-        android:layout_height="52dp"
-        android:layout_marginTop="28dp"
-        android:background="@drawable/bg_btn_primary_selector"
-        android:focusable="true"
-        android:text="重启服务"
-        android:textColor="@color/home_text_primary"
-        android:textSize="18sp" />
+        <TextView
+            android:id="@+id/phpToggleBtn"
+            android:layout_width="180dp"
+            android:layout_height="44dp"
+            android:gravity="center"
+            android:text="启动服务"
+            android:textColor="@color/home_text_primary"
+            android:textSize="16sp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:clickable="true"
+            android:background="@drawable/selector_menu_item" />
+
+        <TextView
+            android:id="@+id/phpRestartBtn"
+            android:layout_width="180dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="20dp"
+            android:gravity="center"
+            android:text="重启服务"
+            android:textColor="@color/home_text_primary"
+            android:textSize="16sp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:clickable="true"
+            android:background="@drawable/selector_menu_item"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
 </LinearLayout>
