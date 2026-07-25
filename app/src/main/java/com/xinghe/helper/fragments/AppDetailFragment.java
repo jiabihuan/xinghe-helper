@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,6 +19,7 @@ import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.ApkInstallUtil;
+import com.xinghe.helper.util.IconLoader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -38,7 +40,7 @@ public class AppDetailFragment extends Fragment {
 
     private TextView btnBack;
     private TextView tvCode;
-    private TextView tvAppIcon;
+    private ImageView ivAppIcon;
     private TextView tvAppName;
     private TextView tvPackageName;
     private TextView tvVersion;
@@ -69,7 +71,7 @@ public class AppDetailFragment extends Fragment {
 
         btnBack = view.findViewById(R.id.btnBack);
         tvCode = view.findViewById(R.id.tvCode);
-        tvAppIcon = view.findViewById(R.id.tvAppIcon);
+        ivAppIcon = view.findViewById(R.id.ivAppIcon);
         tvAppName = view.findViewById(R.id.tvAppName);
         tvPackageName = view.findViewById(R.id.tvPackageName);
         tvVersion = view.findViewById(R.id.tvVersion);
@@ -235,6 +237,11 @@ public class AppDetailFragment extends Fragment {
 
     private void updateUI() {
         if (app == null) return;
+
+        String iconUrl = app.getIconUrl();
+        if (iconUrl != null && !iconUrl.isEmpty()) {
+            IconLoader.getInstance().loadIcon(iconUrl, ivAppIcon);
+        }
 
         tvAppName.setText(app.getName());
         tvPackageName.setText(app.getPackageName());

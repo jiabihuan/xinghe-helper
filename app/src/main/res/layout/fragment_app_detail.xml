@@ -52,14 +52,13 @@
         android:orientation="vertical"
         android:gravity="center_horizontal">
 
-        <TextView
-            android:id="@+id/tvAppIcon"
+        <ImageView
+            android:id="@+id/ivAppIcon"
             android:layout_width="96dp"
             android:layout_height="96dp"
             android:background="@drawable/bg_code_digit"
-            android:gravity="center"
-            android:text="📦"
-            android:textSize="48dp" />
+            android:scaleType="fitCenter"
+            android:padding="12dp" />
 
         <TextView
             android:id="@+id/tvAppName"
