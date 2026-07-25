@@ -177,11 +177,16 @@ public class AppDetailFragment extends Fragment {
                     }
                     
                     if (appJson != null) {
+                        String verName = appJson.optString("version_name");
+                        if (verName == null || verName.isEmpty()) verName = appJson.optString("version");
+                        if (verName == null || verName.isEmpty()) verName = appJson.optString("versionName");
+                        if (verName == null || verName.isEmpty()) verName = appJson.optString("app_version");
+
                         app = new PasswordApp(
                                 appJson.optLong("id"),
                                 appJson.optString("name"),
                                 appJson.optString("package_name"),
-                                appJson.optString("version_name"),
+                                verName,
                                 appJson.optLong("version_code"),
                                 21,
                                 appJson.optString("download_url"),
