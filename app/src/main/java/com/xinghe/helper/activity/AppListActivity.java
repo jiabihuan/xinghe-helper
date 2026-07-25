@@ -1041,6 +1041,7 @@ public class AppListActivity extends AppCompatActivity {
         for (int i = 0; i < apps.size(); i++) {
             final int index = i;
             View itemView = LayoutInflater.from(this).inflate(R.layout.item_download_big, downloadsContainer, false);
+            ImageView ivIcon = itemView.findViewById(R.id.ivAppIcon);
             TextView tvName = itemView.findViewById(R.id.tvAppName);
             TextView tvSizeInfo = itemView.findViewById(R.id.tvSizeInfo);
             TextView tvPercent = itemView.findViewById(R.id.tvPercent);
@@ -1048,7 +1049,19 @@ public class AppListActivity extends AppCompatActivity {
             TextView tvStatus = itemView.findViewById(R.id.tvStatus);
             final TextView btnCancel = itemView.findViewById(R.id.btnCancel);
 
-            tvName.setText(apps.get(i).getName());
+            // 设置图标：优先从缓存取，缓存没有则加载
+            PasswordApp appItem = apps.get(i);
+            String iconUrl = appItem.getIconUrl();
+            if (iconUrl != null && !iconUrl.isEmpty()) {
+                Bitmap cachedIcon = iconCache.get(iconUrl);
+                if (cachedIcon != null) {
+                    ivIcon.setImageBitmap(cachedIcon);
+                } else {
+                    loadIcon(iconUrl, ivIcon);
+                }
+            }
+
+            tvName.setText(appItem.getName());
             tvSizeInfo.setText(formatSize(apps.get(i).getSize()));
             tvPercent.setText("0%");
             progressBar.setProgress(0);
