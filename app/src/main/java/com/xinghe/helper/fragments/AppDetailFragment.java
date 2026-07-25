@@ -7,6 +7,8 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,7 +21,6 @@ import com.xinghe.helper.R;
 import com.xinghe.helper.coredata.CoreData;
 import com.xinghe.helper.model.PasswordApp;
 import com.xinghe.helper.util.ApkInstallUtil;
-import com.xinghe.helper.util.IconLoader;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,6 +42,7 @@ public class AppDetailFragment extends Fragment {
     private TextView btnBack;
     private TextView tvCode;
     private ImageView ivAppIcon;
+    private TextView tvAppIconFallback;
     private TextView tvAppName;
     private TextView tvPackageName;
     private TextView tvVersion;
@@ -72,6 +74,7 @@ public class AppDetailFragment extends Fragment {
         btnBack = view.findViewById(R.id.btnBack);
         tvCode = view.findViewById(R.id.tvCode);
         ivAppIcon = view.findViewById(R.id.ivAppIcon);
+        tvAppIconFallback = view.findViewById(R.id.tvAppIconFallback);
         tvAppName = view.findViewById(R.id.tvAppName);
         tvPackageName = view.findViewById(R.id.tvPackageName);
         tvVersion = view.findViewById(R.id.tvVersion);
@@ -238,14 +241,46 @@ public class AppDetailFragment extends Fragment {
     private void updateUI() {
         if (app == null) return;
 
-        String iconUrl = app.getIconUrl();
-        if (iconUrl != null && !iconUrl.isEmpty()) {
-            IconLoader.getInstance().loadIcon(iconUrl, ivAppIcon);
-        }
-
         tvAppName.setText(app.getName());
         tvPackageName.setText(app.getPackageName());
         tvVersion.setText("版本 " + app.getVersionName());
+
+        // 显示首字作为兜底图标
+        String appName = app.getName();
+        if (appName != null && appName.length() > 0) {
+            tvAppIconFallback.setText(String.valueOf(appName.charAt(0)));
+        }
+
+        // 异步加载真实图标
+        String iconUrl = app.getIconUrl();
+        if (iconUrl != null && !iconUrl.isEmpty()) {
+            String fullUrl = iconUrl.startsWith("http") ? iconUrl : CoreData.HTTP_BASE_URL + iconUrl;
+            executor.submit(() -> {
+                try {
+                    URL url = new URL(fullUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    if (conn.getResponseCode() == 200) {
+                        java.io.InputStream is = conn.getInputStream();
+                        Bitmap bmp = BitmapFactory.decodeStream(is);
+                        is.close();
+                        conn.disconnect();
+                        if (bmp != null) {
+                            mainHandler.post(() -> {
+                                ivAppIcon.setImageBitmap(bmp);
+                                ivAppIcon.setVisibility(View.VISIBLE);
+                                tvAppIconFallback.setVisibility(View.GONE);
+                            });
+                        }
+                        return;
+                    }
+                    conn.disconnect();
+                } catch (Exception ignored) {
+                }
+            });
+        }
         tvSize.setText(formatSize(app.getSize()));
         tvDownloads.setText("0 次下载");
 
