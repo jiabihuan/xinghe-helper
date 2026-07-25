@@ -1057,7 +1057,30 @@ public class AppListActivity extends AppCompatActivity {
                 if (cachedIcon != null) {
                     ivIcon.setImageBitmap(cachedIcon);
                 } else {
-                    loadIcon(iconUrl, ivIcon);
+                    final ImageView iconView = ivIcon;
+                    requestExecutor.submit(() -> {
+                        try {
+                            String fullUrl = iconUrl.startsWith("http") ? iconUrl : CoreData.HTTP_BASE_URL + iconUrl;
+                            URL u = new URL(fullUrl);
+                            HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                            conn.setRequestMethod("GET");
+                            conn.setConnectTimeout(8000);
+                            conn.setReadTimeout(8000);
+                            if (conn.getResponseCode() == 200) {
+                                InputStream is = conn.getInputStream();
+                                Bitmap bmp = BitmapFactory.decodeStream(is);
+                                is.close();
+                                conn.disconnect();
+                                if (bmp != null) {
+                                    iconCache.put(iconUrl, bmp);
+                                    mainHandler.post(() -> iconView.setImageBitmap(bmp));
+                                }
+                            } else {
+                                conn.disconnect();
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    });
                 }
             }
 
